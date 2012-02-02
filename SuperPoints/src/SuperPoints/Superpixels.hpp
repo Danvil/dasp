@@ -392,6 +392,15 @@ namespace Romeo
 			}
 		}
 
+		template<typename F>
+		std::vector<float> ClassifyClusters(const std::vector<Cluster>& clusters, F f) {
+			std::vector<float> values(clusters.size());
+			for(unsigned int i=0; i<clusters.size(); i++) {
+				values[i] = f(clusters[i].center);
+			}
+			return values;
+		}
+
 	};
 
 }
