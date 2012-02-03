@@ -18,7 +18,7 @@ INCLUDEPATH += src \
     $$GIT_BASE/DanvilTools/Voxello/src \
     $$GIT_BASE/DanvilTools/SimpleEngine/src \
     $$GIT_BASE/DanvilTools/CT/src \
-    $$GIT_BASE/DanvilTools/Slimage/src \
+    $$GIT_BASE/slimage/src \
     $$GIT_BASE/DanvilTools/Images/src \
     /home/david/Programs/RGBD/OpenNI/Include \
     /usr/local/include/eigen3
