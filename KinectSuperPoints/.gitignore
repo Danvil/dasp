@@ -1,0 +1,8 @@
+/release
+/debug
+/KinectSuperPoints-Debug
+/Makefile.Debug
+/KinectSuperPoints
+/Makefile.Release
+/Makefile
+/ui_*.h
