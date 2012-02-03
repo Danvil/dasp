@@ -6,11 +6,11 @@
  */
 
 #include "Superpixels.hpp"
-#include <Danvil/Images/ImageOps.h>
+#include <Danvil/Tools/MoreMath.h>
+//#include <Danvil/Images/ImageOps.h>
 #include <boost/random.hpp>
 
-namespace Romeo {
-namespace Superpixels6D {
+namespace dasp {
 
 void Cluster::UpdateCenter(const ImagePoints& points)
 {
@@ -66,27 +66,27 @@ ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsig
 }
 
 ImagePoints CreatePoints(
-		const Danvil::Images::Image3ubPtr& image,
-		const Danvil::Images::Image1ui16Ptr& depth,
-//		const Danvil::Images::Image3fPtr& pos,
-		const Danvil::Images::Image3fPtr& normals,
+		const slimage::Image3ub& image,
+		const slimage::Image1ui16& depth,
+//		const slimage::Image3fPtr& pos,
+		const slimage::Image3f& normals,
 		const ParametersExt& opt)
 {
-	unsigned int width = image->width();
-	unsigned int height = image->height();
-	assert(width == depth->width() && height == depth->height());
+	unsigned int width = image.width();
+	unsigned int height = image.height();
+	assert(width == depth.width() && height == depth.height());
 //	assert(width == pos->width() && height == pos->height());
-	if(normals) {
-		assert(width == normals->width() && height == normals->height());
+	if(!normals.isNull()) {
+		assert(width == normals.width() && height == normals.height());
 	}
 
 	ImagePoints points(width, height);
 
-	const unsigned char* p_col = image->begin();
-	const uint16_t* p_depth = depth->begin();
+	const unsigned char* p_col = image.begin();
+	const uint16_t* p_depth = depth.begin();
 //	const float* p_points = pos->begin();
 	const float pixel_size_factor = opt.computePixelSizeFactor();
-	const float* p_normals = normals ? normals->begin() : 0;
+	const float* p_normals = normals.isNull() ? 0 : normals.begin();
 	for(unsigned int y=0; y<height; y++) {
 		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
 			Point& p = points(x, y);
@@ -123,10 +123,10 @@ ImagePoints CreatePoints(
 	return points;
 }
 
-std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const Danvil::Images::Image1fPtr& edges, const ParametersExt& opt)
+std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt)
 {
 	std::vector<Seed> seeds = FindSeeds(points, opt);
-	if(edges) {
+	if(!edges.isNull()) {
 		ImproveSeeds(seeds, points, edges, opt);
 	}
 	return ComputeSuperpixels(points, seeds, opt);
@@ -204,14 +204,14 @@ std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const Paramete
 //	return seeds;
 }
 
-Danvil::Images::Image1fPtr SumMipMapWithBlackBorder(const Danvil::Images::Image1fPtr& img_big)
+slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
 {
-	size_t w_big = img_big->width();
-	size_t h_big = img_big->height();
+	size_t w_big = img_big.width();
+	size_t h_big = img_big.height();
 	// the computed mipmap will have 2^i size
 	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-	Danvil::Images::Image1fPtr img_small = Danvil::Images::ImageFactory::FactorSimpleImage<float,1>(size / 2, size / 2);
-	Danvil::Images::ImageOps::Fill(img_small, 0.0f);
+	slimage::Image1f img_small(size / 2, size / 2);
+	img_small.fill(0.0f);
 	// only the part where at least one of the four pixels lies in the big image is iterated
 	// the rest was set to 0 with the fill op
 	size_t w_small = w_big / 2 + ((w_big % 2 == 0) ? 0 : 1);
@@ -226,7 +226,7 @@ Danvil::Images::Image1fPtr SumMipMapWithBlackBorder(const Danvil::Images::Image1
 			float sum = 0.0f;
 			// Since we only test the part where at least one pixel is in also in the big image
 			// we do not need to test that (x_big,y_big) is a valid pixel in the big image.
-			const float* p_big = img_big->pixel(x_big, y_big);
+			const float* p_big = img_big.pointer(x_big, y_big);
 			sum += *(p_big);
 			if(x_big + 1 < w_big) {
 				sum += *(p_big + 1);
@@ -237,29 +237,29 @@ Danvil::Images::Image1fPtr SumMipMapWithBlackBorder(const Danvil::Images::Image1
 					sum += *(p_big + w_big + 1);
 				}
 			}
-			img_small->set(x, y, sum);
+			img_small(x, y) = sum;
 		}
 	}
 	return img_small;
 }
 
-Danvil::Images::Image1fPtr SumMipMap(const Danvil::Images::Image1fPtr& img_big)
+slimage::Image1f SumMipMap(const slimage::Image1f& img_big)
 {
-	size_t w_big = img_big->width();
-	size_t h_big = img_big->height();
+	size_t w_big = img_big.width();
+	size_t h_big = img_big.height();
 	// the computed mipmap will have 2^i size
 	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
 	assert(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
 	size /= 2;
-	Danvil::Images::Image1fPtr img_small = Danvil::Images::ImageFactory::FactorSimpleImage<float,1>(size, size);
+	slimage::Image1f img_small(size, size);
 	for(size_t y = 0; y < size; y++) {
 		size_t y_big = y * 2;
 		for(size_t x = 0; x < size; x++) {
 			size_t x_big = x * 2;
 			// We sum over all four corresponding pixels in the big image.
-			const float* p_big = img_big->pixel(x_big, y_big);
+			const float* p_big = img_big.pointer(x_big, y_big);
 			float sum = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
-			img_small->set(x, y, sum);
+			img_small(x, y) = sum;
 		}
 	}
 	return img_small;
@@ -268,16 +268,16 @@ Danvil::Images::Image1fPtr SumMipMap(const Danvil::Images::Image1fPtr& img_big)
 void FindSeedsBlueGrid_WalkMipmaps(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
-		const std::vector<Danvil::Images::Image1fPtr>& mipmaps,
+		const std::vector<slimage::Image1f>& mipmaps,
 		int level, unsigned int x, unsigned int y)
 {
 	static boost::mt19937 rng;
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
 	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
 
-	const Danvil::Images::Image1fPtr& mm = mipmaps[level];
+	const slimage::Image1f& mm = mipmaps[level];
 
-	float v = mm->get(x, y);
+	float v = mm(x, y);
 
 	if(v > 1.0f && level > 1) { // do not access mipmap 0!
 		// go down
@@ -308,16 +308,16 @@ void FindSeedsBlueGrid_WalkMipmaps(
 std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const ParametersExt& opt)
 {
 	// compute estimated number of seeds per pixel
-	Danvil::Images::Image1fPtr num = Danvil::Images::ImageFactory::FactorSimpleImage<float,1>(points.width(), points.height());
+	slimage::Image1f num(points.width(), points.height());
 	for(unsigned int i=0; i<points.size(); i++) {
-		*(num->begin() + i) = points[i].estimatedCount();
+		num[i] = points[i].estimatedCount();
 	}
 	// create first mipmap s.t. by possibly enlarging the original image
-	std::vector<Danvil::Images::Image1fPtr> mipmaps(2);
+	std::vector<slimage::Image1f> mipmaps(2);
 	mipmaps[0] = num;
 	mipmaps[1] = SumMipMapWithBlackBorder(num);
-	assert(Danvil::MoreMath::P2Test(mipmaps[1]->width()));
-	unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(mipmaps[1]->width());
+	assert(Danvil::MoreMath::P2Test(mipmaps[1].width()));
+	unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(mipmaps[1].width());
 	mipmaps.resize(n_mipmaps + 1);
 	// create all other required mipmaps
 	for(unsigned int i=2; i<=n_mipmaps; i++) {
@@ -385,15 +385,15 @@ std::vector<Cluster> CreateClusters(const std::vector<Seed>& seeds, const ImageP
 	return clusters;
 }
 
-void ComputeEdges(const ImagePoints& points, Danvil::Images::Image1fPtr& edges, const ParametersExt& opt, Danvil::Images::ThreadingOptions threadopt)
+void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt)
 {
 	const unsigned int width = points.width();
 	const unsigned int height = points.height();
 
 	// compute edges strength
-	Danvil::Images::ImageOps::Resize(edges, width, height);
-	float* p_edge_begin = edges->begin();
-	Danvil::Images::ParallelProcess(edges, [p_edge_begin,width,height,&points,&opt](float* p_edge) {
+	edges.resize(width, height);
+	float* p_edge_begin = edges.begin();
+	slimage::ParallelProcess(edges, [p_edge_begin,width,height,&points,&opt](float* p_edge) {
 		int i = p_edge - p_edge_begin;
 		int x = i % width;
 		int y = i / width;
@@ -419,7 +419,7 @@ void ComputeEdges(const ImagePoints& points, Danvil::Images::Image1fPtr& edges, 
 	}, threadopt);
 }
 
-void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const Danvil::Images::Image1fPtr& edges, const ParametersExt& opt)
+void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt)
 {
 	const unsigned int width = points.width();
 	const unsigned int height = points.height();
@@ -427,7 +427,7 @@ void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const Dan
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 
-	const float* p_edges = edges->begin();
+	const float* p_edges = edges.begin();
 
 	for(Seed& seed : seeds) {
 		int sx = seed.x;
@@ -502,7 +502,7 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 	clusters = clusters_valid;
 }
 
-void PlotCluster(const Cluster& cluster, const ImagePoints& points, const Danvil::Images::Image3ubPtr& img)
+void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img)
 {
 	assert(cluster.is_valid());
 	unsigned char c_col_r = 255.0f * cluster.center.color[0];
@@ -510,7 +510,7 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const Danvil
 	unsigned char c_col_b = 255.0f * cluster.center.color[2];
 	for(unsigned int i : cluster.pixel_ids) {
 		const Point& p = points[i];
-		unsigned char* col = img->pixel(p.spatial_x(), p.spatial_y());
+		unsigned char* col = img.pointer(p.spatial_x(), p.spatial_y());
 //			cols[k % cols.size()].writeRgb(col);
 		col[0] = c_col_r;
 		col[1] = c_col_g;
@@ -519,7 +519,7 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const Danvil
 	int cx = cluster.center.spatial_x();
 	int cy = cluster.center.spatial_y();
 	if(0 <= cx && cx < int(points.width()) && 0 <= cy && cy < int(points.height())) {
-		unsigned char* col = img->pixel(cx, cy);
+		unsigned char* col = img.pointer(cx, cy);
 		col[0] = 255 - c_col_r;
 		col[1] = 255 - c_col_g;
 		col[2] = 255 - c_col_b;
@@ -527,24 +527,24 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const Danvil
 
 }
 
-void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const Danvil::Images::Image3ubPtr& img)
+void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const slimage::Image3ub& img)
 {
 //	std::vector<Danvil::ColorUB> cols = {
 //			Danvil::Color::Red, Danvil::Color::Green, Danvil::Color::Blue, Danvil::Color::Yellow, Danvil::Color::Cyan, Danvil::Color::Magenta, Danvil::Color::Black
 //	};
-	Danvil::Images::ImageOps::Fill(img, (unsigned char)0);
+	img.fill(0);
 	for(const Cluster& x : clusters) {
 		PlotCluster(x, points, img);
 	}
 }
 
-void PlotEdges(const std::vector<int>& labels, const Danvil::Images::Image3ubPtr& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b)
+void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b)
 {
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 
-	unsigned int width = img->width();
-	unsigned int height = img->height();
+	unsigned int width = img.width();
+	unsigned int height = img.height();
 
 	std::vector<bool> istaken(width*height, false);
 
@@ -566,7 +566,9 @@ void PlotEdges(const std::vector<int>& labels, const Danvil::Images::Image3ubPtr
 				}
 			}
 			if(np > edge_w) {
-				img->set(x, y, edge_r, edge_g, edge_b);
+				img(x,y,0) = edge_r;
+				img(x,y,1) = edge_g;
+				img(x,y,2) = edge_b;
 				istaken[i] = true;
 			}
 		}
@@ -574,5 +576,4 @@ void PlotEdges(const std::vector<int>& labels, const Danvil::Images::Image3ubPtr
 
 }
 
-
-}}
+}

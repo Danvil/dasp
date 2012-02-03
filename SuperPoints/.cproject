@@ -9,7 +9,7 @@
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SuperPoints"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SuperPoints/LinuxDebug"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="SuperPoints"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="SuperPoints-Debug"/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -22,7 +22,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.82765164" name="LinuxDebug" parent="cdt.managedbuild.config.gnu.exe.debug" postbuildStep="cp ${workspace_loc:/SuperPoints/LinuxDebug}/libSuperPoints.so ${DANVIL_LIB_PATH}/.">
+				<configuration artifactExtension="so" artifactName="${ProjName}-Debug" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.82765164" name="LinuxDebug" parent="cdt.managedbuild.config.gnu.exe.debug" postbuildStep="cp ${workspace_loc:/SuperPoints/LinuxDebug}/libSuperPoints-Debug.so ${DANVIL_LIB_PATH}/.">
 					<folderInfo id="cdt.managedbuild.config.gnu.exe.debug.82765164." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.debug.86640345" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.exe.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.debug.1784263619" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.debug"/>
@@ -35,7 +35,7 @@
 								<option id="gnu.cpp.compiler.option.other.pic.1413525141" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.2061332146" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Images/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Slimage/src}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1599794331" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -98,14 +98,14 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.release.963834810" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.release"/>
 							<builder buildPath="${workspace_loc:/SuperPoints/Release}" id="cdt.managedbuild.target.gnu.builder.exe.release.76699583" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="-1" superClass="cdt.managedbuild.target.gnu.builder.exe.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.2048940231" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1875705209" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release">
+							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1875705209" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release">
 								<option id="gnu.cpp.compiler.exe.release.option.optimization.level.810311583" name="Optimization Level" superClass="gnu.cpp.compiler.exe.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1232304628" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.1737433991" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++0x" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1652506096" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1422620371" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Images/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Slimage/src}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1558872892" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
