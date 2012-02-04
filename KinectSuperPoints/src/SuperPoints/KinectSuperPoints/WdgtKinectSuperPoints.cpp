@@ -1,5 +1,6 @@
 #include "WdgtKinectSuperPoints.h"
 #include <Slimage/Qt.hpp>
+#include <SuperPoints/Mipmaps.hpp>
 
 WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
@@ -8,7 +9,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->focal = 580.0f;
-	dasp_params->seed_mode = dasp::SeedModes::DepthDependentMipmap;
+//	dasp_params->seed_mode = dasp::SeedModes::DepthDependentMipmap;
+	dasp_params->seed_mode = dasp::SeedModes::BlueNoise;
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_params));
 	gui_params_->show();
@@ -16,8 +18,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
-	//kinect_grabber_->OpenFile(settings.oni_file);
-	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
+	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
+	//kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
 
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
@@ -73,11 +75,21 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
 	dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
 
+	slimage::Image1f num(points.width(), points.height());
+	for(unsigned int i=0; i<points.size(); i++) {
+		num[i] = points[i].estimatedCount();
+	}
+	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 4);
+
 	// set images for gui
 	images_mutex_.lock();
 	images_["depth"] = slimage::Ptr(kinect_depth_8);
 	images_["color"] = slimage::Ptr(kinect_color);
 	images_["super"] = slimage::Ptr(super);
+	images_["mm1"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[1], 128.0f));
+	images_["mm2"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[2], 8.0f));
+	images_["mm3"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[3], 2.0f));
+	images_["mm4"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[4], 0.5f));
 	images_mutex_.unlock();
 }
 

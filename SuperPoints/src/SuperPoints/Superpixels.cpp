@@ -6,6 +6,7 @@
  */
 
 #include "Superpixels.hpp"
+#include "Mipmaps.hpp"
 #include <Danvil/Tools/MoreMath.h>
 //#include <Danvil/Images/ImageOps.h>
 #include <boost/random.hpp>
@@ -215,89 +216,6 @@ std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const Paramete
 //	return seeds;
 }
 
-namespace Mipmaps
-{
-
-	slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
-	{
-		size_t w_big = img_big.width();
-		size_t h_big = img_big.height();
-		// the computed mipmap will have 2^i size
-		unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-		slimage::Image1f img_small(size / 2, size / 2);
-		img_small.fill(0.0f);
-		// only the part where at least one of the four pixels lies in the big image is iterated
-		// the rest was set to 0 with the fill op
-		size_t w_small = w_big / 2 + ((w_big % 2 == 0) ? 0 : 1);
-		size_t h_small = h_big / 2 + ((h_big % 2 == 0) ? 0 : 1);
-		for(size_t y = 0; y < h_small; y++) {
-			size_t y_big = y * 2;
-			for(size_t x = 0; x < w_small; x++) {
-				size_t x_big = x * 2;
-				// We sum over all four pixels in the big image (if they are valid).
-				// May by invalid because the big image is considered to be enlarged
-				// to have a size of 2^i.
-				float sum = 0.0f;
-				// Since we only test the part where at least one pixel is in also in the big image
-				// we do not need to test that (x_big,y_big) is a valid pixel in the big image.
-				const float* p_big = img_big.pointer(x_big, y_big);
-				sum += *(p_big);
-				if(x_big + 1 < w_big) {
-					sum += *(p_big + 1);
-				}
-				if(y_big + 1 < h_big) {
-					sum += *(p_big + w_big);
-					if(x_big + 1 < w_big) {
-						sum += *(p_big + w_big + 1);
-					}
-				}
-				img_small(x, y) = sum;
-			}
-		}
-		return img_small;
-	}
-
-	slimage::Image1f SumMipMap(const slimage::Image1f& img_big)
-	{
-		size_t w_big = img_big.width();
-		size_t h_big = img_big.height();
-		// the computed mipmap will have 2^i size
-		unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-		assert(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
-		size /= 2;
-		slimage::Image1f img_small(size, size);
-		for(size_t y = 0; y < size; y++) {
-			size_t y_big = y * 2;
-			for(size_t x = 0; x < size; x++) {
-				size_t x_big = x * 2;
-				// We sum over all four corresponding pixels in the big image.
-				const float* p_big = img_big.pointer(x_big, y_big);
-				float sum = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
-				img_small(x, y) = sum;
-			}
-		}
-		return img_small;
-	}
-
-	std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsigned int max_level_shift) {
-		// find number of required mipmap level
-		unsigned int max_size = std::max(img.width(), img.height());
-		BOOST_ASSERT(max_size >= (1 << (max_level_shift + 1)));
-		unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
-		n_mipmaps -= max_level_shift;
-		std::vector<slimage::Image1f> mipmaps(n_mipmaps + 1);
-		mipmaps[0] = img;
-		mipmaps[1] = SumMipMapWithBlackBorder(img);
-		// create remaining mipmaps
-		for(unsigned int i=2; i<=n_mipmaps; i++) {
-			assert(mipmaps[i-1].width() == mipmaps[i-1].height());
-			assert(mipmaps[i-1].width() >= 1);
-			mipmaps[i] = SumMipMap(mipmaps[i - 1]);
-		}
-		return mipmaps;
-	}
-}
-
 void FindSeedsBlueGrid_WalkMipmaps(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
@@ -355,49 +273,161 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Paramete
 
 namespace BlueNoise
 {
+	constexpr unsigned int D = 2;
+
 	struct Point {
 		float x, y;
 		float weight;
 		float scale;
 	};
 
-	std::vector<Point> PlacePoints(const slimage::Image1f& coarest, unsigned int p) {
-		constexpr unsigned int d = 2;
+	inline
+	float KernelFunctor(float d) {
+		constexpr float A = 0.39894228f;
+		return A * std::exp(-0.5f*d*d);
+	}
+
+	inline
+	float Energy(const std::vector<Point>& pnts, float x, float y) {
+		float sum = 0.0f;
+		for(const Point& p : pnts) {
+			float dx = p.x - x;
+			float dy = p.y - y;
+			float d = std::sqrt(dx*dx + dy*dy);
+			float ka = std::pow(p.scale, -float(D));
+			float kb = KernelFunctor(d / p.scale);
+			sum += ka * kb;
+		}
+		return sum;
+	}
+
+	inline
+	float EnergyError(const std::vector<Point>& pnts, const slimage::Image1f& density) {
+		float error = 0.0f;
+		for(unsigned int y=0; y<density.height(); y++) {
+			for(unsigned int x=0; x<density.width(); x++) {
+				float px = float(x);
+				float py = float(y);
+				float a = Energy(pnts, px, py);
+				float roh = density(x, y);
+				error += std::abs(a - roh);
+			}
+		}
+		return error;
+	}
+
+	inline
+	float KernelScaleFunction(float roh, float weight) {
+		return std::pow(roh / weight, -1.0f / float(D));
+	}
+
+	std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p) {
 		// access original index in a random order
-		std::vector<unsigned int> indices(coarest.size());
+		std::vector<unsigned int> indices(density.size());
 		for(unsigned int i=0; i<indices.size(); i++) {
 			indices[i] = i;
 		}
-//		std::random_shuffle(indices.begin(), indices.end());
+		std::random_shuffle(indices.begin(), indices.end());
 		// compute points
 		std::vector<Point> pnts;
 		pnts.reserve(indices.size());
+		// compute current error in density
+		float error_current = EnergyError(pnts, density);
+		std::cout << "INITIAL ERROR: " << error_current << std::endl;
+		// try add kernel points
 		for(unsigned int i : indices) {
-			float roh = coarest[i];
+			float roh = density[i];
+			if(roh == 0) {
+//				std::cout << i << " roh is 0!" << std::endl;
+				continue;
+			}
 			Point u;
-			int q = std::ceil(std::log2(roh) / d);
-			u.x = float((i % coarest.width()) << p) + float(1 << (p - 1));
-			u.y = float((i / coarest.width()) << p) + float(1 << (p - 1));
-			u.weight = float(1 << (d*(p - q)));
-			u.scale = 1.0f / std::sqrt(roh / u.weight);
+			int q = roh < 1 ? 0 : std::ceil(std::log2(roh) / float(D));
+			u.x = float(i % density.width());
+			u.y = float(i / density.width());
+			u.weight = float(1 << (D*q));
+			u.scale = KernelScaleFunction(roh, u.weight);
+			// try to add
+			pnts.push_back(u);
 			// check if the points reduced the energy
-			bool reduction = (roh > 0);
-			if(reduction) {
-				pnts.push_back(u);
+			float error_new = EnergyError(pnts, density);
+			if(error_new > error_current) {
+				// reject
+				pnts.pop_back();
+				std::cout << u.x << " " << u.y << " " << u.weight << " " << error_new << " REJECTED" << std::endl;
+			}
+			else {
+				error_current = error_new;
+				std::cout << u.x << " " << u.y << " " << u.weight << " " << error_new << std::endl;
 			}
 		}
 		return pnts;
 	}
 
+	void Refine(std::vector<Point>& points, const slimage::Image1f& density) {
+
+	}
+
+	std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density_old, const slimage::Image1f& density) {
+		std::vector<Point> pnts_new;
+		for(Point u : points) {
+			if(u.weight > 1.0f) {
+				float roh = density_old(int(u.x), int(u.y));
+				float a = KernelScaleFunction(roh, u.weight);
+				u.x *= 2.0f;
+				u.y *= 2.0f;
+				u.weight /= float(1 << D);
+				constexpr float A = 0.70710678f;
+				constexpr float Delta[4][2] = {
+						{-A, -A}, {+A, -A}, {-A, +A}, {+A, +A}
+				};
+				for(unsigned int i=0; i<4; i++) {
+					Point ui = u;
+					ui.x += a * Delta[i][0];
+					ui.y += a * Delta[i][1];
+					if(0 <= int(ui.x) && int(ui.x) < density.width() && 0 <= int(ui.y) && int(ui.y) < density.height()) {
+						float roh = density(int(ui.x), int(ui.y));
+						if(roh > 0) {
+							ui.scale = KernelScaleFunction(roh, ui.weight);
+							pnts_new.push_back(ui);
+						}
+					}
+				}
+			}
+			else {
+				u.x *= 2.0f;
+				u.y *= 2.0f;
+				u.weight = 1.0f;
+				if(0 <= int(u.x) && int(u.x) < density.width() && 0 <= int(u.y) && int(u.y) < density.height()) {
+					float roh = density(int(u.x), int(u.y));
+					if(roh > 0) {
+						u.scale = KernelScaleFunction(roh, u.weight);
+						pnts_new.push_back(u);
+					}
+				}
+			}
+		}
+		return pnts_new;
+	}
+
 	std::vector<Point> Compute(const slimage::Image1f& density) {
 		// compute mipmaps
 		std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 4);
-		// place initial points
-		unsigned int p = mipmaps.size() - 1;
-		slimage::Image1f coarest = mipmaps[p];
-		std::vector<Point> pnts = PlacePoints(coarest, p);
-		// refine points
-		// split points
+		int p = int(mipmaps.size()) - 1;
+		std::vector<Point> pnts;
+		for(int i=p; i>=0; i--) {
+			if(i == p) {
+				// place initial points
+				pnts = PlacePoints(mipmaps[i], i);
+			}
+			else {
+				// split points
+				pnts = Split(pnts, mipmaps[i+1], mipmaps[i]);
+			}
+			// refine points for new density map
+			Refine(pnts, mipmaps[i]);
+			std::cout << i << " " << pnts.size() << std::endl;
+		}
 		return pnts;
 	}
 
