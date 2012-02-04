@@ -215,65 +215,87 @@ std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const Paramete
 //	return seeds;
 }
 
-slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
+namespace Mipmaps
 {
-	size_t w_big = img_big.width();
-	size_t h_big = img_big.height();
-	// the computed mipmap will have 2^i size
-	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-	slimage::Image1f img_small(size / 2, size / 2);
-	img_small.fill(0.0f);
-	// only the part where at least one of the four pixels lies in the big image is iterated
-	// the rest was set to 0 with the fill op
-	size_t w_small = w_big / 2 + ((w_big % 2 == 0) ? 0 : 1);
-	size_t h_small = h_big / 2 + ((h_big % 2 == 0) ? 0 : 1);
-	for(size_t y = 0; y < h_small; y++) {
-		size_t y_big = y * 2;
-		for(size_t x = 0; x < w_small; x++) {
-			size_t x_big = x * 2;
-			// We sum over all four pixels in the big image (if they are valid).
-			// May by invalid because the big image is considered to be enlarged
-			// to have a size of 2^i.
-			float sum = 0.0f;
-			// Since we only test the part where at least one pixel is in also in the big image
-			// we do not need to test that (x_big,y_big) is a valid pixel in the big image.
-			const float* p_big = img_big.pointer(x_big, y_big);
-			sum += *(p_big);
-			if(x_big + 1 < w_big) {
-				sum += *(p_big + 1);
-			}
-			if(y_big + 1 < h_big) {
-				sum += *(p_big + w_big);
-				if(x_big + 1 < w_big) {
-					sum += *(p_big + w_big + 1);
-				}
-			}
-			img_small(x, y) = sum;
-		}
-	}
-	return img_small;
-}
 
-slimage::Image1f SumMipMap(const slimage::Image1f& img_big)
-{
-	size_t w_big = img_big.width();
-	size_t h_big = img_big.height();
-	// the computed mipmap will have 2^i size
-	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-	assert(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
-	size /= 2;
-	slimage::Image1f img_small(size, size);
-	for(size_t y = 0; y < size; y++) {
-		size_t y_big = y * 2;
-		for(size_t x = 0; x < size; x++) {
-			size_t x_big = x * 2;
-			// We sum over all four corresponding pixels in the big image.
-			const float* p_big = img_big.pointer(x_big, y_big);
-			float sum = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
-			img_small(x, y) = sum;
+	slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
+	{
+		size_t w_big = img_big.width();
+		size_t h_big = img_big.height();
+		// the computed mipmap will have 2^i size
+		unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
+		slimage::Image1f img_small(size / 2, size / 2);
+		img_small.fill(0.0f);
+		// only the part where at least one of the four pixels lies in the big image is iterated
+		// the rest was set to 0 with the fill op
+		size_t w_small = w_big / 2 + ((w_big % 2 == 0) ? 0 : 1);
+		size_t h_small = h_big / 2 + ((h_big % 2 == 0) ? 0 : 1);
+		for(size_t y = 0; y < h_small; y++) {
+			size_t y_big = y * 2;
+			for(size_t x = 0; x < w_small; x++) {
+				size_t x_big = x * 2;
+				// We sum over all four pixels in the big image (if they are valid).
+				// May by invalid because the big image is considered to be enlarged
+				// to have a size of 2^i.
+				float sum = 0.0f;
+				// Since we only test the part where at least one pixel is in also in the big image
+				// we do not need to test that (x_big,y_big) is a valid pixel in the big image.
+				const float* p_big = img_big.pointer(x_big, y_big);
+				sum += *(p_big);
+				if(x_big + 1 < w_big) {
+					sum += *(p_big + 1);
+				}
+				if(y_big + 1 < h_big) {
+					sum += *(p_big + w_big);
+					if(x_big + 1 < w_big) {
+						sum += *(p_big + w_big + 1);
+					}
+				}
+				img_small(x, y) = sum;
+			}
 		}
+		return img_small;
 	}
-	return img_small;
+
+	slimage::Image1f SumMipMap(const slimage::Image1f& img_big)
+	{
+		size_t w_big = img_big.width();
+		size_t h_big = img_big.height();
+		// the computed mipmap will have 2^i size
+		unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
+		assert(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
+		size /= 2;
+		slimage::Image1f img_small(size, size);
+		for(size_t y = 0; y < size; y++) {
+			size_t y_big = y * 2;
+			for(size_t x = 0; x < size; x++) {
+				size_t x_big = x * 2;
+				// We sum over all four corresponding pixels in the big image.
+				const float* p_big = img_big.pointer(x_big, y_big);
+				float sum = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
+				img_small(x, y) = sum;
+			}
+		}
+		return img_small;
+	}
+
+	std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsigned int max_level_shift) {
+		// find number of required mipmap level
+		unsigned int max_size = std::max(img.width(), img.height());
+		BOOST_ASSERT(max_size >= (1 << (max_level_shift + 1)));
+		unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
+		n_mipmaps -= max_level_shift;
+		std::vector<slimage::Image1f> mipmaps(n_mipmaps + 1);
+		mipmaps[0] = img;
+		mipmaps[1] = SumMipMapWithBlackBorder(img);
+		// create remaining mipmaps
+		for(unsigned int i=2; i<=n_mipmaps; i++) {
+			assert(mipmaps[i-1].width() == mipmaps[i-1].height());
+			assert(mipmaps[i-1].width() >= 1);
+			mipmaps[i] = SumMipMap(mipmaps[i - 1]);
+		}
+		return mipmaps;
+	}
 }
 
 void FindSeedsBlueGrid_WalkMipmaps(
@@ -323,27 +345,86 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Paramete
 	for(unsigned int i=0; i<points.size(); i++) {
 		num[i] = points[i].estimatedCount();
 	}
-	// create first mipmap s.t. by possibly enlarging the original image
-	std::vector<slimage::Image1f> mipmaps(2);
-	mipmaps[0] = num;
-	mipmaps[1] = SumMipMapWithBlackBorder(num);
-	assert(Danvil::MoreMath::P2Test(mipmaps[1].width()));
-	unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(mipmaps[1].width());
-	mipmaps.resize(n_mipmaps + 1);
-	// create all other required mipmaps
-	for(unsigned int i=2; i<=n_mipmaps; i++) {
-//		std::cout << i << std::endl;
-		mipmaps[i] = SumMipMap(mipmaps[i - 1]);
-	}
+	// compute mipmaps
+	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 0);
 	// now create pixel seeds
 	std::vector<Seed> seeds;
-	FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, n_mipmaps, 0, 0);
+	FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
 	return seeds;
+}
+
+namespace BlueNoise
+{
+	struct Point {
+		float x, y;
+		float weight;
+		float scale;
+	};
+
+	std::vector<Point> PlacePoints(const slimage::Image1f& coarest, unsigned int p) {
+		constexpr unsigned int d = 2;
+		// access original index in a random order
+		std::vector<unsigned int> indices(coarest.size());
+		for(unsigned int i=0; i<indices.size(); i++) {
+			indices[i] = i;
+		}
+//		std::random_shuffle(indices.begin(), indices.end());
+		// compute points
+		std::vector<Point> pnts;
+		pnts.reserve(indices.size());
+		for(unsigned int i : indices) {
+			float roh = coarest[i];
+			Point u;
+			int q = std::ceil(std::log2(roh) / d);
+			u.x = float((i % coarest.width()) << p) + float(1 << (p - 1));
+			u.y = float((i / coarest.width()) << p) + float(1 << (p - 1));
+			u.weight = float(1 << (d*(p - q)));
+			u.scale = 1.0f / std::sqrt(roh / u.weight);
+			// check if the points reduced the energy
+			bool reduction = (roh > 0);
+			if(reduction) {
+				pnts.push_back(u);
+			}
+		}
+		return pnts;
+	}
+
+	std::vector<Point> Compute(const slimage::Image1f& density) {
+		// compute mipmaps
+		std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 4);
+		// place initial points
+		unsigned int p = mipmaps.size() - 1;
+		slimage::Image1f coarest = mipmaps[p];
+		std::vector<Point> pnts = PlacePoints(coarest, p);
+		// refine points
+		// split points
+		return pnts;
+	}
+
 }
 
 std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const ParametersExt& opt)
 {
-	assert(false && "FindSeedsRandom not implemented!");
+	// compute estimated number of seeds per pixel
+	slimage::Image1f num(points.width(), points.height());
+	for(unsigned int i=0; i<points.size(); i++) {
+		num[i] = points[i].estimatedCount();
+	}
+	// compute blue noise points
+	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(num);
+	// convert to seeds
+	std::vector<Seed> seeds;
+	seeds.reserve(pnts.size());
+	for(unsigned int i=0; i<pnts.size(); i++) {
+		Seed s;
+		s.x = std::round(pnts[i].x);
+		s.y = std::round(pnts[i].y);
+		if(0 <= s.x && s.x < points.width() && 0 <= s.y && s.y < points.height()) {
+			s.scala = points(s.x, s.y).scala;
+			seeds.push_back(s);
+		}
+	}
+	return seeds;
 }
 
 std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt)
@@ -455,7 +536,7 @@ void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const sli
 			}
 		}
 		seed.x = bestid % width;
-		seed.y = bestid / height;
+		seed.y = bestid / width;
 	}
 }
 
@@ -516,6 +597,7 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img)
 {
 	assert(cluster.is_valid());
+	// plot all pixels belonging to the cluster in the color of the cluster center
 	unsigned char c_col_r = 255.0f * cluster.center.color[0];
 	unsigned char c_col_g = 255.0f * cluster.center.color[1];
 	unsigned char c_col_b = 255.0f * cluster.center.color[2];
@@ -527,6 +609,7 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimag
 		col[1] = c_col_g;
 		col[2] = c_col_b;
 	}
+	// plot the cluster center (using some kind of inverse color)
 	int cx = cluster.center.spatial_x();
 	int cy = cluster.center.spatial_y();
 	if(0 <= cx && cx < int(points.width()) && 0 <= cy && cy < int(points.height())) {
