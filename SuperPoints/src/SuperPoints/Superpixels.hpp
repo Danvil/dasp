@@ -361,11 +361,13 @@ namespace dasp
 	/** Find super pixel clusters */
 	std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt);
 
+	std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const ImagePoints& points);
+
 	std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::vector<Seed>& seeds, const ParametersExt& opt);
 
 	std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt);
 
-	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt,slimage::ThreadingOptions threadopt);
+	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt=slimage::ThreadingOptions());
 
 	void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt);
 

@@ -141,6 +141,17 @@ std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::ve
 	return clusters;
 }
 
+std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const ImagePoints& points)
+{
+	std::vector<int> labels(points.size(), -1);
+	for(unsigned int j=0; j<clusters.size(); j++) {
+		for(unsigned int i : clusters[j].pixel_ids) {
+			labels[i] = int(j);
+		}
+	}
+	return labels;
+}
+
 std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const ParametersExt& opt)
 {
 	const unsigned int Dx = opt.cluster_dx;

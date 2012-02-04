@@ -35,7 +35,7 @@
 								<option id="gnu.cpp.compiler.option.other.pic.1413525141" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.2061332146" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Slimage/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1599794331" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -105,7 +105,7 @@
 								<option id="gnu.cpp.compiler.option.other.pic.1652506096" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1422620371" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Slimage/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1558872892" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>

@@ -7,6 +7,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.setupUi(this);
 
 	dasp_params.reset(new dasp::Parameters());
+	dasp_params->focal = 580.0f;
+	dasp_params->seed_mode = dasp::SeedModes::DepthDependentMipmap;
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_params));
 	gui_params_->show();
@@ -33,21 +35,58 @@ WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 
 void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
-	// copy images
+	// kinect 16-bit depth image
 	slimage::Image1ui16 kinect_depth(raw_kinect_depth->width(), raw_kinect_depth->height());
 	kinect_depth.copyFrom(raw_kinect_depth->begin());
 
+	// kinect RGB color image
 	slimage::Image3ub kinect_color(raw_kinect_color->width(), raw_kinect_color->height());
 	kinect_color.copyFrom(raw_kinect_color->begin());
 
+	// visualization of kinect depth image
+	slimage::Image1ub kinect_depth_8(raw_kinect_depth->width(), raw_kinect_depth->height());
+	for(size_t i=0; i<kinect_depth_8.size(); i++) {
+		unsigned int d16 = kinect_depth[i];
+		unsigned int d8 = std::min(d16 >> 4, 255u);
+		kinect_depth_8[i] = (d16 == 0 ? 0 : 255 - d8);
+//		std::cout << d16 << " " << d8 << " " << kinect_depth[i] << std::endl;
+	}
+
+	// superpixel parameters
+	dasp::ParametersExt super_params_ext = dasp::ComputeParameters(*dasp_params, kinect_color.width(), kinect_color.height());
+
+	slimage::Image3f kinect_normals;
+
+	// prepare super pixel points
+	dasp::ImagePoints points = dasp::CreatePoints(kinect_color, kinect_depth, kinect_normals, super_params_ext);
+
+	// compute super pixel point edges
+	slimage::Image1f edges;
+	dasp::ComputeEdges(points, edges, super_params_ext);
+
+	// compute super pixels
+	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, edges, super_params_ext);
+
+	// super pixel visualization
+	slimage::Image3ub super(points.width(), points.height());
+	dasp::PlotCluster(clusters, points, super);
+	std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
+	dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
+
+	// set images for gui
 	images_mutex_.lock();
-	images_["depth"] = slimage::Ptr(kinect_depth);
+	images_["depth"] = slimage::Ptr(kinect_depth_8);
 	images_["color"] = slimage::Ptr(kinect_color);
+	images_["super"] = slimage::Ptr(super);
 	images_mutex_.unlock();
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
+	images_mutex_.lock();
+	std::map<std::string, slimage::ImagePtr> images_tmp = images_;
+	images_mutex_.unlock();
+
 	std::map<std::string, bool> tabs_usage;
 	std::map<std::string, QWidget*> tabs_labels;
 	// prepare tabs
@@ -57,16 +96,17 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		tabs_labels[text] = ui.tabs->widget(i);
 	}
 	// add / renew tabs
-	images_mutex_.lock();
-	for(auto p : images_) {
+	for(auto p : images_tmp) {
 		slimage::ImagePtr ref_img = p.second;
 		if(!ref_img) {
 			continue;
 		}
+
 		QImage* qimg = slimage::ConvertToQt(ref_img);
 		if(qimg == 0) {
 			continue;
 		}
+
 		QImage qimgscl;
 //		if(qimg->width() > cFeedbackVisualSize || qimg->height() > cFeedbackVisualSize) {
 //			qimgscl = qimg->scaled(QSize(cFeedbackVisualSize,cFeedbackVisualSize), Qt::KeepAspectRatio);
@@ -74,7 +114,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 //		else {
 			qimgscl = *qimg;
 //		}
-		qimgscl = qimgscl.mirrored(false, true);
+//		qimgscl = qimgscl.mirrored(false, true);
 		QLabel* qlabel;
 		std::string text = p.first;
 		if(tabs_labels.find(text) != tabs_labels.end()) {
@@ -88,7 +128,6 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		qlabel->setPixmap(QPixmap::fromImage(qimgscl));
 		delete qimg;
 	}
-	images_mutex_.unlock();
 	// delete unused tabs
 	for(auto p : tabs_usage) {
 		if(!p.second) {

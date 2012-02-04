@@ -36,6 +36,7 @@
 			</target>
 		</buildTargets>
 	</storageModule>
+	<storageModule moduleId="refreshScope"/>
 	<storageModule moduleId="org.eclipse.cdt.core.pathentry">
 		<pathentry base-path="/usr/share/qt4/include" include="" kind="inc" path="" system="true"/>
 		<pathentry base-path="/usr/share/qt4/include" include="QtDBus" kind="inc" path="" system="true"/>
@@ -58,18 +59,14 @@
 		<pathentry base-path="/usr/share/qt4/include" include="QtSql" kind="inc" path="" system="true"/>
 		<pathentry base-path="/usr/share/qt4/include" include="QtHelp" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/share/qt4/mkspecs/linux-g++-64" kind="inc" path="" system="true"/>
-		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/KinectSuperPoints" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/SuperPoints/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/Romeo/RomeoKinect/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/DanvilTools/Voxello/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/DanvilTools/SimpleEngine/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/DanvilTools/CT/src" kind="inc" path="" system="true"/>
-		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/DanvilTools/Slimage/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/DanvilTools/Images/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/Programs/RGBD/OpenNI/Include" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/local/include/eigen3" kind="inc" path="" system="true"/>
-		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/KinectSuperPoints/release" kind="inc" path="" system="true"/>
-		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/KinectSuperPoints/debug" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include/c++/4.6" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include/c++/4.6/x86_64-linux-gnu" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include/c++/4.6/backward" kind="inc" path="" system="true"/>
@@ -78,6 +75,8 @@
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/lib/gcc/x86_64-linux-gnu/4.6.1/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include/x86_64-linux-gnu" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include" kind="inc" path="" system="true"/>
+		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/slimage/src" kind="inc" path="" system="true"/>
+		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/KinectSuperPoints/src" kind="inc" path="" system="true"/>
 		<pathentry kind="src" path=""/>
 		<pathentry kind="out" path=""/>
 	</storageModule>
