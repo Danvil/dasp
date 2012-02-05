@@ -265,7 +265,7 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Paramete
 		num[i] = points[i].estimatedCount();
 	}
 	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 0);
+	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 1);
 	// now create pixel seeds
 	std::vector<Seed> seeds;
 	FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
@@ -274,6 +274,7 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Paramete
 
 namespace BlueNoise
 {
+	// need to change some other functions too!!!
 	constexpr unsigned int D = 2;
 
 	struct Point {
@@ -281,6 +282,10 @@ namespace BlueNoise
 		float weight;
 		float scale;
 	};
+
+	constexpr float KernelRange = 3.5f;
+
+	constexpr float cMaxRefinementScale = 10.0f;
 
 	inline
 	float KernelFunctorImpl(float d) {
@@ -290,7 +295,7 @@ namespace BlueNoise
 
 	inline
 	float KernelFunctor(float d) {
-		static Danvil::FunctionCache<float,1> cache(0.0f, 5.0f, &KernelFunctorImpl);
+		static Danvil::FunctionCache<float,1> cache(0.0f, KernelRange, &KernelFunctorImpl);
 		return cache(std::abs(d));
 	}
 
@@ -302,14 +307,14 @@ namespace BlueNoise
 
 	inline
 	float KernelFunctorSquare(float d) {
-		static Danvil::FunctionCache<float,1> cache(0.0f, 20.0f, &KernelFunctorSquareImpl);
-		return cache(std::abs(d));
+		static Danvil::FunctionCache<float,1> cache(0.0f, KernelRange*KernelRange, &KernelFunctorSquareImpl);
+		return cache(d);
 	}
 
 	inline
 	float ZeroBorderAccess(const slimage::Image1f& density, int x, int y) {
 		if(0 <= x && x < int(density.width()) && 0 <= y && y < int(density.height())) {
-			return density(x,y);
+			return density(x, y);
 		}
 		else {
 			return 0.0f;
@@ -318,7 +323,8 @@ namespace BlueNoise
 
 	inline
 	float KernelScaleFunction(float roh, float weight) {
-		return std::pow(roh / weight, -1.0f / float(D));
+//		return std::pow(roh / weight, -1.0f / float(D));
+		return 1.0f / std::sqrt(roh / weight);
 	}
 
 	inline
@@ -333,12 +339,15 @@ namespace BlueNoise
 		for(const Point& p : pnts) {
 			float dx = p.x - x;
 			float dy = p.y - y;
-			float ka = ScalePowerD(p.scale);
-//			float k_arg = std::sqrt(dx*dx + dy*dy) / p.scale;
-//			float k_val = KernelFunctor(k_arg);
-			float k_arg_square = (dx*dx + dy*dy) / (p.scale*p.scale);
-			float k_val = KernelFunctorSquare(k_arg_square);
-			sum += ka * k_val;
+//			float d = std::sqrt(dx*dx + dy*dy);
+//			if(d < KernelRange * p.scale) {
+//				float k_val = KernelFunctor(d / p.scale);
+			float d2 = dx*dx + dy*dy;
+			float scl = p.scale*p.scale;
+			if(d2 < KernelRange * KernelRange * scl) {
+				float k_val = KernelFunctorSquare(d2 / scl);
+				sum += p.weight * ScalePowerD(p.scale) * k_val;
+			}
 		}
 		return sum;
 	}
@@ -366,8 +375,15 @@ namespace BlueNoise
 		float ps = pnts[i].scale;
 //		float ps_scl = 1.0f / ps;
 		float ps_scl = 1.0f / (ps * ps);
-		for(unsigned int y=0; y<density.height(); y++) {
-			for(unsigned int x=0; x<density.width(); x++) {
+		// find window (points outside the window do not affect the kernel)
+		float radius = KernelRange * ps;
+		float x_min = std::max(0, int(std::floor(px - radius)));
+		float x_max = std::min(int(density.width()) - 1, int(std::ceil(px + radius)));
+		float y_min = std::max(0, int(std::floor(py - radius)));
+		float y_max = std::min(int(density.height()) - 1, int(std::ceil(py + radius)));
+		// sum over window
+		for(unsigned int y=y_min; y<=y_max; y++) {
+			for(unsigned int x=x_min; x<=x_max; x++) {
 				float ux = float(x);
 				float uy = float(y);
 				float dx = ux - px;
@@ -396,6 +412,24 @@ namespace BlueNoise
 		for(unsigned int i=0; i<indices.size(); i++) {
 			indices[i] = i;
 		}
+
+		/*std::cout << "{" << std::endl;
+		for(unsigned int y=0; y<density.height(); y++) {
+			std::cout << "{";
+			for(unsigned int x=0; x<density.width(); x++) {
+				std::cout << density(x,y);
+				if(x + 1 < density.width()) {
+					std::cout << ", ";
+				}
+			}
+			std::cout << "}";
+			if(y + 1 < density.height()) {
+				std::cout << ",";
+			}
+			std::cout << std::endl;
+		}
+		std::cout << "}" << std::endl;*/
+
 		std::random_shuffle(indices.begin(), indices.end());
 		// compute points
 		std::vector<Point> pnts;
@@ -411,10 +445,10 @@ namespace BlueNoise
 				continue;
 			}
 			Point u;
-			int q = roh < 1 ? 0 : std::ceil(std::log2(roh) / float(D));
 			u.x = float(i % density.width());
 			u.y = float(i / density.width());
-			u.weight = float(1 << (D*q));
+			int q = p - (roh < 1 ? 0 : std::ceil(std::log2(roh) / float(D)));
+			u.weight = float(1 << (D*(p-q)));
 			u.scale = KernelScaleFunction(roh, u.weight);
 			// try to add
 			pnts.push_back(u);
@@ -433,21 +467,32 @@ namespace BlueNoise
 		return pnts;
 	}
 
-	void Refine(std::vector<Point>& points, const slimage::Image1f& density) {
+	void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigned int iterations) {
 		static boost::mt19937 rng;
-		static boost::normal_distribution<float> rnd(0.0f, 1.0f);
+		static boost::normal_distribution<float> rnd(0.0f, 1.0f); // standard normal distribution
 		static boost::variate_generator<boost::mt19937&, boost::normal_distribution<float> > die(rng, rnd);
-		constexpr float dt = 1.0f;
-		constexpr float T = 0.5f;
-		for(unsigned int i=0; i<points.size(); i++) {
-			Point& p = points[i];
-			float c0 = dt * p.scale;
-			float cA = c0 / 2.0f;
-			float cB = std::sqrt(T * c0);
-			float dx, dy;
-			EnergyDerivative(points, density, i, dx, dy);
-			p.x = p.x - cA * dx + cB * die();
-			p.y = p.y - cA * dy + cB * die();
+		constexpr float dt = 0.35f;
+		constexpr float T = 0.0f;
+		for(unsigned int k=0; k<iterations; k++) {
+			for(unsigned int i=0; i<points.size(); i++) {
+				Point& p = points[i];
+				if(p.scale > cMaxRefinementScale) {
+					// omit low frequency kernels
+					continue;
+				}
+				// dx = -dt*s/2*dE + sqrt(T*s*dt)*R
+				float c0 = dt * p.scale;
+				float cA = c0 * 0.5f;
+				float dx, dy;
+				EnergyDerivative(points, density, i, dx, dy);
+				p.x -= cA * dx;
+				p.y -= cA * dy;
+				if(T > 0.0f) {
+					float cB = std::sqrt(T * c0);
+					p.x += cB * die();
+					p.y += cB * die();
+				}
+			}
 		}
 	}
 
@@ -491,7 +536,7 @@ namespace BlueNoise
 
 	std::vector<Point> Compute(const slimage::Image1f& density) {
 		// compute mipmaps
-		std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 4);
+		std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 16);
 		int p = int(mipmaps.size()) - 1;
 		std::vector<Point> pnts;
 		for(int i=p; i>=0; i--) {
@@ -508,7 +553,7 @@ namespace BlueNoise
 			}
 			// refine points for new density map
 			if(need_refinement) {
-				Refine(pnts, mipmaps[i]);
+				Refine(pnts, mipmaps[i], 16);
 			}
 			std::cout << pnts.size() << " points." << std::endl;
 		}

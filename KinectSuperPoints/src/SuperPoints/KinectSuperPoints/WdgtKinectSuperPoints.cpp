@@ -19,8 +19,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
-	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
-	//kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
+//	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
+	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
 
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
@@ -74,6 +74,18 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	seeds_img.fill(255);
 	for(dasp::Seed s : seeds) {
 		seeds_img(s.x, s.y) = 0;
+		if(1 <= s.x) {
+			seeds_img(s.x-1, s.y) = 0;
+		}
+		if(s.x + 1 < seeds_img.width()) {
+			seeds_img(s.x+1, s.y) = 0;
+		}
+		if(1 <= s.y) {
+			seeds_img(s.x, s.y-1) = 0;
+		}
+		if(s.y + 1 < seeds_img.width()) {
+			seeds_img(s.x, s.y+1) = 0;
+		}
 	}
 	if(!edges.isNull()) {
 		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
@@ -90,17 +102,18 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	for(unsigned int i=0; i<points.size(); i++) {
 		num[i] = points[i].estimatedCount();
 	}
-	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 4);
+	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 16);
 
 	// set images for gui
 	images_mutex_.lock();
 	images_["depth"] = slimage::Ptr(kinect_depth_8);
 	images_["color"] = slimage::Ptr(kinect_color);
 	images_["super"] = slimage::Ptr(super);
-	images_["mm1"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[1], 128.0f));
-	images_["mm2"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[2], 8.0f));
-	images_["mm3"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[3], 2.0f));
-	images_["mm4"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[4], 0.5f));
+	images_["mm1"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[1], 256.0f));
+	images_["mm2"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[2], 16.0f));
+	images_["mm3"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[3], 4.0f));
+	images_["mm4"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[4], 1.0f));
+	images_["mm5"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[5], 0.25f));
 	images_["seeds"] = slimage::Ptr(seeds_img);
 	images_mutex_.unlock();
 }

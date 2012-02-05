@@ -78,12 +78,12 @@ namespace dasp
 			return img_small;
 		}
 
-		std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsigned int max_level_shift) {
+		std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsigned int min_size) {
 			// find number of required mipmap level
 			unsigned int max_size = std::max(img.width(), img.height());
-			BOOST_ASSERT(max_size >= (1 << (max_level_shift + 1)));
-			unsigned int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
-			n_mipmaps -= max_level_shift;
+			int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
+			n_mipmaps -= Danvil::MoreMath::PowerOfTwoExponent(min_size);
+			BOOST_ASSERT(n_mipmaps >= 1);
 			std::vector<slimage::Image1f> mipmaps(n_mipmaps + 1);
 			mipmaps[0] = img;
 			mipmaps[1] = SumMipMapWithBlackBorder(img);
