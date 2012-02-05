@@ -1,5 +1,6 @@
 #include "WdgtKinectSuperPoints.h"
 #include <Slimage/Qt.hpp>
+#include <Slimage/impl/io.hpp>
 #include <SuperPoints/Mipmaps.hpp>
 
 WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
@@ -67,7 +68,17 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	dasp::ComputeEdges(points, edges, super_params_ext);
 
 	// compute super pixels
-	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, edges, super_params_ext);
+//	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, edges, super_params_ext);
+	std::vector<dasp::Seed> seeds = dasp::FindSeeds(points, super_params_ext);
+	slimage::Image1ub seeds_img(points.width(), points.height());
+	seeds_img.fill(255);
+	for(dasp::Seed s : seeds) {
+		seeds_img(s.x, s.y) = 0;
+	}
+	if(!edges.isNull()) {
+		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
+	}
+	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, seeds, super_params_ext);
 
 	// super pixel visualization
 	slimage::Image3ub super(points.width(), points.height());
@@ -90,6 +101,7 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	images_["mm2"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[2], 8.0f));
 	images_["mm3"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[3], 2.0f));
 	images_["mm4"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[4], 0.5f));
+	images_["seeds"] = slimage::Ptr(seeds_img);
 	images_mutex_.unlock();
 }
 

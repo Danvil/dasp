@@ -8,6 +8,7 @@
 #include "Superpixels.hpp"
 #include "Mipmaps.hpp"
 #include <Danvil/Tools/MoreMath.h>
+#include <Danvil/Tools/FunctionCache.h>
 //#include <Danvil/Images/ImageOps.h>
 #include <boost/random.hpp>
 
@@ -282,33 +283,74 @@ namespace BlueNoise
 	};
 
 	inline
-	float KernelFunctor(float d) {
+	float KernelFunctorImpl(float d) {
 		constexpr float A = 0.39894228f;
 		return A * std::exp(-0.5f*d*d);
 	}
 
 	inline
-	float Energy(const std::vector<Point>& pnts, float x, float y) {
+	float KernelFunctor(float d) {
+		static Danvil::FunctionCache<float,1> cache(0.0f, 5.0f, &KernelFunctorImpl);
+		return cache(std::abs(d));
+	}
+
+	inline
+	float KernelFunctorSquareImpl(float d) {
+		constexpr float A = 0.39894228f;
+		return A * std::exp(-0.5f*d);
+	}
+
+	inline
+	float KernelFunctorSquare(float d) {
+		static Danvil::FunctionCache<float,1> cache(0.0f, 20.0f, &KernelFunctorSquareImpl);
+		return cache(std::abs(d));
+	}
+
+	inline
+	float ZeroBorderAccess(const slimage::Image1f& density, int x, int y) {
+		if(0 <= x && x < int(density.width()) && 0 <= y && y < int(density.height())) {
+			return density(x,y);
+		}
+		else {
+			return 0.0f;
+		}
+	}
+
+	inline
+	float KernelScaleFunction(float roh, float weight) {
+		return std::pow(roh / weight, -1.0f / float(D));
+	}
+
+	inline
+	float ScalePowerD(float s) {
+		//return std::pow(s, -float(D));
+		return 1.0f / (s*s);
+	}
+
+	inline
+	float EnergyApproximation(const std::vector<Point>& pnts, float x, float y) {
 		float sum = 0.0f;
 		for(const Point& p : pnts) {
 			float dx = p.x - x;
 			float dy = p.y - y;
-			float d = std::sqrt(dx*dx + dy*dy);
-			float ka = std::pow(p.scale, -float(D));
-			float kb = KernelFunctor(d / p.scale);
-			sum += ka * kb;
+			float ka = ScalePowerD(p.scale);
+//			float k_arg = std::sqrt(dx*dx + dy*dy) / p.scale;
+//			float k_val = KernelFunctor(k_arg);
+			float k_arg_square = (dx*dx + dy*dy) / (p.scale*p.scale);
+			float k_val = KernelFunctorSquare(k_arg_square);
+			sum += ka * k_val;
 		}
 		return sum;
 	}
 
 	inline
-	float EnergyError(const std::vector<Point>& pnts, const slimage::Image1f& density) {
+	float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density) {
 		float error = 0.0f;
 		for(unsigned int y=0; y<density.height(); y++) {
 			for(unsigned int x=0; x<density.width(); x++) {
 				float px = float(x);
 				float py = float(y);
-				float a = Energy(pnts, px, py);
+				float a = EnergyApproximation(pnts, px, py);
 				float roh = density(x, y);
 				error += std::abs(a - roh);
 			}
@@ -316,9 +358,36 @@ namespace BlueNoise
 		return error;
 	}
 
-	inline
-	float KernelScaleFunction(float roh, float weight) {
-		return std::pow(roh / weight, -1.0f / float(D));
+	void EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y) {
+		float dE_x = 0.0f;
+		float dE_y = 0.0f;
+		float px = pnts[i].x;
+		float py = pnts[i].y;
+		float ps = pnts[i].scale;
+//		float ps_scl = 1.0f / ps;
+		float ps_scl = 1.0f / (ps * ps);
+		for(unsigned int y=0; y<density.height(); y++) {
+			for(unsigned int x=0; x<density.width(); x++) {
+				float ux = float(x);
+				float uy = float(y);
+				float dx = ux - px;
+				float dy = uy - py;
+//				float k_arg = std::sqrt(dx*dx + dy*dy) * ps_scl;
+//				float k_val = KernelFunctor(k_arg);
+				float k_arg_square = (dx*dx + dy*dy) * ps_scl;
+				float k_val = KernelFunctorSquare(k_arg_square);
+				float apx = EnergyApproximation(pnts, ux, uy);
+				float roh = density(x, y);
+				if(apx < roh) {
+					k_val = -k_val;
+				}
+				dE_x += k_val * dx;
+				dE_y += k_val * dy;
+			}
+		}
+		float A = 1.0f / std::pow(ps, float(D + 1));
+		result_dE_x = A * dE_x;
+		result_dE_y = A * dE_y;
 	}
 
 	std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p) {
@@ -332,7 +401,7 @@ namespace BlueNoise
 		std::vector<Point> pnts;
 		pnts.reserve(indices.size());
 		// compute current error in density
-		float error_current = EnergyError(pnts, density);
+		float error_current = Energy(pnts, density);
 		std::cout << "INITIAL ERROR: " << error_current << std::endl;
 		// try add kernel points
 		for(unsigned int i : indices) {
@@ -350,7 +419,7 @@ namespace BlueNoise
 			// try to add
 			pnts.push_back(u);
 			// check if the points reduced the energy
-			float error_new = EnergyError(pnts, density);
+			float error_new = Energy(pnts, density);
 			if(error_new > error_current) {
 				// reject
 				pnts.pop_back();
@@ -365,15 +434,29 @@ namespace BlueNoise
 	}
 
 	void Refine(std::vector<Point>& points, const slimage::Image1f& density) {
-
+		static boost::mt19937 rng;
+		static boost::normal_distribution<float> rnd(0.0f, 1.0f);
+		static boost::variate_generator<boost::mt19937&, boost::normal_distribution<float> > die(rng, rnd);
+		constexpr float dt = 1.0f;
+		constexpr float T = 0.5f;
+		for(unsigned int i=0; i<points.size(); i++) {
+			Point& p = points[i];
+			float c0 = dt * p.scale;
+			float cA = c0 / 2.0f;
+			float cB = std::sqrt(T * c0);
+			float dx, dy;
+			EnergyDerivative(points, density, i, dx, dy);
+			p.x = p.x - cA * dx + cB * die();
+			p.y = p.y - cA * dy + cB * die();
+		}
 	}
 
-	std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density_old, const slimage::Image1f& density) {
+	std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density, bool& result_added) {
 		std::vector<Point> pnts_new;
+		result_added = false;
 		for(Point u : points) {
 			if(u.weight > 1.0f) {
-				float roh = density_old(int(u.x), int(u.y));
-				float a = KernelScaleFunction(roh, u.weight);
+				result_added = true;
 				u.x *= 2.0f;
 				u.y *= 2.0f;
 				u.weight /= float(1 << D);
@@ -383,14 +466,12 @@ namespace BlueNoise
 				};
 				for(unsigned int i=0; i<4; i++) {
 					Point ui = u;
-					ui.x += a * Delta[i][0];
-					ui.y += a * Delta[i][1];
-					if(0 <= int(ui.x) && int(ui.x) < density.width() && 0 <= int(ui.y) && int(ui.y) < density.height()) {
-						float roh = density(int(ui.x), int(ui.y));
-						if(roh > 0) {
-							ui.scale = KernelScaleFunction(roh, ui.weight);
-							pnts_new.push_back(ui);
-						}
+					ui.x += u.scale * Delta[i][0];
+					ui.y += u.scale * Delta[i][1];
+					float roh = ZeroBorderAccess(density, int(ui.x), int(ui.y));
+					if(roh > 0) {
+						ui.scale = KernelScaleFunction(roh, ui.weight);
+						pnts_new.push_back(ui);
 					}
 				}
 			}
@@ -398,12 +479,10 @@ namespace BlueNoise
 				u.x *= 2.0f;
 				u.y *= 2.0f;
 				u.weight = 1.0f;
-				if(0 <= int(u.x) && int(u.x) < density.width() && 0 <= int(u.y) && int(u.y) < density.height()) {
-					float roh = density(int(u.x), int(u.y));
-					if(roh > 0) {
-						u.scale = KernelScaleFunction(roh, u.weight);
-						pnts_new.push_back(u);
-					}
+				float roh = ZeroBorderAccess(density, int(u.x), int(u.y));
+				if(roh > 0) {
+					u.scale = KernelScaleFunction(roh, u.weight);
+					pnts_new.push_back(u);
 				}
 			}
 		}
@@ -416,17 +495,22 @@ namespace BlueNoise
 		int p = int(mipmaps.size()) - 1;
 		std::vector<Point> pnts;
 		for(int i=p; i>=0; i--) {
+			std::cout << "Blue noise step " << i << "... " << std::flush;
+			bool need_refinement;
 			if(i == p) {
 				// place initial points
 				pnts = PlacePoints(mipmaps[i], i);
+				need_refinement = true;
 			}
 			else {
 				// split points
-				pnts = Split(pnts, mipmaps[i+1], mipmaps[i]);
+				pnts = Split(pnts, mipmaps[i], need_refinement);
 			}
 			// refine points for new density map
-			Refine(pnts, mipmaps[i]);
-			std::cout << i << " " << pnts.size() << std::endl;
+			if(need_refinement) {
+				Refine(pnts, mipmaps[i]);
+			}
+			std::cout << pnts.size() << " points." << std::endl;
 		}
 		return pnts;
 	}
