@@ -13,10 +13,10 @@ namespace dasp {
 namespace BlueNoise {
 //----------------------------------------------------------------------------//
 
-float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
+float EnergyApproximation(const Quadtree::Node<Point>& pnts, float x, float y)
 {
 	float sum = 0.0f;
-	for(const Point& p : pnts) {
+	pnts.for_each([&sum](const Point& p) {
 		float dx = p.x - x;
 		float dy = p.y - y;
 //			float d = std::sqrt(dx*dx + dy*dy);
@@ -28,11 +28,11 @@ float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 			float k_val = KernelFunctorSquare(d2 / scl);
 			sum += p.weight * ScalePowerD(p.scale) * k_val;
 		}
-	}
+	});
 	return sum;
 }
 
-float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density)
+float Energy(const Quadtree::Node<Point>& pnts, const slimage::Image1f& density)
 {
 	float error = 0.0f;
 	for(unsigned int y=0; y<density.height(); y++) {
@@ -47,8 +47,12 @@ float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density)
 	return error;
 }
 
-void EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y)
+float EnergyDerivative(const Quadtree::Node<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y)
 {
+//	result_dE_x = 0.0f;
+//	result_dE_y = 0.0f;
+//	return;
+
 	float dE_x = 0.0f;
 	float dE_y = 0.0f;
 	float px = pnts[i].x;
@@ -57,7 +61,9 @@ void EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& de
 //		float ps_scl = 1.0f / ps;
 	float ps_scl = 1.0f / (ps * ps);
 	// find window (points outside the window do not affect the kernel)
-	float radius = KernelRange * ps;
+	// range = sqrt(ln(1/eps)/pi)
+	constexpr float cMaxRange = 1.482837414f; // eps = 0.001
+	float radius = cMaxRange * ps;
 	float x_min = std::max(0, int(std::floor(px - radius)));
 	float x_max = std::min(int(density.width()) - 1, int(std::ceil(px + radius)));
 	float y_min = std::max(0, int(std::floor(py - radius)));
@@ -69,8 +75,8 @@ void EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& de
 			float uy = float(y);
 			float dx = ux - px;
 			float dy = uy - py;
-//				float k_arg = std::sqrt(dx*dx + dy*dy) * ps_scl;
-//				float k_val = KernelFunctor(k_arg);
+//			float k_arg = std::sqrt(dx*dx + dy*dy) * ps_scl;
+//			float k_val = KernelFunctor(k_arg);
 			float k_arg_square = (dx*dx + dy*dy) * ps_scl;
 			float k_val = KernelFunctorSquare(k_arg_square);
 			float apx = EnergyApproximation(pnts, ux, uy);
@@ -78,13 +84,15 @@ void EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& de
 			if(apx < roh) {
 				k_val = -k_val;
 			}
+			//k_val = 0.0f;
 			dE_x += k_val * dx;
 			dE_y += k_val * dy;
 		}
 	}
-	float A = 1.0f / std::pow(ps, float(D + 1));
+	float A = 2.0f * cPi / std::pow(ps, float(D + 1));
 	result_dE_x = A * dE_x;
 	result_dE_y = A * dE_y;
+	return radius;
 }
 
 std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
@@ -94,6 +102,7 @@ std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
 	for(unsigned int i=0; i<indices.size(); i++) {
 		indices[i] = i;
 	}
+	std::random_shuffle(indices.begin(), indices.end());
 
 	/*std::cout << "{" << std::endl;
 	for(unsigned int y=0; y<density.height(); y++) {
@@ -112,7 +121,6 @@ std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
 	}
 	std::cout << "}" << std::endl;*/
 
-	std::random_shuffle(indices.begin(), indices.end());
 	// compute points
 	std::vector<Point> pnts;
 	pnts.reserve(indices.size());
@@ -154,8 +162,10 @@ void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigne
 	static boost::mt19937 rng;
 	static boost::normal_distribution<float> rnd(0.0f, 1.0f); // standard normal distribution
 	static boost::variate_generator<boost::mt19937&, boost::normal_distribution<float> > die(rng, rnd);
-	constexpr float dt = 0.35f;
-	constexpr float T = 0.0f;
+	constexpr float dt = 0.2f;
+	constexpr float T = 0.2f;
+	float r_min = 1e9;
+	float r_max = 0;
 	for(unsigned int k=0; k<iterations; k++) {
 		for(unsigned int i=0; i<points.size(); i++) {
 			Point& p = points[i];
@@ -167,7 +177,9 @@ void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigne
 			float c0 = dt * p.scale;
 			float cA = c0 * 0.5f;
 			float dx, dy;
-			EnergyDerivative(points, density, i, dx, dy);
+			float R = EnergyDerivative(points, density, i, dx, dy);
+			r_min = std::min(R, r_min);
+			r_max = std::max(R, r_max);
 			p.x -= cA * dx;
 			p.y -= cA * dy;
 			if(T > 0.0f) {
@@ -177,6 +189,7 @@ void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigne
 			}
 		}
 	}
+	std::cout << r_min << " " << r_max << std::endl;
 }
 
 std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density, bool& result_added)
@@ -218,7 +231,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1
 	return pnts_new;
 }
 
-std::vector<Point> Compute(const slimage::Image1f& density)
+std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_steps)
 {
 	// compute mipmaps
 	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 16);
@@ -238,11 +251,46 @@ std::vector<Point> Compute(const slimage::Image1f& density)
 		}
 		// refine points for new density map
 		if(need_refinement) {
-			Refine(pnts, mipmaps[i], 16);
+			Refine(pnts, mipmaps[i], 8);
 		}
 		std::cout << pnts.size() << " points." << std::endl;
+		if(max_steps > 0 && p - i + 1 >= max_steps) {
+			break;
+		}
 	}
 	return pnts;
+}
+
+void PlotPoints(const std::vector<Point>& points, const slimage::Image1ub& img, bool plot_1px)
+{
+	for(Point p : points) {
+		// round position
+		int px = int(p.x + 0.5f);
+		int py = int(p.y + 0.5f);
+		// paint a star
+		//    X
+		//   XXX
+		//    X
+		if(px < 0 || int(img.width()) <= px || py < 0 || int(img.height()) <= py) {
+			continue;
+		}
+		img(px, py) = 0;
+		if(!plot_1px) {
+			if(1 <= px) {
+				img(px-1, py) = 0;
+			}
+			if(px + 1 < int(img.width())) {
+				img(px+1, py) = 0;
+			}
+			if(1 <= py) {
+				img(px, py-1) = 0;
+			}
+			if(py + 1 < int(img.width())) {
+				img(px, py+1) = 0;
+			}
+		}
+	}
+
 }
 
 //----------------------------------------------------------------------------//
