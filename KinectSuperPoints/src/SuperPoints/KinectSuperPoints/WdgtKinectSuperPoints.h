@@ -21,6 +21,8 @@ public:
 private:
 	void OnImages(Danvil::Images::Image1ui16Ptr kinect_depth, Danvil::Images::Image3ubPtr kinect_color);
 
+	void ComputeBlueNoiseImpl();
+
 public Q_SLOTS:
 	void OnUpdateImages();
 
@@ -36,6 +38,7 @@ private:
 	QMutex images_mutex_;
 
 	boost::thread kinect_thread_;
+	bool running_;
 
 private:
     Ui::WdgtKinectSuperPointsClass ui;

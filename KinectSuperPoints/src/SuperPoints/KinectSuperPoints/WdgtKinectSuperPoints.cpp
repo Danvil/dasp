@@ -2,6 +2,7 @@
 #include <Slimage/Qt.hpp>
 #include <Slimage/impl/io.hpp>
 #include <SuperPoints/Mipmaps.hpp>
+#include <SuperPoints/BlueNoise.hpp>
 
 WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
@@ -19,12 +20,15 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
-//	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
+	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
 	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
 
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+
+	running_ = true;
+//	kinect_thread_ = boost::thread(&WdgtKinectSuperPoints::ComputeBlueNoiseImpl, this);
 
 	QObject::connect(&timer_, SIGNAL(timeout()), this, SLOT(OnUpdateImages()));
 	timer_.setInterval(20);
@@ -33,7 +37,30 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
+	running_ = false;
+	kinect_thread_.join();
+}
 
+void WdgtKinectSuperPoints::ComputeBlueNoiseImpl()
+{
+	slimage::Image1ub img_raw = slimage::Load1ub("/home/david/Documents/DataSets/2012-02-06 Blue Noise/flower_256.png");
+	slimage::Image1f density(img_raw.width(), img_raw.height());
+	for(unsigned int i=0; i<density.size(); i++) {
+		density[i] = 0.25f*(1.0f - float(img_raw[i]) / 255.0f);
+	}
+
+	while(running_) {
+		std::vector<dasp::BlueNoise::Point> points = dasp::BlueNoise::Compute(density);
+		slimage::Image1ub img_pnts(density.width(), density.height());
+		img_pnts.fill(255);
+		dasp::BlueNoise::PlotPoints(points, img_pnts);
+
+		// set images for gui
+		images_mutex_.lock();
+		images_["raw"] = slimage::Ptr(img_raw);
+		images_["blue"] = slimage::Ptr(img_pnts);
+		images_mutex_.unlock();
+	}
 }
 
 void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
@@ -109,11 +136,11 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	images_["depth"] = slimage::Ptr(kinect_depth_8);
 	images_["color"] = slimage::Ptr(kinect_color);
 	images_["super"] = slimage::Ptr(super);
-	images_["mm1"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[1], 256.0f));
-	images_["mm2"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[2], 16.0f));
-	images_["mm3"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[3], 4.0f));
-	images_["mm4"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[4], 1.0f));
-	images_["mm5"] = slimage::Ptr(slimage::Convert_ub_2_f(mipmaps[5], 0.25f));
+	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
+	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));
+	images_["mm3"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[3], 4.0f));
+	images_["mm4"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[4], 1.0f));
+	images_["mm5"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[5], 0.25f));
 	images_["seeds"] = slimage::Ptr(seeds_img);
 	images_mutex_.unlock();
 }
