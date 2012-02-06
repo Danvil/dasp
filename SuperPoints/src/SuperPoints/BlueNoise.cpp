@@ -13,10 +13,10 @@ namespace dasp {
 namespace BlueNoise {
 //----------------------------------------------------------------------------//
 
-float EnergyApproximation(const Quadtree::Node<Point>& pnts, float x, float y)
+float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 {
 	float sum = 0.0f;
-	pnts.for_each([&sum](const Point& p) {
+	for(const Point& p : pnts) {
 		float dx = p.x - x;
 		float dy = p.y - y;
 //			float d = std::sqrt(dx*dx + dy*dy);
@@ -28,11 +28,11 @@ float EnergyApproximation(const Quadtree::Node<Point>& pnts, float x, float y)
 			float k_val = KernelFunctorSquare(d2 / scl);
 			sum += p.weight * ScalePowerD(p.scale) * k_val;
 		}
-	});
+	}
 	return sum;
 }
 
-float Energy(const Quadtree::Node<Point>& pnts, const slimage::Image1f& density)
+float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density)
 {
 	float error = 0.0f;
 	for(unsigned int y=0; y<density.height(); y++) {
@@ -47,7 +47,7 @@ float Energy(const Quadtree::Node<Point>& pnts, const slimage::Image1f& density)
 	return error;
 }
 
-float EnergyDerivative(const Quadtree::Node<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y)
+float EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y)
 {
 //	result_dE_x = 0.0f;
 //	result_dE_y = 0.0f;
