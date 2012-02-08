@@ -1,8 +1,13 @@
 #include "WdgtKinectSuperPoints.h"
 #include <Slimage/Qt.hpp>
 #include <Slimage/impl/io.hpp>
+#include <Slimage/Parallel.h>
 #include <SuperPoints/Mipmaps.hpp>
 #include <SuperPoints/BlueNoise.hpp>
+#include <SuperPoints/PointsAndNormals.hpp>
+#define DANVIL_ENABLE_BENCHMARK
+#include <Danvil/Tools/Benchmark.h>
+#include <Danvil/Color.h>
 
 WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
@@ -11,8 +16,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->focal = 580.0f;
-//	dasp_params->seed_mode = dasp::SeedModes::DepthDependentMipmap;
-	dasp_params->seed_mode = dasp::SeedModes::BlueNoise;
+	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_params));
 	gui_params_->show();
@@ -20,8 +24,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
-	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
-//	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
+//	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
+	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
 
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
@@ -67,82 +71,129 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 {
 	// kinect 16-bit depth image
 	slimage::Image1ui16 kinect_depth(raw_kinect_depth->width(), raw_kinect_depth->height());
-	kinect_depth.copyFrom(raw_kinect_depth->begin());
+	for(unsigned int i=0; i<kinect_depth.size(); i++) {
+		uint16_t d = (*raw_kinect_depth)[i];
+//		if(d > 2000) {
+//			d = 0;
+//		}
+		kinect_depth[i] = d;
+	}
 
 	// kinect RGB color image
 	slimage::Image3ub kinect_color(raw_kinect_color->width(), raw_kinect_color->height());
 	kinect_color.copyFrom(raw_kinect_color->begin());
 
-	// visualization of kinect depth image
-	slimage::Image1ub kinect_depth_8(raw_kinect_depth->width(), raw_kinect_depth->height());
-	for(size_t i=0; i<kinect_depth_8.size(); i++) {
-		unsigned int d16 = kinect_depth[i];
-		unsigned int d8 = std::min(d16 >> 4, 255u);
-		kinect_depth_8[i] = (d16 == 0 ? 0 : 255 - d8);
-//		std::cout << d16 << " " << d8 << " " << kinect_depth[i] << std::endl;
-	}
-
 	// superpixel parameters
 	dasp::ParametersExt super_params_ext = dasp::ComputeParameters(*dasp_params, kinect_color.width(), kinect_color.height());
 
+	// compute normals only if necessary
 	slimage::Image3f kinect_normals;
+	if(super_params_ext.weight_normal > 0.0f) {
+		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth);
+
+		DANVIL_BENCHMARK_START(normals)
+		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points);
+	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
+		DANVIL_BENCHMARK_STOP(normals)
+	}
 
 	// prepare super pixel points
+	DANVIL_BENCHMARK_START(points)
 	dasp::ImagePoints points = dasp::CreatePoints(kinect_color, kinect_depth, kinect_normals, super_params_ext);
+	DANVIL_BENCHMARK_STOP(points)
 
-	// compute super pixel point edges
-	slimage::Image1f edges;
-	dasp::ComputeEdges(points, edges, super_params_ext);
-
-	// compute super pixels
-//	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, edges, super_params_ext);
+	// compute super pixel seeds
+	DANVIL_BENCHMARK_START(seeds)
 	std::vector<dasp::Seed> seeds = dasp::FindSeeds(points, super_params_ext);
-	slimage::Image1ub seeds_img(points.width(), points.height());
-	seeds_img.fill(255);
-	for(dasp::Seed s : seeds) {
-		seeds_img(s.x, s.y) = 0;
-		if(1 <= s.x) {
-			seeds_img(s.x-1, s.y) = 0;
-		}
-		if(s.x + 1 < seeds_img.width()) {
-			seeds_img(s.x+1, s.y) = 0;
-		}
-		if(1 <= s.y) {
-			seeds_img(s.x, s.y-1) = 0;
-		}
-		if(s.y + 1 < seeds_img.width()) {
-			seeds_img(s.x, s.y+1) = 0;
-		}
-	}
-	if(!edges.isNull()) {
-		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
-	}
+	DANVIL_BENCHMARK_STOP(seeds)
+
+	// compute super pixel point edges and improve seeds with it
+//	slimage::Image1f edges;
+//	DANVIL_BENCHMARK_START(improve)
+//	dasp::ComputeEdges(points, edges, super_params_ext);
+//	if(!edges.isNull()) {
+//		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
+//	}
+//	DANVIL_BENCHMARK_STOP(improve)
+
+	// compute clusters
+	DANVIL_BENCHMARK_START(clusters)
 	std::vector<dasp::Cluster> clusters = dasp::ComputeSuperpixels(points, seeds, super_params_ext);
+	DANVIL_BENCHMARK_STOP(clusters)
 
-	// super pixel visualization
-	slimage::Image3ub super(points.width(), points.height());
-	dasp::PlotCluster(clusters, points, super);
-	std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
-	dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
+	{
+		DANVIL_BENCHMARK_START(plotting)
 
-	slimage::Image1f num(points.width(), points.height());
-	for(unsigned int i=0; i<points.size(); i++) {
-		num[i] = points[i].estimatedCount();
+		// visualization of kinect depth image
+		slimage::Image3ub kinect_depth_color(raw_kinect_depth->width(), raw_kinect_depth->height());
+		for(size_t i=0; i<kinect_depth_color.size()/3; i++) {
+			unsigned int d16 = kinect_depth[i];
+			slimage::Pixel3ub color;
+			if(d16 == 0) {
+				kinect_depth_color(i,0) = {{0,0,0}};
+			}
+			else {
+				// blue -> red -> yellow
+				auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow();
+				cm.setRange(400,2000);
+				auto color = cm(d16);
+				unsigned int q = d16 % 25;
+				color.r = std::max(0, int(color.r) - int(q));
+				color.g = std::max(0, int(color.g) - int(q));
+				color.b = std::max(0, int(color.b) - int(q));
+				color.writeRgb(kinect_depth_color.pointer(i,0));
+			}
+		}
+
+		// plot normals
+		slimage::Image3ub kinect_normals_vis;
+		if(kinect_normals) {
+			kinect_normals_vis.resize(kinect_normals.width(), kinect_normals.height());
+			slimage::ParallelProcess(kinect_normals, kinect_normals_vis, [](const float* src, unsigned char* dst) {
+				dst[0] = int(128.0f + 128.0f * src[0]);
+				dst[1] = int(128.0f + 128.0f * src[1]);
+				dst[2] = int(128.0f + 128.0f * src[2]);
+			});
+		}
+
+		// plot seeds
+		slimage::Image1ub seeds_img(points.width(), points.height());
+		seeds_img.fill(255);
+		dasp::PlotSeeds(seeds, seeds_img, 0, false);
+
+		// plot super pixel with edges
+		slimage::Image3ub super(points.width(), points.height());
+		dasp::PlotCluster(clusters, points, super);
+//		std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
+//		dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
+
+	//	// plot mipmaps
+	//	slimage::Image1f num(points.width(), points.height());
+	//	for(unsigned int i=0; i<points.size(); i++) {
+	//		num[i] = points[i].estimatedCount();
+	//	}
+	//	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 16);
+
+		// set images for gui
+		images_mutex_.lock();
+		images_["color"] = slimage::Ptr(kinect_color);
+		images_["depth"] = slimage::Ptr(kinect_depth_color);
+		images_["super"] = slimage::Ptr(super);
+	//	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
+	//	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));
+	//	images_["mm3"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[3], 4.0f));
+	//	images_["mm4"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[4], 1.0f));
+	//	images_["mm5"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[5], 0.25f));
+		images_["seeds"] = slimage::Ptr(seeds_img);
+		if(kinect_normals_vis) {
+			images_["normals"] = slimage::Ptr(kinect_normals_vis);
+		}
+		images_mutex_.unlock();
+
+		DANVIL_BENCHMARK_STOP(clusters)
 	}
-	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 16);
 
-	// set images for gui
-	images_mutex_.lock();
-	images_["depth"] = slimage::Ptr(kinect_depth_8);
-	images_["color"] = slimage::Ptr(kinect_color);
-	images_["super"] = slimage::Ptr(super);
-	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
-	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));
-	images_["mm3"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[3], 4.0f));
-	images_["mm4"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[4], 1.0f));
-	images_["mm5"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[5], 0.25f));
-	images_["seeds"] = slimage::Ptr(seeds_img);
-	images_mutex_.unlock();
+	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()
