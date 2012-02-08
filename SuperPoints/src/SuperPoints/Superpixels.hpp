@@ -113,9 +113,10 @@ namespace dasp
 	namespace SeedModes {
 		enum Type {
 			EquiDistant,
-			DepthDependentShooting,
-			DepthDependentMipmap,
-			BlueNoise
+			DepthShooting,
+			DepthMipmap,
+			DepthBlueNoise,
+			DepthFloyd
 		};
 	}
 	typedef SeedModes::Type SeedMode;
@@ -399,6 +400,14 @@ namespace dasp
 		}
 		return values;
 	}
+
+	struct Color {
+		unsigned char r,g,b;
+	};
+
+	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey=0, bool plot_1px=true);
+
+	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, bool plot_1px=true);
 
 }
 

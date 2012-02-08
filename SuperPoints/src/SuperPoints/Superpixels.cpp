@@ -217,7 +217,7 @@ std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const Paramete
 //	return seeds;
 }
 
-void FindSeedsBlueGrid_WalkMipmaps(
+void FindSeedsDepthMipmap_Walk(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
 		const std::vector<slimage::Image1f>& mipmaps,
@@ -233,10 +233,10 @@ void FindSeedsBlueGrid_WalkMipmaps(
 
 	if(v > 1.0f && level > 1) { // do not access mipmap 0!
 		// go down
-		FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
 	}
 	else {
 		if(die() < v)
@@ -257,28 +257,40 @@ void FindSeedsBlueGrid_WalkMipmaps(
 	}
 }
 
-std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const ParametersExt& opt)
+slimage::Image1f ComputeDepthDensity(const ImagePoints& points)
 {
-	// compute estimated number of seeds per pixel
 	slimage::Image1f num(points.width(), points.height());
 	for(unsigned int i=0; i<points.size(); i++) {
 		num[i] = points[i].estimatedCount();
 	}
+	return num;
+}
+
+slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
+{
+	slimage::Image1d num(points.width(), points.height());
+	for(unsigned int i=0; i<points.size(); i++) {
+		num[i] = double(points[i].estimatedCount());
+	}
+	return num;
+}
+
+std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const ParametersExt& opt)
+{
+	// compute estimated number of seeds per pixel
+	slimage::Image1f num = ComputeDepthDensity(points);
 	// compute mipmaps
 	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 1);
 	// now create pixel seeds
 	std::vector<Seed> seeds;
-	FindSeedsBlueGrid_WalkMipmaps(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
+	FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
 	return seeds;
 }
 
 std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const ParametersExt& opt)
 {
 	// compute estimated number of seeds per pixel
-	slimage::Image1f num(points.width(), points.height());
-	for(unsigned int i=0; i<points.size(); i++) {
-		num[i] = points[i].estimatedCount();
-	}
+	slimage::Image1f num = ComputeDepthDensity(points);
 	// compute blue noise points
 	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(num);
 	// convert to seeds
@@ -296,17 +308,47 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Parameters
 	return seeds;
 }
 
+std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const ParametersExt& opt)
+{
+	// compute estimated number of seeds per pixel
+	slimage::Image1f roh = ComputeDepthDensity(points);
+	std::vector<Seed> seeds;
+	for(unsigned int y=0; y<roh.height() - 1; y++) {
+		roh(1,y) += roh(0,y);
+		for(unsigned int x=1; x<roh.width() - 1; x++) {
+			float v = roh(x,y);
+			if(v >= 0.5f) {
+				v -= 1.0f;
+				Seed s;
+				s.x = x;
+				s.y = y;
+				s.scala = points(s.x, s.y).scala;
+				seeds.push_back(s);
+			}
+			roh(x+1,y  ) += 7.0f / 16.0f * v;
+			roh(x-1,y+1) += 3.0f / 16.0f * v;
+			roh(x  ,y+1) += 5.0f / 16.0f * v;
+			roh(x+1,y+1) += 1.0f / 16.0f * v;
+		}
+		// carry over
+		roh(0, y+1) += roh(roh.width()-1, y);
+	}
+	return seeds;
+}
+
 std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt)
 {
 	switch(opt.seed_mode) {
 	case SeedModes::EquiDistant:
 		return FindSeedsGrid(points, opt);
-	case SeedModes::DepthDependentShooting:
+	case SeedModes::DepthShooting:
 		return FindSeedsDepthRandom(points, opt);
-	case SeedModes::DepthDependentMipmap:
+	case SeedModes::DepthMipmap:
 		return FindSeedsDepthMipmap(points, opt);
-	case SeedModes::BlueNoise:
+	case SeedModes::DepthBlueNoise:
 		return FindSeedsDepthBlue(points, opt);
+	case SeedModes::DepthFloyd:
+		return FindSeedsDepthFloyd(points, opt);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
@@ -529,14 +571,55 @@ void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, uns
 				}
 			}
 			if(np > edge_w) {
-				img(x,y,0) = edge_r;
-				img(x,y,1) = edge_g;
-				img(x,y,2) = edge_b;
+				img(x,y) = slimage::Pixel3ub{{edge_r, edge_g, edge_b}};
 				istaken[i] = true;
 			}
 		}
 	}
-
 }
+
+template<typename K, unsigned int CC>
+void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, bool plot_1px)
+{
+	for(Seed s : seeds) {
+		// round position
+		int px = s.x;
+		int py = s.y;
+		if(px < 0 || int(img.width()) <= px || py < 0 || int(img.height()) <= py) {
+			continue;
+		}
+		img(px, py) = color;
+		if(!plot_1px) {
+			// paint a star
+			//    X
+			//   XXX
+			//    X
+			if(1 <= px) {
+				img(px-1, py) = color;
+			}
+			if(px + 1 < int(img.width())) {
+				img(px+1, py) = color;
+			}
+			if(1 <= py) {
+				img(px, py-1) = color;
+			}
+			if(py + 1 < int(img.width())) {
+				img(px, py+1) = color;
+			}
+		}
+	}
+}
+
+void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey, bool plot_1px)
+{
+	PlotSeeds(seeds, img, slimage::Pixel1ub{grey}, plot_1px);
+}
+
+void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color, bool plot_1px)
+{
+	PlotSeeds(seeds, img, color, plot_1px);
+}
+
+
 
 }

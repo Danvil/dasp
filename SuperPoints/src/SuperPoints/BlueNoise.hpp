@@ -233,7 +233,13 @@ namespace BlueNoise
 
 	std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_steps=0);
 
-	void PlotPoints(const std::vector<Point>& points, const slimage::Image1ub& img, bool plot_1px=true);
+	struct Color {
+		unsigned char r,g,b;
+	};
+
+	void PlotPoints(const std::vector<Point>& points, const slimage::Image1ub& img, unsigned char grey=0, bool plot_1px=true);
+
+	void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, bool plot_1px=true);
 
 }
 

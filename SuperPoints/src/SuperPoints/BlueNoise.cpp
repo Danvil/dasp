@@ -261,36 +261,46 @@ std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_ste
 	return pnts;
 }
 
-void PlotPoints(const std::vector<Point>& points, const slimage::Image1ub& img, bool plot_1px)
+template<typename K, unsigned int CC>
+void PlotPoints(const std::vector<Point>& points, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, bool plot_1px)
 {
 	for(Point p : points) {
 		// round position
 		int px = int(p.x + 0.5f);
 		int py = int(p.y + 0.5f);
-		// paint a star
-		//    X
-		//   XXX
-		//    X
 		if(px < 0 || int(img.width()) <= px || py < 0 || int(img.height()) <= py) {
 			continue;
 		}
-		img(px, py) = 0;
+		img(px, py) = color;
 		if(!plot_1px) {
+			// paint a star
+			//    X
+			//   XXX
+			//    X
 			if(1 <= px) {
-				img(px-1, py) = 0;
+				img(px-1, py) = color;
 			}
 			if(px + 1 < int(img.width())) {
-				img(px+1, py) = 0;
+				img(px+1, py) = color;
 			}
 			if(1 <= py) {
-				img(px, py-1) = 0;
+				img(px, py-1) = color;
 			}
 			if(py + 1 < int(img.width())) {
-				img(px, py+1) = 0;
+				img(px, py+1) = color;
 			}
 		}
 	}
+}
 
+void PlotPoints(const std::vector<Point>& points, const slimage::Image1ub& img, unsigned char grey, bool plot_1px)
+{
+	PlotPoints(points, img, slimage::Pixel1ub{grey}, plot_1px);
+}
+
+void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color, bool plot_1px)
+{
+	PlotPoints(points, img, color, plot_1px);
 }
 
 //----------------------------------------------------------------------------//
