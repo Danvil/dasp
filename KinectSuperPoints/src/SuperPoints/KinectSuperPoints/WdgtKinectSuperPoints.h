@@ -3,8 +3,8 @@
 
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
+#include "DaspTracker.h"
 #include <Romeo/Kinect/KinectGrabber.h>
-#include <Slimage/Slimage.hpp>
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
 #include <QtCore/QMutex>
@@ -30,15 +30,13 @@ private:
 	QTimer timer_;
 
 	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;
-    boost::shared_ptr<dasp::Parameters> dasp_params;
 	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
 
-	std::map<std::string, slimage::ImagePtr> images_;
+	boost::shared_ptr<DaspTracker> dasp_tracker_;
 
 	QMutex images_mutex_;
 
 	boost::thread kinect_thread_;
-	bool running_;
 
 private:
     Ui::WdgtKinectSuperPointsClass ui;

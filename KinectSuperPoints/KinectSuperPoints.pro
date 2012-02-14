@@ -3,9 +3,11 @@ QT += core \
     gui
 CONFIG += no_keywords
 GIT_BASE = /home/david/git
-HEADERS += src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.h \
+HEADERS += src/SuperPoints/KinectSuperPoints/DaspTracker.h \
+    src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.h \
     src/SuperPoints/KinectSuperPoints/WdgtSuperpixelParameters.h
-SOURCES += src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.cpp \
+SOURCES += src/SuperPoints/KinectSuperPoints/DaspTracker.cpp \
+    src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.cpp \
     src/SuperPoints/KinectSuperPoints/WdgtSuperpixelParameters.cpp \
     src/SuperPoints/KinectSuperPoints/main.cpp
 FORMS += src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.ui \
