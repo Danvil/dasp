@@ -38,7 +38,7 @@
 	</storageModule>
 	<storageModule moduleId="refreshScope"/>
 	<storageModule moduleId="org.eclipse.cdt.core.pathentry">
-		<pathentry kind="src" path=""/>
+		<pathentry excluding="src/SuperPoints/KinectSuperPoints/" kind="src" path=""/>
 		<pathentry kind="out" path=""/>
 		<pathentry base-path="/usr/share/qt4/include" include="" kind="inc" path="" system="true"/>
 		<pathentry base-path="/usr/share/qt4/include" include="QtDBus" kind="inc" path="" system="true"/>
@@ -79,5 +79,6 @@
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/usr/include" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/slimage/src" kind="inc" path="" system="true"/>
 		<pathentry base-ref="org.eclipse.cdt.make.core.DISCOVERED_SCANNER_INFO" include="/home/david/git/SuperPoints/KinectSuperPoints/src" kind="inc" path="" system="true"/>
+		<pathentry kind="src" path="src/SuperPoints/KinectSuperPoints"/>
 	</storageModule>
 </cproject>
