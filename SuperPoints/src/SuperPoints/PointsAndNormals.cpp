@@ -283,7 +283,7 @@ slimage::Image3f ComputeNormals_EightMeanCross(const slimage::Image1ui16& depth,
 	return normals;
 }
 
-slimage::Image3f ComputeNormals(const slimage::Image1ui16& depth, const slimage::Image3f& points, NormalMode mode, slimage::ThreadingOptions opt)
+slimage::Image3f ComputeNormals(const slimage::Image1ui16& depth, const slimage::Image3f& points, slimage::ThreadingOptions opt, NormalMode mode)
 {
 	switch(mode) {
 	case NormalModes::KNearestEigen:

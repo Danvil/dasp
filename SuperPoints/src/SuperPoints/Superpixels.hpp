@@ -381,7 +381,7 @@ namespace dasp
 
 	std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt);
 
-	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt=slimage::ThreadingOptions());
+	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt);
 
 	void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt);
 

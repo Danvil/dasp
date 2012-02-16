@@ -28,6 +28,7 @@ DaspTracker::DaspTracker()
 	dasp_params->focal = 580.0f;
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
 	color_model_sigma_scale_ = 1.0f;
+	thread_pool_index_ = 100;
 }
 
 DaspTracker::~DaspTracker()
@@ -82,7 +83,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 		lab[0] = r;
 		lab[1] = g;
 		lab[2] = b;
-	}, slimage::ThreadingOptions(1));
+	}, slimage::ThreadingOptions::UsePool(thread_pool_index_));
 
 	DANVIL_BENCHMARK_STOP(step)
 
@@ -98,7 +99,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
-slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max)
+slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id)
 {
 	slimage::Image3ub col(I.width(), I.height());
 	if(I) {
@@ -108,7 +109,7 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 		cm.setRange(min, max);
 		slimage::ParallelProcess(I, col, [&cm](const float* src, unsigned char* dst) {
 			cm(*src).writeRgb(dst);
-		});
+		}, slimage::ThreadingOptions::UsePool(pool_id));
 	}
 	return col;
 }
@@ -121,10 +122,10 @@ void DaspTracker::performSegmentationStep()
 	// compute normals only if necessary
 	slimage::Image3f kinect_normals;
 	if(super_params_ext.weight_normal > 0.0f) {
-		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth);
+		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
 
 		DANVIL_BENCHMARK_START(normals)
-		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points);
+		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
 	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
 		DANVIL_BENCHMARK_STOP(normals)
 	}
@@ -137,6 +138,7 @@ void DaspTracker::performSegmentationStep()
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(seeds)
 	std::vector<dasp::Seed> seeds = dasp::FindSeeds(points, super_params_ext);
+	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(seeds)
 
 	// compute super pixel point edges and improve seeds with it
@@ -179,6 +181,7 @@ void DaspTracker::performSegmentationStep()
 			probability(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
+#if 0 // wrong historgram color model
 		std::vector<float> cluster_probability_2 = dasp::ClassifyClusters(clusters,
 				[&clusters, this](const dasp::Point& center) {
 					dasp::SuperpixelHistogram hist(dasp::SuperpixelState({center.color, center.normal}));
@@ -196,7 +199,7 @@ void DaspTracker::performSegmentationStep()
 						float c = dasp::SuperpixelHistogram::Distance(hist, h);
 						c_min = std::min(c, c_min);
 					}
-					return 1.0f - 0.3f *c_min;
+					return 1.0f - c_min;
 				});
 
 		probability_2.resize(kinect_depth.width(), kinect_depth.height());
@@ -205,6 +208,7 @@ void DaspTracker::performSegmentationStep()
 			float p_base = cluster_probability_2[cid];
 			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
 		});
+#endif
 
 	}
 
@@ -248,7 +252,7 @@ void DaspTracker::performSegmentationStep()
 				dst[0] = int(128.0f + 128.0f * src[0]);
 				dst[1] = int(128.0f + 128.0f * src[1]);
 				dst[2] = int(128.0f + 128.0f * src[2]);
-			});
+			}, slimage::ThreadingOptions::UsePool(thread_pool_index_));
 		}
 
 		// plot seeds
@@ -273,13 +277,22 @@ void DaspTracker::performSegmentationStep()
 		slimage::Image3ub probability_2_color;
 
 		if(probability) {
-			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f);
-			dasp::PlotEdges(superpixel_labels, probability_color, 2, 0, 0, 0);
+			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f, thread_pool_index_);
+			//dasp::PlotEdges(superpixel_labels, probability_color, 2, 0, 0, 0);
+
+//			for(unsigned int i=0; i<probability_color.size(); i++) {
+//				if(probability(i) > 0.90f) {
+//					probability_color(i)[0] = kinect_color_rgb(i)[0];
+//					probability_color(i)[1] = kinect_color_rgb(i)[1];
+//					probability_color(i)[2] = kinect_color_rgb(i)[2];
+//				}
+//			}
+
 		}
 
 		if(probability_2) {
-			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f);
-			dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
+			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
+			//dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
 		// set images for gui

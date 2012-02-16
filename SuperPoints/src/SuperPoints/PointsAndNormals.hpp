@@ -18,7 +18,7 @@ namespace dasp {
 namespace PointsAndNormals {
 
 /** Computes 3D points for every pixel from depth values */
-slimage::Image3f ComputePoints(const slimage::Image1ui16& depth, slimage::ThreadingOptions opt=slimage::ThreadingOptions());
+slimage::Image3f ComputePoints(const slimage::Image1ui16& depth, slimage::ThreadingOptions opt);
 
 namespace NormalModes {
 	enum NormalMode {
@@ -29,7 +29,7 @@ namespace NormalModes {
 typedef NormalModes::NormalMode NormalMode;
 
 /** Computes normals for every pixel from 3D points (and depth) */
-slimage::Image3f ComputeNormals(const slimage::Image1ui16& depth, const slimage::Image3f& points, NormalMode mode=NormalModes::KNearestEigen, slimage::ThreadingOptions opt=slimage::ThreadingOptions());
+slimage::Image3f ComputeNormals(const slimage::Image1ui16& depth, const slimage::Image3f& points, slimage::ThreadingOptions opt, NormalMode mode=NormalModes::KNearestEigen);
 
 }}
 

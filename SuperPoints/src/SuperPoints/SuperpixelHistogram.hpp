@@ -74,7 +74,7 @@ public:
 		float d_C = FeatureDistance(x.hist_chroma_, y.hist_chroma_, AC);
 		float d_I = FeatureDistance(x.hist_intensity_, y.hist_intensity_, AI);
 		float d_N = FeatureDistance(x.hist_normal_, y.hist_normal_, AN);
-		return d_rgb + d_C + d_I + d_N;
+		return d_rgb + 0.1f * (d_C + d_I + d_N);
 	}
 
 private:

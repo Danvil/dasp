@@ -45,6 +45,8 @@ public:
 
     float color_model_sigma_scale_;
 
+    unsigned int thread_pool_index_;
+
 private:
 	slimage::Image1ui16 kinect_depth;
 	slimage::Image3ub kinect_color_rgb;
