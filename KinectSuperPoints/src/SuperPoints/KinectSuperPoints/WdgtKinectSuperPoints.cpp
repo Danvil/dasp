@@ -103,6 +103,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 			ui.tabs->addTab(qlabel, QString::fromStdString(text));
 		}
 		tabs_usage[text] = true;
+//		qlabel->setScaledContents(true);
 		qlabel->setPixmap(QPixmap::fromImage(qimgscl));
 		delete qimg;
 	}
