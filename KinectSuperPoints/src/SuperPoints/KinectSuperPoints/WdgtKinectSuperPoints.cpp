@@ -8,7 +8,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 {
 	ui.setupUi(this);
 
-	dasp_tracker_.reset(new DaspTracker());
+	dasp_tracker_.reset(new dasp::DaspTracker());
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_->dasp_params));
 	gui_params_->on_train_ = [this]() { dasp_tracker_->training_ = true; };
@@ -37,9 +37,26 @@ WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 	kinect_thread_.join();
 }
 
-void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr kinect_depth, Danvil::Images::Image3ubPtr kinect_color)
+void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
-	dasp_tracker_->step(kinect_depth, kinect_color);
+	// kinect 16-bit depth image
+	slimage::Image1ui16 kinect_depth;
+	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
+	for(unsigned int i=0; i<kinect_depth.size(); i++) {
+		uint16_t d = (*raw_kinect_depth)[i];
+		if(d > 5000) {
+			d = 0;
+		}
+		kinect_depth[i] = d;
+	}
+
+	// kinect RGB color image
+	slimage::Image3ub kinect_color_rgb;
+	kinect_color_rgb.resize(raw_kinect_color->width(), raw_kinect_color->height());
+	kinect_color_rgb.copyFrom(raw_kinect_color->begin());
+
+
+	dasp_tracker_->step(kinect_depth, kinect_color_rgb);
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()

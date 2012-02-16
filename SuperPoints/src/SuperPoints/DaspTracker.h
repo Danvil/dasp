@@ -8,14 +8,14 @@
 #ifndef DASPTRACKER_H_
 #define DASPTRACKER_H_
 //----------------------------------------------------------------------------//
-#include <SuperPoints/Superpixels.hpp>
-#include <SuperPoints/SuperpixelHistogram.hpp>
+#include "Superpixels.hpp"
+#include "SuperpixelHistogram.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Danvil/Statistics/GMM.h>
-#include <Danvil/Images/Image.h>
 #include <boost/thread.hpp>
 #include <vector>
 //----------------------------------------------------------------------------//
+namespace dasp {
 //----------------------------------------------------------------------------//
 
 class DaspTracker
@@ -25,7 +25,7 @@ public:
 
 	virtual ~DaspTracker();
 
-	void step(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color);
+	void step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color);
 
 	std::map<std::string, slimage::ImagePtr> getImages() const;
 
@@ -68,5 +68,6 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+}
 //----------------------------------------------------------------------------//
 #endif

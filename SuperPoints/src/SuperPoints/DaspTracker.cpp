@@ -6,10 +6,10 @@
  */
 
 #include "DaspTracker.h"
-#include <SuperPoints/Mipmaps.hpp>
-#include <SuperPoints/BlueNoise.hpp>
-#include <SuperPoints/PointsAndNormals.hpp>
-#include <SuperPoints/AutoDepth.hpp>
+#include "Mipmaps.hpp"
+#include "BlueNoise.hpp"
+#include "PointsAndNormals.hpp"
+#include "AutoDepth.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
@@ -18,6 +18,7 @@
 #include <stdexcept>
 using namespace std;
 //----------------------------------------------------------------------------//
+namespace dasp {
 //----------------------------------------------------------------------------//
 
 DaspTracker::DaspTracker()
@@ -55,23 +56,13 @@ DaspTracker::~DaspTracker()
 //	}
 //}
 
-void DaspTracker::step(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
+void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color)
 {
 	DANVIL_BENCHMARK_START(step)
 
-	// kinect 16-bit depth image
-	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
-	for(unsigned int i=0; i<kinect_depth.size(); i++) {
-		uint16_t d = (*raw_kinect_depth)[i];
-		if(d > 5000) {
-			d = 0;
-		}
-		kinect_depth[i] = d;
-	}
+	kinect_depth = raw_kinect_depth.clone();
 
-	// kinect RGB color image
-	kinect_color_rgb.resize(raw_kinect_color->width(), raw_kinect_color->height());
-	kinect_color_rgb.copyFrom(raw_kinect_color->begin());
+	kinect_color_rgb = raw_kinect_color.clone();
 
 	// convert rgb to lab
 	kinect_color.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
@@ -205,8 +196,7 @@ void DaspTracker::performSegmentationStep()
 						float c = dasp::SuperpixelHistogram::Distance(hist, h);
 						c_min = std::min(c, c_min);
 					}
-					std::cout << c_min << std::endl;
-					return 1.0f - 0.1f *c_min;
+					return 1.0f - 0.3f *c_min;
 				});
 
 		probability_2.resize(kinect_depth.width(), kinect_depth.height());
@@ -458,4 +448,5 @@ slimage::Image1ub DaspTracker::getResultImage() const
 }
 
 //----------------------------------------------------------------------------//
+}
 //----------------------------------------------------------------------------//
