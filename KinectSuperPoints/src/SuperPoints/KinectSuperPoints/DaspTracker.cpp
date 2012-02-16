@@ -188,7 +188,6 @@ void DaspTracker::performSegmentationStep()
 			probability(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
-
 		std::vector<float> cluster_probability_2 = dasp::ClassifyClusters(clusters,
 				[&clusters, this](const dasp::Point& center) {
 					dasp::SuperpixelHistogram hist(dasp::SuperpixelState({center.color, center.normal}));
@@ -217,6 +216,14 @@ void DaspTracker::performSegmentationStep()
 			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
+	}
+
+	result_.resize(kinect_color.width(), kinect_color.height());
+	if(has_hand_gmm_model_) {
+		result_ = slimage::Convert_f_2_ub(probability);
+	}
+	else {
+		result_.fill(0);
 	}
 
 	{
@@ -442,6 +449,12 @@ std::map<std::string, slimage::ImagePtr> DaspTracker::getImages() const
 {
 	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 	return images_;
+}
+
+slimage::Image1ub DaspTracker::getResultImage() const
+{
+	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
+	return result_;
 }
 
 //----------------------------------------------------------------------------//

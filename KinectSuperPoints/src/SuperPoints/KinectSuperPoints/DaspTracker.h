@@ -29,6 +29,8 @@ public:
 
 	std::map<std::string, slimage::ImagePtr> getImages() const;
 
+	slimage::Image1ub getResultImage() const;
+
 private:
 	void performSegmentationStep();
 
@@ -48,6 +50,8 @@ private:
 	slimage::Image3ub kinect_color_rgb;
 
 	slimage::Image3f kinect_color;
+
+	slimage::Image1ub result_;
 
 	dasp::ImagePoints points;
 	std::vector<dasp::Cluster> clusters;
