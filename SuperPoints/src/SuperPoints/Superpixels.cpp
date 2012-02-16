@@ -74,6 +74,22 @@ ImagePoints CreatePoints(
 		const slimage::Image3f& normals,
 		const ParametersExt& opt)
 {
+	slimage::Image3f colf(image.width(), image.height());
+	slimage::ParallelProcess(image, colf, [](const unsigned char* cub, float* cf) {
+		cf[0] = float(cub[0]) / 255.0f;
+		cf[1] = float(cub[1]) / 255.0f;
+		cf[2] = float(cub[2]) / 255.0f;
+	});
+	return CreatePoints(colf, depth, normals, opt);
+}
+
+ImagePoints CreatePoints(
+		const slimage::Image3f& image,
+		const slimage::Image1ui16& depth,
+//		const slimage::Image3fPtr& pos,
+		const slimage::Image3f& normals,
+		const ParametersExt& opt)
+{
 	unsigned int width = image.width();
 	unsigned int height = image.height();
 	assert(width == depth.width() && height == depth.height());
@@ -84,7 +100,7 @@ ImagePoints CreatePoints(
 
 	ImagePoints points(width, height);
 
-	const unsigned char* p_col = image.begin();
+	const float* p_col = image.begin();
 	const uint16_t* p_depth = depth.begin();
 //	const float* p_points = pos->begin();
 	const float pixel_size_factor = opt.computePixelSizeFactor();
@@ -93,9 +109,9 @@ ImagePoints CreatePoints(
 		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
 			Point& p = points(x, y);
 //			p.valid_ = true;//(*p_depth > 0);
-			p.color[0] = float(p_col[0]) / 255.0f;
-			p.color[1] = float(p_col[1]) / 255.0f;
-			p.color[2] = float(p_col[2]) / 255.0f;
+			p.color[0] = p_col[0];
+			p.color[1] = p_col[1];
+			p.color[2] = p_col[2];
 			uint16_t d = *p_depth;
 			p.depth = float(d) * 0.001f;
 			p.scala = (d > 0) ? (pixel_size_factor / p.depth) : 0;

@@ -213,6 +213,11 @@ namespace dasp
 		size_t index(const Point& p) const {
 			return index(p.spatial_x(), p.spatial_y());
 		}
+		const Point& operator()(const Eigen::Vector2f& p) const {
+			int x = std::floor(p[0] + 0.5f);
+			int y = std::floor(p[1] + 0.5f);
+			return (*this)(x,y);
+		}
 		const Point& operator()(unsigned int x, unsigned int y) const {
 			return points_[index(x,y)];
 		}
@@ -350,6 +355,14 @@ namespace dasp
 	}
 
 	ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsigned int height);
+
+	ImagePoints CreatePoints(
+			const slimage::Image3f& image,
+			const slimage::Image1ui16& depth,
+//				const Danvil::Images::Image3fPtr& points,
+			const slimage::Image3f& normals,
+			const ParametersExt& opt
+			);
 
 	ImagePoints CreatePoints(
 			const slimage::Image3ub& image,
