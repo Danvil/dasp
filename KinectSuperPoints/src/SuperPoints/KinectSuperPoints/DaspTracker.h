@@ -9,8 +9,9 @@
 #define DASPTRACKER_H_
 //----------------------------------------------------------------------------//
 #include <SuperPoints/Superpixels.hpp>
-#include <Danvil/Statistics/GMM.h>
+#include <SuperPoints/SuperpixelHistogram.hpp>
 #include <Slimage/Slimage.hpp>
+#include <Danvil/Statistics/GMM.h>
 #include <Danvil/Images/Image.h>
 #include <boost/thread.hpp>
 #include <vector>
@@ -44,13 +45,17 @@ public:
 
 private:
 	slimage::Image1ui16 kinect_depth;
-	slimage::Image3ub kinect_color;
+	slimage::Image3ub kinect_color_rgb;
+
+	slimage::Image3f kinect_color;
 
 	dasp::ImagePoints points;
 	std::vector<dasp::Cluster> clusters;
 
 	bool has_hand_gmm_model_;
 	Danvil::GMM::GaussianMixtureModel<5,3,float> hand_gmm_model_;
+
+	std::vector<dasp::SuperpixelHistogram> model_hist_;
 
 	std::map<std::string, slimage::ImagePtr> images_;
 

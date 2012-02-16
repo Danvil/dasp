@@ -13,6 +13,7 @@
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
+#include <Danvil/Color/LAB.h>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <stdexcept>
 using namespace std;
@@ -21,6 +22,7 @@ using namespace std;
 
 DaspTracker::DaspTracker()
 {
+	training_ = false;
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->focal = 580.0f;
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
@@ -55,6 +57,8 @@ DaspTracker::~DaspTracker()
 
 void DaspTracker::step(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
+	DANVIL_BENCHMARK_START(step)
+
 	// kinect 16-bit depth image
 	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
 	for(unsigned int i=0; i<kinect_depth.size(); i++) {
@@ -66,8 +70,30 @@ void DaspTracker::step(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::I
 	}
 
 	// kinect RGB color image
-	kinect_color.resize(raw_kinect_color->width(), raw_kinect_color->height());
-	kinect_color.copyFrom(raw_kinect_color->begin());
+	kinect_color_rgb.resize(raw_kinect_color->width(), raw_kinect_color->height());
+	kinect_color_rgb.copyFrom(raw_kinect_color->begin());
+
+	// convert rgb to lab
+	kinect_color.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
+	slimage::ParallelProcess(kinect_color_rgb, kinect_color, [](const unsigned char* rgb, float* lab) {
+		float r = float(rgb[0]) / 255.0f;
+		float g = float(rgb[1]) / 255.0f;
+		float b = float(rgb[2]) / 255.0f;
+//		float lab1, lab2, lab3;
+//		Danvil::color_rgb_to_lab(r, g, b, lab1, lab2, lab3);
+//		lab1 /= 100.0f;
+//		lab2 /= 100.0f;
+//		lab3 /= 100.0f;
+////		std::cout << r << " " << g << " " << b << " " << lab1 << " " << lab2 << " " << lab3 << std::endl;
+//		lab[0] = lab1;
+//		lab[1] = lab2;
+//		lab[2] = lab3;
+		lab[0] = r;
+		lab[1] = g;
+		lab[2] = b;
+	}, slimage::ThreadingOptions(1));
+
+	DANVIL_BENCHMARK_STOP(step)
 
 	performSegmentationStep();
 
@@ -79,6 +105,21 @@ void DaspTracker::step(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::I
 	performTrackingStep();
 
 	DANVIL_BENCHMARK_PRINTALL_COUT
+}
+
+slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max)
+{
+	slimage::Image3ub col(I.width(), I.height());
+	if(I) {
+		Danvil::ContinuousIntervalColorMapping<unsigned char, float> cm
+				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow_White();
+		cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
+		cm.setRange(min, max);
+		slimage::ParallelProcess(I, col, [&cm](const float* src, unsigned char* dst) {
+			cm(*src).writeRgb(dst);
+		});
+	}
+	return col;
 }
 
 void DaspTracker::performSegmentationStep()
@@ -122,6 +163,7 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_STOP(clusters)
 
 	slimage::Image1f probability;
+	slimage::Image1f probability_2;
 
 	if(has_hand_gmm_model_) {
 
@@ -146,6 +188,35 @@ void DaspTracker::performSegmentationStep()
 			probability(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
+
+		std::vector<float> cluster_probability_2 = dasp::ClassifyClusters(clusters,
+				[&clusters, this](const dasp::Point& center) {
+					dasp::SuperpixelHistogram hist(dasp::SuperpixelState({center.color, center.normal}));
+					// find in range
+					for(const dasp::Cluster& n : clusters) {
+						float dmax = center.scala;
+						if((center.pos - n.center.pos).norm() < dmax) {
+							dasp::SuperpixelState n_state{n.center.color, Eigen::Vector3f::UnitZ()}; // TODO n.center.normal;
+							hist.add(n_state);
+						}
+					}
+					// compute minimum to learned clusters
+					float c_min = 1e9;
+					for(const dasp::SuperpixelHistogram& h : model_hist_) {
+						float c = dasp::SuperpixelHistogram::Distance(hist, h);
+						c_min = std::min(c, c_min);
+					}
+					std::cout << c_min << std::endl;
+					return 1.0f - 0.1f *c_min;
+				});
+
+		probability_2.resize(kinect_depth.width(), kinect_depth.height());
+		probability_2.fill(-1.0f);
+		dasp::ForPixelClusters(clusters, points, [&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			float p_base = cluster_probability_2[cid];
+			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
+		});
+
 	}
 
 	{
@@ -157,7 +228,7 @@ void DaspTracker::performSegmentationStep()
 			unsigned int d16 = kinect_depth[i];
 			slimage::Pixel3ub color;
 			if(d16 == 0) {
-				kinect_depth_color(i,0) = {{0,0,0}};
+				kinect_depth_color(i) = {{0,0,0}};
 			}
 			else {
 				// blue -> red -> yellow
@@ -165,10 +236,10 @@ void DaspTracker::performSegmentationStep()
 				cm.setRange(400,2000);
 				auto color = cm(d16);
 				unsigned int q = d16 % 25;
-				color.r = std::max(0, int(color.r) - int(q));
-				color.g = std::max(0, int(color.g) - int(q));
-				color.b = std::max(0, int(color.b) - int(q));
-				color.writeRgb(kinect_depth_color.pointer(i,0));
+				unsigned char r = std::max(0, int(color.r) - int(q));
+				unsigned char g = std::max(0, int(color.g) - int(q));
+				unsigned char b = std::max(0, int(color.b) - int(q));
+				kinect_depth_color(i) = {{r,g,b}};
 			}
 		}
 
@@ -202,24 +273,24 @@ void DaspTracker::performSegmentationStep()
 	//	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 16);
 
 		slimage::Image3ub probability_color;
+		slimage::Image3ub probability_2_color;
 
 		if(probability) {
-			probability_color.resize(kinect_depth.width(), kinect_depth.height());
-			Danvil::ContinuousIntervalColorMapping<unsigned char, float> cm
-					= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow_White();
-			cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
-			cm.setRange(0.0f, 1.0f);
-			slimage::ParallelProcess(probability, probability_color, [&cm](const float* src, unsigned char* dst) {
-				cm(*src).writeRgb(dst);
-			});
+			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f);
 			dasp::PlotEdges(superpixel_labels, probability_color, 2, 0, 0, 0);
+		}
+
+		if(probability_2) {
+			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f);
+			dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
 		// set images for gui
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["color"] = slimage::Ptr(kinect_color);
+			images_["rgb"] = slimage::Ptr(kinect_color_rgb);
+//			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
 			images_["depth"] = slimage::Ptr(kinect_depth_color);
 			images_["super"] = slimage::Ptr(super);
 		//	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
@@ -232,6 +303,7 @@ void DaspTracker::performSegmentationStep()
 				images_["normals"] = slimage::Ptr(kinect_normals_vis);
 			}
 			images_["prob"] = slimage::Ptr(probability_color);
+			images_["prob2"] = slimage::Ptr(probability_2_color);
 		}
 
 		DANVIL_BENCHMARK_STOP(clusters)
@@ -328,6 +400,26 @@ void DaspTracker::trainInitialColorModel()
 		std::cout << hand_gmm_model_ << std::endl;
 		std::cout << std::sqrt(std::abs(Danvil::ctLinAlg::Det(hand_gmm_model_.gaussians_[0].sigma()))) << std::endl;
 		has_hand_gmm_model_ = true;
+
+		// collect histograms for superpixels
+		model_hist_.clear();
+		for(const dasp::Cluster& cluster : clusters_selected) {
+			dasp::SuperpixelState state{cluster.center.color, Eigen::Vector3f::UnitZ()}; // TODO cluster.center.normal;
+			dasp::SuperpixelHistogram hist(state);
+			// iterate over neighbours
+			for(const dasp::Cluster& n : clusters_selected) {
+				//float dmax = std::max(cluster.center.scala, n.center.scala);
+				float dmax = cluster.center.scala;
+				if((cluster.center.pos - n.center.pos).norm() < dmax) {
+					dasp::SuperpixelState n_state{n.center.color, Eigen::Vector3f::UnitZ()}; // TODO n.center.normal;
+					hist.add(n_state);
+				}
+			}
+			std::cout << "Chroma   : " << hist.hist_chroma_.transpose() << std::endl;
+			std::cout << "Intensity: " << hist.hist_intensity_.transpose() << std::endl;
+			std::cout << "Normal   : " << hist.hist_normal_.transpose() << std::endl;
+			model_hist_.push_back(hist);
+		}
 	}
 
 	DANVIL_BENCHMARK_STOP(Hand_V3_Init)
