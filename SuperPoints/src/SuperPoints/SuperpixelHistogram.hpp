@@ -275,16 +275,27 @@ class SuperpixelHistogramModel
 public:
 	void train(const SuperpixelGraph& graph, const std::vector<unsigned int>& selection)
 	{
-		const unsigned int cBins = 15;
-		assert(graph.nodes_.size() >= cBins);
+		const unsigned int cBinsFg = 8;
+		const unsigned int cBinsBg = 16;
+		const unsigned int cBins = cBinsFg + cBinsBg;
+		assert(graph.nodes_.size() >= cBinsFg + cBinsBg);
 		// train model
-		std::vector<Danvil::ctLinAlg::Vec3ub> gmm_training;
-		gmm_training.reserve(graph.size());
+		std::vector<Danvil::ctLinAlg::Vec3ub> gmm_training_fg;
+		std::vector<Danvil::ctLinAlg::Vec3ub> gmm_training_bg;
+		gmm_training_fg.reserve(graph.size());
+		gmm_training_bg.reserve(graph.size());
 		for(std::size_t i=0; i<graph.size(); i++) {
 			 Eigen::VectorXf c = 255.0f * graph.nodes_[i].color;
-			 gmm_training.push_back(Danvil::ctLinAlg::Vec3ub(c[0], c[1], c[2]));
+			 if(std::find(selection.begin(), selection.end(), i) != selection.end()) {
+				 gmm_training_fg.push_back(Danvil::ctLinAlg::Vec3ub(c[0], c[1], c[2]));
+			 }
+			 else {
+				 gmm_training_bg.push_back(Danvil::ctLinAlg::Vec3ub(c[0], c[1], c[2]));
+			 }
 		}
-		clusters_ = Danvil::Clustering::KMeans(gmm_training, cBins);
+		clusters_ = Danvil::Clustering::KMeans(gmm_training_fg, cBinsFg);
+		Danvil::Clustering::ClusterGroup clusters_bg = Danvil::Clustering::KMeans(gmm_training_bg, cBinsBg);
+		clusters_.cluster_.insert(clusters_.cluster_.end(), clusters_bg.cluster_.begin(), clusters_bg.cluster_.end());
 
 		// assure minimal sigma for cluster gaussians
 		const float cMinimalSigma = 0.05f;
