@@ -72,26 +72,36 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 		float r = float(rgb[0]) / 255.0f;
 		float g = float(rgb[1]) / 255.0f;
 		float b = float(rgb[2]) / 255.0f;
-//		float lab1, lab2, lab3;
-//		Danvil::color_rgb_to_lab(r, g, b, lab1, lab2, lab3);
-//		lab1 /= 100.0f;
-//		lab2 /= 100.0f;
-//		lab3 /= 100.0f;
-////		std::cout << r << " " << g << " " << b << " " << lab1 << " " << lab2 << " " << lab3 << std::endl;
-//		lab[0] = lab1;
-//		lab[1] = lab2;
-//		lab[2] = lab3;
+
+//		Danvil::color_rgb_to_lab(r, g, b, r, g, b);
+//		r /= 1000.0f;
+//		g /= 100.0f;
+//		b /= 100.0f;
+
+//		float a = r + g + b;
+//		if(a > 0.05f) {
+//			r /= a;
+//			g /= a;
+//			b /= a;
+//		}
+//		else {
+//			r = 0;
+//			g = 0;
+//			b = 0;
+//		}
+
 		float a = r + g + b;
 		if(a > 0.05f) {
 			r /= a;
 			g /= a;
-			b /= a;
+			b = a * 0.1;
 		}
 		else {
 			r = 0;
 			g = 0;
 			b = 0;
 		}
+
 		lab[0] = r;
 		lab[1] = g;
 		lab[2] = b;
