@@ -11,6 +11,7 @@
 #include "PointsAndNormals.hpp"
 #include "AutoDepth.hpp"
 #define DANVIL_ENABLE_BENCHMARK
+#include <Slimage/Paint.hpp>
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
@@ -80,6 +81,17 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 //		lab[0] = lab1;
 //		lab[1] = lab2;
 //		lab[2] = lab3;
+		float a = r + g + b;
+		if(a > 0.05f) {
+			r /= a;
+			g /= a;
+			b /= a;
+		}
+		else {
+			r = 0;
+			g = 0;
+			b = 0;
+		}
 		lab[0] = r;
 		lab[1] = g;
 		lab[2] = b;
@@ -112,6 +124,26 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 		}, slimage::ThreadingOptions::UsePool(pool_id));
 	}
 	return col;
+}
+
+SuperpixelGraph CreateGraphFromClusters(const std::vector<dasp::Cluster>& clusters)
+{
+	SuperpixelGraph G;
+	for(const dasp::Cluster& c : clusters) {
+		SuperpixelState s;
+		s.x = c.center.spatial_x();
+		s.y = c.center.spatial_y();
+		s.color = c.center.color;
+		s.normal = c.center.normal;
+		s.position = PointsAndNormals::PointFromZ(
+				c.center.spatial_x(), c.center.spatial_y(),
+				c.center.depth,
+				640, 480);
+		s.scala = c.center.scala;
+		G.nodes_.push_back(s);
+	}
+	G.createConnections(0.10f); // FIXME constant !!!
+	return G;
 }
 
 void DaspTracker::performSegmentationStep()
@@ -157,6 +189,8 @@ void DaspTracker::performSegmentationStep()
 
 	slimage::Image1f probability;
 	slimage::Image1f probability_2;
+	slimage::Image3ub plot_graph;
+	slimage::Image3ub plot_labels;
 
 	if(has_hand_gmm_model_) {
 
@@ -181,26 +215,9 @@ void DaspTracker::performSegmentationStep()
 			probability(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
-#if 0 // wrong historgram color model
-		std::vector<float> cluster_probability_2 = dasp::ClassifyClusters(clusters,
-				[&clusters, this](const dasp::Point& center) {
-					dasp::SuperpixelHistogram hist(dasp::SuperpixelState({center.color, center.normal}));
-					// find in range
-					for(const dasp::Cluster& n : clusters) {
-						float dmax = center.scala;
-						if((center.pos - n.center.pos).norm() < dmax) {
-							dasp::SuperpixelState n_state{n.center.color, Eigen::Vector3f::UnitZ()}; // TODO n.center.normal;
-							hist.add(n_state);
-						}
-					}
-					// compute minimum to learned clusters
-					float c_min = 1e9;
-					for(const dasp::SuperpixelHistogram& h : model_hist_) {
-						float c = dasp::SuperpixelHistogram::Distance(hist, h);
-						c_min = std::min(c, c_min);
-					}
-					return 1.0f - c_min;
-				});
+		// histogram color model
+		SuperpixelGraph G = CreateGraphFromClusters(clusters);
+		std::vector<float> cluster_probability_2 = model_->evaluate(G);
 
 		probability_2.resize(kinect_depth.width(), kinect_depth.height());
 		probability_2.fill(-1.0f);
@@ -208,7 +225,28 @@ void DaspTracker::performSegmentationStep()
 			float p_base = cluster_probability_2[cid];
 			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
 		});
-#endif
+
+		plot_graph.resize(kinect_color.width(), kinect_color.height());
+		plot_graph.fill(0);
+		for(unsigned int i=0; i<G.nodes_.size(); i++) {
+			for(unsigned int k : G.node_connections_[i]) {
+				slimage::PaintLine(plot_graph, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{255,255,255});
+			}
+		}
+
+		// plot model gaussian cluster id for each superpixel
+		std::vector<unsigned int> labels = model_->label(G);
+		plot_labels.resize(kinect_color.width(), kinect_color.height());
+		plot_labels.fill(0);
+		std::vector<Eigen::Vector3f> model_colors = model_->getClusterColors();
+		dasp::ForPixelClusters(clusters, points, [&plot_labels,&labels,&model_colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			unsigned int l = labels[cid];
+			Eigen::Vector3f color = model_colors[l];
+			plot_labels(p.spatial_x(), p.spatial_y()) = slimage::Pixel3ub{
+				{(unsigned char)(255.0f*color[0]), (unsigned char)(255.0f*color[1]), (unsigned char)(255.0f*color[2])}
+			};
+		});
+
 
 	}
 
@@ -314,6 +352,8 @@ void DaspTracker::performSegmentationStep()
 			}
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
+			images_["graph"] = slimage::Ptr(plot_graph);
+			images_["labels"] = slimage::Ptr(plot_labels);
 		}
 
 		DANVIL_BENCHMARK_STOP(clusters)
@@ -346,8 +386,10 @@ void DaspTracker::trainInitialColorModel()
 	int roi_y2 = int(cHeight)/2 + R;
 
 	std::vector<dasp::Cluster> clusters_in_roi;
+	std::vector<unsigned int> clusters_in_roi_ids;
 
-	for(const dasp::Cluster& cluster : clusters) {
+	for(unsigned int k=0; k<clusters.size(); k++) {
+		const dasp::Cluster& cluster = clusters[k];
 		unsigned int in_roi_cnt = 0;
 		for(unsigned int i : cluster.pixel_ids) {
 			const dasp::Point& p = points[i];
@@ -363,6 +405,7 @@ void DaspTracker::trainInitialColorModel()
 				depth_hist.add(d);
 			}
 			clusters_in_roi.push_back(cluster);
+			clusters_in_roi_ids.push_back(k);
 		}
 	}
 
@@ -372,10 +415,13 @@ void DaspTracker::trainInitialColorModel()
 	dasp::AutoFindDepthRange::Find(depth_hist, depth_min, depth_max);
 
 	std::vector<dasp::Cluster> clusters_selected;
-	for(const dasp::Cluster& cluster : clusters_in_roi) {
+	std::vector<unsigned int> clusters_selected_id;
+	for(unsigned int i=0; i<clusters_in_roi.size(); i++) {
+		const dasp::Cluster& cluster = clusters_in_roi[i];
 		uint16_t d = uint16_t(cluster.center.depth * 1000.0f); // TODO ........ pathetic
 		if(depth_min <= d && d <= depth_max) {
 			clusters_selected.push_back(cluster);
+			clusters_selected_id.push_back(clusters_in_roi_ids[i]);
 		}
 	}
 
@@ -393,7 +439,7 @@ void DaspTracker::trainInitialColorModel()
 	}
 
 	// learn gmm from contents of selected super pixels
-	if(clusters_selected.size() > 0) {
+	if(clusters_selected.size() >= 5) {
 		std::vector<Danvil::ctLinAlg::Vec3f> gmm_training;
 //		Superpixels6D::ForPixelClusters(clusters_selected, points,
 //				[&gmm_training](unsigned int, const Superpixels6D::Cluster&, unsigned int, const Superpixels6D::Point& p) {
@@ -412,24 +458,9 @@ void DaspTracker::trainInitialColorModel()
 		has_hand_gmm_model_ = true;
 
 		// collect histograms for superpixels
-		model_hist_.clear();
-		for(const dasp::Cluster& cluster : clusters_selected) {
-			dasp::SuperpixelState state{cluster.center.color, Eigen::Vector3f::UnitZ()}; // TODO cluster.center.normal;
-			dasp::SuperpixelHistogram hist(state);
-			// iterate over neighbours
-			for(const dasp::Cluster& n : clusters_selected) {
-				//float dmax = std::max(cluster.center.scala, n.center.scala);
-				float dmax = cluster.center.scala;
-				if((cluster.center.pos - n.center.pos).norm() < dmax) {
-					dasp::SuperpixelState n_state{n.center.color, Eigen::Vector3f::UnitZ()}; // TODO n.center.normal;
-					hist.add(n_state);
-				}
-			}
-			std::cout << "Chroma   : " << hist.hist_chroma_.transpose() << std::endl;
-			std::cout << "Intensity: " << hist.hist_intensity_.transpose() << std::endl;
-			std::cout << "Normal   : " << hist.hist_normal_.transpose() << std::endl;
-			model_hist_.push_back(hist);
-		}
+		model_.reset(new SuperpixelHistogramModel());
+		SuperpixelGraph G = CreateGraphFromClusters(clusters);
+		model_->train(G, clusters_selected_id);
 	}
 
 	DANVIL_BENCHMARK_STOP(Hand_V3_Init)

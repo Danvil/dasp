@@ -391,6 +391,8 @@ namespace dasp
 
 	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img);
 
+	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color);
+
 	void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const slimage::Image3ub& img);
 
 	void PlotEdges(const std::vector<int>& point_labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b);

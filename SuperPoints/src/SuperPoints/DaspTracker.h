@@ -59,9 +59,8 @@ private:
 	std::vector<dasp::Cluster> clusters;
 
 	bool has_hand_gmm_model_;
+	boost::shared_ptr<SuperpixelHistogramModel> model_;
 	Danvil::GMM::GaussianMixtureModel<5,3,float> hand_gmm_model_;
-
-	std::vector<dasp::SuperpixelHistogram> model_hist_;
 
 	std::map<std::string, slimage::ImagePtr> images_;
 

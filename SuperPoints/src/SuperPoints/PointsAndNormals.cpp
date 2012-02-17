@@ -16,10 +16,6 @@ namespace dasp {
 namespace PointsAndNormals {
 //----------------------------------------------------------------------------//
 
-constexpr float cZSlope = 0.001f;
-constexpr float cFocal = 580.0f;
-constexpr float cWindowMeters = 0.04f;
-
 inline
 Eigen::Vector3f ReadVector3fFromMem(const float* p_points) {
 	return Eigen::Vector3f(p_points[0], p_points[1], p_points[2]);
@@ -30,16 +26,6 @@ void WriteVector3fToMem(float* p_points, const Eigen::Vector3f& pnt) {
 	p_points[0] = pnt[0];
 	p_points[1] = pnt[1];
 	p_points[2] = pnt[2];
-}
-
-/** Computes a 3D point from pixel position and depth */
-inline
-Eigen::Vector3f PointFromDepth(unsigned int x, unsigned int y, uint16_t depth, unsigned int width, unsigned int height) {
-	float z = float(depth) * cZSlope;
-	return Eigen::Vector3f(
-			z*(float(x) - float(width/2))/cFocal,
-			z*(float(y) - float(height/2))/cFocal,
-			z);
 }
 
 slimage::Image3f ComputePoints(const slimage::Image1ui16& depth, slimage::ThreadingOptions opt)

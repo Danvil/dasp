@@ -523,27 +523,28 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img)
 {
-	assert(cluster.is_valid());
-	// plot all pixels belonging to the cluster in the color of the cluster center
 	unsigned char c_col_r = 255.0f * cluster.center.color[0];
 	unsigned char c_col_g = 255.0f * cluster.center.color[1];
 	unsigned char c_col_b = 255.0f * cluster.center.color[2];
+	PlotCluster(cluster, points, img, slimage::Pixel3ub{c_col_r, c_col_g, c_col_b});
+}
+
+void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color)
+{
+	assert(cluster.is_valid());
+	// plot all pixels belonging to the cluster in the color of the cluster center
 	for(unsigned int i : cluster.pixel_ids) {
 		const Point& p = points[i];
-		unsigned char* col = img.pointer(p.spatial_x(), p.spatial_y());
-//			cols[k % cols.size()].writeRgb(col);
-		col[0] = c_col_r;
-		col[1] = c_col_g;
-		col[2] = c_col_b;
+		img(p.spatial_x(), p.spatial_y()) = color;
 	}
 	// plot the cluster center (using some kind of inverse color)
 	int cx = cluster.center.spatial_x();
 	int cy = cluster.center.spatial_y();
 	if(0 <= cx && cx < int(points.width()) && 0 <= cy && cy < int(points.height())) {
 		unsigned char* col = img.pointer(cx, cy);
-		col[0] = 255 - c_col_r;
-		col[1] = 255 - c_col_g;
-		col[2] = 255 - c_col_b;
+		col[0] = 255 - color[0];
+		col[1] = 255 - color[1];
+		col[2] = 255 - color[2];
 	}
 
 }
