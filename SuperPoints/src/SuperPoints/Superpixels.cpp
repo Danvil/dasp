@@ -273,28 +273,68 @@ void FindSeedsDepthMipmap_Walk(
 	}
 }
 
-slimage::Image1f ComputeDepthDensity(const ImagePoints& points)
+float LocalDerivative(float v0, float v1, float v2, float v3, float v4) {
+	float a = std::abs(v2 + v0 - 2.0f*v1);
+	float b = std::abs(v4 + v2 - 2.0f*v3);
+	if(a < b) {
+		return v2 - v0;
+	}
+	else {
+		return v4 - v2;
+	}
+}
+
+slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const ParametersExt& opt)
 {
 	slimage::Image1f num(points.width(), points.height());
-	for(unsigned int i=0; i<points.size(); i++) {
-		num[i] = points[i].estimatedCount();
+	for(unsigned int i=0; i<points.height(); i++) {
+		for(unsigned int j=0; j<points.width(); j++) {
+			// estimate gradient
+			unsigned int s = std::max(static_cast<unsigned int>(std::round(points(j,i).scala)), 2u);
+			if(i < s || points.height() - s <= i || j < s || points.width() - s <= j) {
+				num(j,i) = 0.0f;
+				continue;
+			}
+			float dx = LocalDerivative(
+				points(j-s,i).depth,
+				points(j-s/2,i).depth,
+				points(j,i).depth,
+				points(j+s/2,i).depth,
+				points(j+s,i).depth
+			);
+			float dy = LocalDerivative(
+				points(j,i-s).depth,
+				points(j,i-s/2).depth,
+				points(j,i).depth,
+				points(j,i+s/2).depth,
+				points(j,i+s).depth
+			);
+			float scl = std::sqrt(opt.roh);
+			dx *= scl;
+			dy *= scl;
+			float Dd2 = dx*dx + dy*dy;
+			float lambda = std::sqrt(Dd2 + 1.0f);
+			lambda = std::min(20.0f, lambda); // limit
+			// compute number of seeds per pixel
+			num(j,i) = lambda * points(j,i).estimatedCount();
+		}
 	}
 	return num;
 }
 
-slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
-{
-	slimage::Image1d num(points.width(), points.height());
-	for(unsigned int i=0; i<points.size(); i++) {
-		num[i] = double(points[i].estimatedCount());
-	}
-	return num;
-}
+//slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
+//{
+//	slimage::Image1d num(points.width(), points.height());
+//	for(unsigned int i=0; i<points.size(); i++) {
+//		num[i] = double(points[i].estimatedCount());
+//	}
+//	return num;
+//}
 
 std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const ParametersExt& opt)
 {
 	// compute estimated number of seeds per pixel
-	slimage::Image1f num = ComputeDepthDensity(points);
+	slimage::Image1f num = ComputeDepthDensity(points, opt);
 	// compute mipmaps
 	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 1);
 	// now create pixel seeds
@@ -306,7 +346,7 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Paramete
 std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const ParametersExt& opt)
 {
 	// compute estimated number of seeds per pixel
-	slimage::Image1f num = ComputeDepthDensity(points);
+	slimage::Image1f num = ComputeDepthDensity(points, opt);
 	// compute blue noise points
 	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(num);
 	// convert to seeds
@@ -316,7 +356,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Parameters
 		Seed s;
 		s.x = std::round(pnts[i].x);
 		s.y = std::round(pnts[i].y);
-		if(0 <= s.x && s.x < points.width() && 0 <= s.y && s.y < points.height()) {
+		if(0 <= s.x && s.x < int(points.width()) && 0 <= s.y && s.y < int(points.height())) {
 			s.scala = points(s.x, s.y).scala;
 			seeds.push_back(s);
 		}
@@ -327,7 +367,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Parameters
 std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const ParametersExt& opt)
 {
 	// compute estimated number of seeds per pixel
-	slimage::Image1f roh = ComputeDepthDensity(points);
+	slimage::Image1f roh = ComputeDepthDensity(points, opt);
 	std::vector<Seed> seeds;
 	for(unsigned int y=0; y<roh.height() - 1; y++) {
 		roh(1,y) += roh(0,y);
@@ -526,7 +566,7 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimag
 	unsigned char c_col_r = 255.0f * cluster.center.color[0];
 	unsigned char c_col_g = 255.0f * cluster.center.color[1];
 	unsigned char c_col_b = 255.0f * cluster.center.color[2];
-	PlotCluster(cluster, points, img, slimage::Pixel3ub{c_col_r, c_col_g, c_col_b});
+	PlotCluster(cluster, points, img, slimage::Pixel3ub{{c_col_r, c_col_g, c_col_b}});
 }
 
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color)
