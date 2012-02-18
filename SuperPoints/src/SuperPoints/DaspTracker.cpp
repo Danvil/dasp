@@ -343,6 +343,9 @@ void DaspTracker::performSegmentationStep()
 			//dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
+		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
+		density.scale(20.0f);
+
 		// set images for gui
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
@@ -350,6 +353,7 @@ void DaspTracker::performSegmentationStep()
 			images_["rgb"] = slimage::Ptr(kinect_color_rgb);
 //			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
 			images_["depth"] = slimage::Ptr(kinect_depth_color);
+			images_["rho"] = slimage::Ptr(slimage::Convert_f_2_ub(density));
 			images_["super"] = slimage::Ptr(super);
 		//	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
 		//	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));

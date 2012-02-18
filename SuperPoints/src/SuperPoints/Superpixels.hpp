@@ -379,6 +379,8 @@ namespace dasp
 
 	std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::vector<Seed>& seeds, const ParametersExt& opt);
 
+	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const ParametersExt& opt);
+
 	std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt);
 
 	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt);
