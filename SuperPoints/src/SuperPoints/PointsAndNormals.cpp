@@ -46,35 +46,6 @@ slimage::Image3f ComputePoints(const slimage::Image1ui16& depth, slimage::Thread
 	return points;
 }
 
-/** Fits a plane into points and returns the plane normal */
-template<typename C>
-Eigen::Vector3f FitNormal(const C& points) {
-//		return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
-	// compute covariance matrix
-//		Eigen::Matrix3f A = Eigen::Matrix3f::Zero();
-//		for(const Eigen::Vector3f& p : points) {
-//			A += p * p.transpose();
-//		}
-	float xx=0.0f, xy=0.0f, xz=0.0f, yy=0.0f, yz=0.0f, zz=0.0f;
-	for(const Eigen::Vector3f& p : points) {
-		float x = p[0];
-		float y = p[1];
-		float z = p[2];
-		xx += x*x;
-		xy += x*y;
-		xz += x*z;
-		yy += y*y;
-		yz += y*z;
-		zz += z*z;
-	}
-	Eigen::Matrix3f A; A << xx, xy, xz, xy, yy, yz, xz, yz, zz;
-	// compute eigenvalues/-vectors
-	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
-	solver.computeDirect(A);
-	// take eigenvector (first eigenvalue is smallest!)
-	return solver.eigenvectors().col(0).normalized();
-}
-
 inline
 bool InRange(int x, int y, unsigned int width, unsigned int height) {
 	return (0 <= x && x < int(width) && 0 <= y && y < int(height));

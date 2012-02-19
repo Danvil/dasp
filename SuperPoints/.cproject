@@ -34,6 +34,7 @@
 								<option id="gnu.cpp.compiler.option.other.other.849867807" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++0x" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1413525141" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.2061332146" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 								</option>
@@ -67,7 +68,7 @@
 					</folderInfo>
 					<sourceEntries>
 						<entry excluding="src/SuperPoints" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/SuperPoints"/>
+						<entry excluding="PointsAndNormals.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/SuperPoints"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -104,6 +105,7 @@
 								<option id="gnu.cpp.compiler.option.other.other.1737433991" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++0x" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1652506096" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1422620371" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 								</option>
@@ -140,7 +142,7 @@
 					</folderInfo>
 					<sourceEntries>
 						<entry excluding="src/SuperPoints" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/SuperPoints"/>
+						<entry excluding="PointsAndNormals.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/SuperPoints"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

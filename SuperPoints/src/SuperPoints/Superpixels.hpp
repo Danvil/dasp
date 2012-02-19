@@ -8,6 +8,7 @@
 #ifndef SUPERPIXELS_HPP_
 #define SUPERPIXELS_HPP_
 
+#include "Tools.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
@@ -32,17 +33,30 @@ namespace dasp
 
 	struct Point
 	{
-//			bool valid_;
-		Eigen::Vector3f color;
+		/** pixel image position */
 		Eigen::Vector2f pos;
-//			Eigen::Vector3f world;
+
+		/** color */
+		Eigen::Vector3f color;
+
+		/** depth in mm as integer (0 if invalid) */
+		uint16_t depth_i16;
+
+		/** position of world source point (meters) */
+		Eigen::Vector3f world;
+
+		/** local depth gradient (meter/px) */
+		Eigen::Vector2f gradient;
+
+		/** local normal (meters) */
 		Eigen::Vector3f normal;
 
-		/// depth of point
-		S depth;
-
-		/// project size of a super pixel at point depth
+		/** project size of a super pixel at point depth */
 		S scala;
+
+		float depth() const {
+			return world[2];
+		}
 
 		/** Radius of a super pixel at point depth */
 		int radius() const {
@@ -61,8 +75,12 @@ namespace dasp
 			return 1.0f / (scala * scala);
 		}
 
-		bool valid() const {
-			return depth > 0.01f;
+		bool isInvalid() const {
+			return depth_i16 == 0;
+		}
+
+		bool isValid() const {
+			return !isInvalid();
 		}
 
 		int spatial_x() const {
@@ -71,38 +89,6 @@ namespace dasp
 
 		int spatial_y() const {
 			return int(pos[1]);
-		}
-
-		static Point Zero() {
-			Point p;
-//				p.valid_ = false;
-			p.color = Eigen::Vector3f::Zero();
-			p.pos = Eigen::Vector2f::Zero();
-//				p.world = Eigen::Vector3f::Zero();
-			p.normal = Eigen::Vector3f::Zero();
-			p.depth = 0.0f;
-//				p.scala = 0.0f;
-			return p;
-		}
-
-		Point& operator+=(const Point& x) {
-			color += x.color;
-			pos += x.pos;
-//				world += x.world;
-			normal += x.normal;
-			depth += x.depth;
-//				scala += x.scala;
-			return *this;
-		}
-
-		Point& operator*=(S s) {
-			color *= s;
-			pos *= s;
-//				world *= s;
-			normal *= s;
-			depth *= s;
-//				scala *= s;
-			return *this;
 		}
 
 	public:
@@ -123,11 +109,14 @@ namespace dasp
 
 	struct Parameters
 	{
+		/** camera parameters */
+		Camera camera;
+
 		/// number of clusters
 		unsigned int cluster_count;
 
 		S weight_spatial;
-//			S weight_world;
+//		S weight_world;
 		S weight_normal;
 		S weight_depth;
 
@@ -136,9 +125,6 @@ namespace dasp
 
 		/// scale for cluster scala for search area
 		float coverage;
-
-		/// camera focal length
-		float focal;
 
 		/// superpixels per m^2
 		float roh;
@@ -149,14 +135,14 @@ namespace dasp
 		 * n = roh * (z/f)^2
 		 */
 		float computeClusterCountFactor() const {
-			return roh / (focal * focal);
+			return roh / (camera.focal * camera.focal);
 		}
 
 		/**
 		 * s_p = s_r * roh / z = f / sqrt(roh) / z
 		 */
 		float computePixelSizeFactor() const {
-			return focal / std::sqrt(roh);
+			return camera.focal / std::sqrt(roh);
 		}
 	};
 
@@ -166,11 +152,9 @@ namespace dasp
 		ParametersExt() {}
 		ParametersExt(const Parameters& p) : Parameters(p) {}
 		unsigned int width, height;
-		unsigned int cluster_nx, cluster_ny;
-		unsigned int cluster_dx, cluster_dy;
-		float radius;
-		float spatial_normalizer;
-		float weight_spatial_final;
+//		unsigned int cluster_nx, cluster_ny;
+//		unsigned int cluster_dx, cluster_dy;
+//		float weight_spatial_final;
 	};
 
 	template<typename K>
@@ -241,11 +225,11 @@ namespace dasp
 
 		std::vector<unsigned int> pixel_ids;
 
-		bool is_valid() const {
+		bool hasPoints() const {
 			return pixel_ids.size() > 0;
 		}
 
-		void UpdateCenter(const ImagePoints& points);
+		void UpdateCenter(const ImagePoints& points, const Camera& cam);
 
 	};
 
@@ -260,50 +244,49 @@ namespace dasp
 
 	template<bool cUseSqrt=true, bool cDisparity=true>
 	inline S Distance(const Point& u, const Point& v, const ParametersExt& opt) {
-		S d_color, d_point;
+		S d_color;
+		S d_point;
+//		S d_world;
 		if(cUseSqrt) {
 			d_color = (u.color - v.color).norm();
 			d_point = (u.pos - v.pos).norm();
-//				d_world = (u.world - v.world).norm();
+//			d_world = (u.world - v.world).norm();
 		}
 		else {
 			d_color = (u.color - v.color).squaredNorm();
 			d_point = (u.pos - v.pos).squaredNorm();
-//				d_world = (u.world - v.world).squaredNorm();
+//			d_world = (u.world - v.world).squaredNorm();
 		}
 
-//			float mean_depth = 0.5f*(u.depth + v.depth);
-//			d_world /= mean_depth * mean_depth;
-//			d_point /= mean_depth;
+//		float mean_depth = 0.5f*(u.depth + v.depth);
+//		d_world /= mean_depth * mean_depth;
+//		d_point /= mean_depth;
 
 		S d_depth;
-//			if(u.valid() && v.valid()) {
 		if(cDisparity) {
 			if(cUseSqrt) {
-				d_depth = std::abs(1.0f/u.depth - 1.0f/v.depth);
+				d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
 			}
 			else {
-				d_depth = Square(1.0f/u.depth - 1.0f/v.depth);
+				d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
 			}
 		}
 		else {
 			if(cUseSqrt) {
-				d_depth = std::abs(u.depth - v.depth);
+				d_depth = std::abs(u.depth() - v.depth());
 			}
 			else {
-				d_depth = Square(u.depth - v.depth);
+				d_depth = Square(u.depth() - v.depth());
 			}
 		}
-//			}
-//			else {
-//				// use some kind of max distance for world, normal and depth values
-//				d_depth = 10.0f;
-//			}
+
 		S d_normal = DistanceForNormals(u.normal, v.normal);
+
 		// both points have valid depth information
-		return d_color
-			+ opt.weight_spatial_final*d_point
-//				+ opt.weight_world*d_world
+		return
+			d_color
+			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
+//			+ opt.weight_spatial*d_world
 			+ opt.weight_normal*d_normal
 			+ opt.weight_depth*d_depth;
 	}
@@ -339,19 +322,11 @@ namespace dasp
 		// mean cluster normals and
 		S d_normal = DistanceForNormals(x.center.normal, y.center.normal);
 		// world position of cluster centers.
-		Eigen::Vector3f pw1(
-				x.center.depth*(float(x.center.pos[0]) - float(640/2))/580.0f,
-				x.center.depth*(float(x.center.pos[1]) - float(480/2))/580.0f,
-				x.center.depth);
-		Eigen::Vector3f pw2(
-				y.center.depth*(float(y.center.pos[0]) - float(640/2))/580.0f,
-				y.center.depth*(float(y.center.pos[1]) - float(480/2))/580.0f,
-				y.center.depth);
-		S d_world = (pw1 - pw2).norm();
+		S d_world = (x.center.world - y.center.world).norm();
 		return d_color
-			+ opt.weight_spatial*d_world
+			+ opt.weight_spatial*d_world // FIXME constant
 			+ opt.weight_normal*d_normal;
-		return DistanceSpatial(x.center, y.center);
+//		return DistanceSpatial(x.center, y.center);
 	}
 
 	ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsigned int height);
@@ -359,7 +334,6 @@ namespace dasp
 	ImagePoints CreatePoints(
 			const slimage::Image3f& image,
 			const slimage::Image1ui16& depth,
-//				const Danvil::Images::Image3fPtr& points,
 			const slimage::Image3f& normals,
 			const ParametersExt& opt
 			);
@@ -367,7 +341,6 @@ namespace dasp
 	ImagePoints CreatePoints(
 			const slimage::Image3ub& image,
 			const slimage::Image1ui16& depth,
-//				const Danvil::Images::Image3fPtr& points,
 			const slimage::Image3f& normals,
 			const ParametersExt& opt
 			);
@@ -422,9 +395,9 @@ namespace dasp
 		unsigned char r,g,b;
 	};
 
-	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey=0, bool plot_1px=true);
+	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey=0, int size=1);
 
-	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, bool plot_1px=true);
+	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, int size=1);
 
 }
 

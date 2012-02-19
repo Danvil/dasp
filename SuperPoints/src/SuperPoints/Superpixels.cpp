@@ -8,46 +8,41 @@
 #include "Superpixels.hpp"
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
+#include "PointsAndNormals.hpp"
 #include <Danvil/Tools/MoreMath.h>
-//#include <Danvil/Images/ImageOps.h>
+#include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
 
 namespace dasp {
 
-void Cluster::UpdateCenter(const ImagePoints& points)
+void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 {
-	if(!is_valid()) {
-		return;
-	}
-	float old_scala = center.scala;
-	center = Point::Zero();
-	unsigned int n_valid = 0;
+	assert(hasPoints());
+
+	// compute mean
+	Eigen::Vector3f mean_color = Eigen::Vector3f::Zero();
+	Eigen::Vector3f mean_world = Eigen::Vector3f::Zero();
+
 	for(unsigned int i : pixel_ids) {
 		const Point& p = points[i];
-		if(p.valid()) {
-			center += p;
-			n_valid ++;
-		}
-		else {
-			center.color += p.color;
-			center.pos += p.pos;
-		}
+		assert(p.isValid());
+		mean_color += p.color;
+		mean_world += p.world;
 	}
-	center.color /= float(pixel_ids.size());
-	center.pos /= float(pixel_ids.size());
-	if(n_valid > 0) {
-		center.depth /= float(n_valid);
-//		center.world *= 1.0f / float(n_valid);
-		center.normal.normalize(); // FIXME normalization may fail!
+
+	center.color = mean_color / float(pixel_ids.size());
+	center.world = mean_world / float(pixel_ids.size());
+	center.pos = cam.project(center.world);
+	center.depth_i16 = cam.depth(center.world);
+
+	center.normal = FitNormal(pixel_ids, [&points](unsigned int i) { return points[i].world; });
+	if(center.normal[2] > 0.0f) {
+		center.normal *= -1.0f;
 	}
-	else {
-		center.depth = 0.0f;
-//		center.world = Eigen::Vector3f::Zero();
-		center.normal = Eigen::Vector3f::Zero();
-	}
-//	// get scala of center
-//	center.scala = points(center.spatial_x(), center.spatial_y()).scala;
-	center.scala = old_scala;
+	center.gradient[0] = - center.normal[0] / center.normal[2];
+	center.gradient[1] = - center.normal[1] / center.normal[2];
+
+	// scala is not changed!
 }
 
 ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsigned int height)
@@ -55,22 +50,21 @@ ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsig
 	ParametersExt opt_ext(opt);
 	opt_ext.width = width;
 	opt_ext.height = height;
-	float d = std::sqrt(float(opt_ext.width*opt_ext.height) / float(opt_ext.cluster_count));
-	opt_ext.cluster_nx = (unsigned int)std::ceil(float(opt_ext.width) / d);
-	opt_ext.cluster_ny = (unsigned int)std::ceil(float(opt_ext.height) / d);
-	opt_ext.cluster_dx = (unsigned int)std::floor(float(opt_ext.width) / float(opt_ext.cluster_nx));
-	opt_ext.cluster_dy = (unsigned int)std::floor(float(opt_ext.height) / float(opt_ext.cluster_ny));
-	opt_ext.cluster_count = opt_ext.cluster_nx * opt_ext.cluster_ny;
-	opt_ext.radius = std::sqrt(float(opt_ext.cluster_dx*opt_ext.cluster_dx + opt_ext.cluster_dy*opt_ext.cluster_dy));
-	opt_ext.spatial_normalizer = 1.0f / opt_ext.radius;
-	opt_ext.weight_spatial_final = opt.weight_spatial * opt_ext.spatial_normalizer;
+//	float d = std::sqrt(float(opt_ext.width*opt_ext.height) / float(opt_ext.cluster_count));
+//	opt_ext.cluster_nx = (unsigned int)std::ceil(float(opt_ext.width) / d);
+//	opt_ext.cluster_ny = (unsigned int)std::ceil(float(opt_ext.height) / d);
+//	opt_ext.cluster_dx = (unsigned int)std::floor(float(opt_ext.width) / float(opt_ext.cluster_nx));
+//	opt_ext.cluster_dy = (unsigned int)std::floor(float(opt_ext.height) / float(opt_ext.cluster_ny));
+//	opt_ext.cluster_count = opt_ext.cluster_nx * opt_ext.cluster_ny;
+//	opt_ext.radius = std::sqrt(float(opt_ext.cluster_dx*opt_ext.cluster_dx + opt_ext.cluster_dy*opt_ext.cluster_dy));
+//	opt_ext.spatial_normalizer = 1.0f / opt_ext.radius;
+//	opt_ext.weight_spatial_final = opt.weight_spatial * opt_ext.spatial_normalizer;
 	return opt_ext;
 }
 
 ImagePoints CreatePoints(
 		const slimage::Image3ub& image,
 		const slimage::Image1ui16& depth,
-//		const slimage::Image3fPtr& pos,
 		const slimage::Image3f& normals,
 		const ParametersExt& opt)
 {
@@ -86,44 +80,36 @@ ImagePoints CreatePoints(
 ImagePoints CreatePoints(
 		const slimage::Image3f& image,
 		const slimage::Image1ui16& depth,
-//		const slimage::Image3fPtr& pos,
 		const slimage::Image3f& normals,
 		const ParametersExt& opt)
 {
 	unsigned int width = image.width();
 	unsigned int height = image.height();
 	assert(width == depth.width() && height == depth.height());
-//	assert(width == pos->width() && height == pos->height());
 	if(!normals.isNull()) {
 		assert(width == normals.width() && height == normals.height());
 	}
+
+	Camera camera{float(width)*0.5f, float(height)*0.5f, 580.0f, 0.001f};
+	const float cBaseScale = 0.05f;
 
 	ImagePoints points(width, height);
 
 	const float* p_col = image.begin();
 	const uint16_t* p_depth = depth.begin();
-//	const float* p_points = pos->begin();
 	const float pixel_size_factor = opt.computePixelSizeFactor();
 	const float* p_normals = normals.isNull() ? 0 : normals.begin();
+
 	for(unsigned int y=0; y<height; y++) {
 		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
 			Point& p = points(x, y);
-//			p.valid_ = true;//(*p_depth > 0);
 			p.color[0] = p_col[0];
 			p.color[1] = p_col[1];
 			p.color[2] = p_col[2];
-			uint16_t d = *p_depth;
-			p.depth = float(d) * 0.001f;
-			p.scala = (d > 0) ? (pixel_size_factor / p.depth) : 0;
-//			p.world[0] = p.depth*(float(x) - float(width/2))*scl;
-//			p.world[1] = p.depth*(float(y) - float(height/2))*scl;
-//			p.world[2] = p.depth;
-//			if(p_normals != 0) {
-//				p.world[0] = p_points[0];
-//				p.world[1] = p_points[1];
-//				p.world[2] = p_points[2];
-//				p_points += 3;
-//			}
+			p.depth_i16 = *p_depth;
+			p.world = camera.unproject(x, y, p.depth_i16);
+			p.scala = (p.depth_i16 > 0) ? (pixel_size_factor / p.depth()) : 0;
+			p.gradient = LocalDepthGradient(depth, x, y, cBaseScale, camera);
 			if(p_normals != 0) {
 				p.normal[0] = p_normals[0];
 				p.normal[1] = p_normals[1];
@@ -131,9 +117,10 @@ ImagePoints CreatePoints(
 				p_normals += 3;
 			}
 			else {
-				p.normal[0] = 0;
-				p.normal[1] = 0;
+				p.normal[0] = p.gradient[0];
+				p.normal[1] = p.gradient[1];
 				p.normal[2] = -1.0f;
+				p.normal.normalize();
 			}
 		}
 	}
@@ -172,8 +159,11 @@ std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const 
 
 std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const ParametersExt& opt)
 {
-	const unsigned int Dx = opt.cluster_dx;
-	const unsigned int Dy = opt.cluster_dy;
+	const float d = std::sqrt(float(opt.width*opt.height) / float(opt.cluster_count));
+	const unsigned int Nx = (unsigned int)std::ceil(float(opt.width) / d);
+	const unsigned int Ny = (unsigned int)std::ceil(float(opt.height) / d);
+	const unsigned int Dx = (unsigned int)std::floor(float(opt.width) / float(Nx));
+	const unsigned int Dy = (unsigned int)std::floor(float(opt.height) / float(Ny));
 	const unsigned int Hx = Dx/2;
 	const unsigned int Hy = Dy/2;
 	const float S = float(std::max(Dx, Dy));
@@ -181,9 +171,9 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const ParametersExt& 
 	// space seeds evently
 	std::vector<Seed> seeds;
 	seeds.reserve(opt.cluster_count);
-	for(unsigned int iy=0; iy<opt.cluster_ny; iy++) {
+	for(unsigned int iy=0; iy<Ny; iy++) {
 		unsigned int y = Hy + Dy * iy;
-		for(unsigned int ix=0; ix<opt.cluster_nx; ix++) {
+		for(unsigned int ix=0; ix<Nx; ix++) {
 			unsigned int x = Hx + Dx * ix;
 			Seed p;
 			p.x = x;
@@ -273,47 +263,12 @@ void FindSeedsDepthMipmap_Walk(
 	}
 }
 
-float LocalDerivative(float v0, float v1, float v2, float v3, float v4) {
-	float a = std::abs(v2 + v0 - 2.0f*v1);
-	float b = std::abs(v4 + v2 - 2.0f*v3);
-	if(a < b) {
-		return v2 - v0;
-	}
-	else {
-		return v4 - v2;
-	}
-}
-
 slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const ParametersExt& opt)
 {
 	slimage::Image1f num(points.width(), points.height());
 	for(unsigned int i=0; i<points.height(); i++) {
 		for(unsigned int j=0; j<points.width(); j++) {
-			// estimate gradient
-			unsigned int s = std::max(static_cast<unsigned int>(std::round(points(j,i).scala)), 2u);
-			if(i < s || points.height() - s <= i || j < s || points.width() - s <= j) {
-				num(j,i) = 0.0f;
-				continue;
-			}
-			float dx = LocalDerivative(
-				points(j-s,i).depth,
-				points(j-s/2,i).depth,
-				points(j,i).depth,
-				points(j+s/2,i).depth,
-				points(j+s,i).depth
-			);
-			float dy = LocalDerivative(
-				points(j,i-s).depth,
-				points(j,i-s/2).depth,
-				points(j,i).depth,
-				points(j,i+s/2).depth,
-				points(j,i+s).depth
-			);
-			float scl = std::sqrt(opt.roh);
-			dx *= scl;
-			dy *= scl;
-			float Dd2 = dx*dx + dy*dy;
-			float lambda = std::sqrt(Dd2 + 1.0f);
+			float lambda = std::sqrt(points(j,i).gradient.squaredNorm() + 1.0f);
 			lambda = std::min(20.0f, lambda); // limit
 			// compute number of seeds per pixel
 			num(j,i) = lambda * points(j,i).estimatedCount();
@@ -432,12 +387,16 @@ std::vector<Cluster> CreateClusters(const std::vector<Seed>& seeds, const ImageP
 		for(unsigned int yi=ymin; yi<=ymax; yi++) {
 			for(unsigned int xi=xmin; xi<=xmax; xi++) {
 				unsigned int index = points.index(xi, yi);
+				if(points(xi, yi).isInvalid()) {
+					// omit invalid points
+					continue;
+				}
 				c.pixel_ids.push_back(index);
 			}
 		}
 		// update center
-		c.UpdateCenter(points);
-		if(c.is_valid()) {
+		if(c.hasPoints()) {
+			c.UpdateCenter(points, opt.camera);
 			clusters.push_back(c);
 		}
 	}
@@ -525,7 +484,7 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 			for(unsigned int x=xmin; x<xmax; x++) {
 				unsigned int i = points.index(x,y);
 				const Point& p = points[i];
-				if(!p.valid()) {
+				if(p.isInvalid()) {
 					// omit invalid points
 					continue;
 				}
@@ -539,7 +498,9 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 	}
 	// delete clusters assignments
 	for(Cluster& c : clusters) {
+		unsigned int n = c.pixel_ids.size();
 		c.pixel_ids.clear();
+		c.pixel_ids.reserve(n);
 	}
 	// assign points to clusters
 	for(unsigned int i=0; i<points.size(); i++) {
@@ -553,8 +514,8 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 	clusters_valid.reserve(clusters.size());
 	for(unsigned int i=0; i<clusters.size(); i++) {
 		Cluster c = clusters[i];
-		c.UpdateCenter(points);
-		if(c.is_valid()) {
+		if(c.hasPoints()) {
+			c.UpdateCenter(points, opt.camera);
 			clusters_valid.push_back(c);
 		}
 	}
@@ -571,7 +532,7 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimag
 
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color)
 {
-	assert(cluster.is_valid());
+	assert(cluster.hasPoints());
 	// plot all pixels belonging to the cluster in the color of the cluster center
 	for(unsigned int i : cluster.pixel_ids) {
 		const Point& p = points[i];
@@ -636,7 +597,7 @@ void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, uns
 }
 
 template<typename K, unsigned int CC>
-void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, bool plot_1px)
+void PlotSeedsImpl(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, int size)
 {
 	for(Seed s : seeds) {
 		// round position
@@ -645,11 +606,14 @@ void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, 
 		if(px < 0 || int(img.width()) <= px || py < 0 || int(img.height()) <= py) {
 			continue;
 		}
-		img(px, py) = color;
-		if(!plot_1px) {
+		if(size == 1) {
+			img(px, py) = color;
+
+		}
+		else if(size == 2) {
 			// paint a star
 			//    X
-			//   XXX
+			//   X X
 			//    X
 			if(1 <= px) {
 				img(px-1, py) = color;
@@ -664,17 +628,49 @@ void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, 
 				img(px, py+1) = color;
 			}
 		}
+		else {
+			// paint a circle
+			//    X
+			//   X X
+			//  X   X
+			//   X X
+			//    X
+			if(1 <= px && 1 <= py) {
+				img(px-1, py-1) = color;
+			}
+			if(1 <= px && py + 1 < int(img.width())) {
+				img(px-1, py+1) = color;
+			}
+			if(px + 1 < int(img.width()) && 1 <= py) {
+				img(px+1, py-1) = color;
+			}
+			if(px + 1 < int(img.width()) && py + 1 < int(img.width())) {
+				img(px+1, py+1) = color;
+			}
+			if(2 <= px) {
+				img(px-2, py) = color;
+			}
+			if(px + 2 < int(img.width())) {
+				img(px+2, py) = color;
+			}
+			if(2 <= py) {
+				img(px, py-2) = color;
+			}
+			if(py + 2 < int(img.width())) {
+				img(px, py+2) = color;
+			}
+		}
 	}
 }
 
-void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey, bool plot_1px)
+void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey, int size)
 {
-	PlotSeeds(seeds, img, slimage::Pixel1ub{grey}, plot_1px);
+	PlotSeedsImpl(seeds, img, slimage::Pixel1ub{grey}, size);
 }
 
-void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color, bool plot_1px)
+void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color, int size)
 {
-	PlotSeeds(seeds, img, color, plot_1px);
+	PlotSeedsImpl(seeds, img, color, size);
 }
 
 

@@ -26,7 +26,7 @@ DaspTracker::DaspTracker()
 {
 	training_ = false;
 	dasp_params.reset(new dasp::Parameters());
-	dasp_params->focal = 580.0f;
+	dasp_params->camera = Camera{320.0f, 240.0f, 580.0f, 0.001f};
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
 	color_model_sigma_scale_ = 1.0f;
 	thread_pool_index_ = 100;
@@ -90,17 +90,17 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 //			b = 0;
 //		}
 
-		float a = r + g + b;
-		if(a > 0.05f) {
-			r /= a;
-			g /= a;
-			b = a * 0.1;
-		}
-		else {
-			r = 0;
-			g = 0;
-			b = 0;
-		}
+//		float a = r + g + b;
+//		if(a > 0.05f) {
+//			r /= a;
+//			g /= a;
+//			b = a * 0.1;
+//		}
+//		else {
+//			r = 0;
+//			g = 0;
+//			b = 0;
+//		}
 
 		lab[0] = r;
 		lab[1] = g;
@@ -121,12 +121,12 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
-slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id)
+slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)
 {
 	slimage::Image3ub col(I.width(), I.height());
 	if(I) {
 		Danvil::ContinuousIntervalColorMapping<unsigned char, float> cm
-				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow_White();
+				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor(pal);
 		cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
 		cm.setRange(min, max);
 		slimage::ParallelProcess(I, col, [&cm](const float* src, unsigned char* dst) {
@@ -145,10 +145,7 @@ SuperpixelGraph CreateGraphFromClusters(const std::vector<dasp::Cluster>& cluste
 		s.y = c.center.spatial_y();
 		s.color = c.center.color;
 		s.normal = c.center.normal;
-		s.position = PointsAndNormals::PointFromZ(
-				c.center.spatial_x(), c.center.spatial_y(),
-				c.center.depth,
-				640, 480);
+		s.position = c.center.world;
 		s.scala = c.center.scala;
 		G.nodes_.push_back(s);
 	}
@@ -163,14 +160,13 @@ void DaspTracker::performSegmentationStep()
 
 	// compute normals only if necessary
 	slimage::Image3f kinect_normals;
-	if(super_params_ext.weight_normal > 0.0f) {
-		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
-
-		DANVIL_BENCHMARK_START(normals)
-		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
-	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
-		DANVIL_BENCHMARK_STOP(normals)
-	}
+//	if(super_params_ext.weight_normal > 0.0f) {
+//		DANVIL_BENCHMARK_START(normals)
+//		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+//		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+//	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
+//		DANVIL_BENCHMARK_STOP(normals)
+//	}
 
 	// prepare super pixel points
 	DANVIL_BENCHMARK_START(points)
@@ -196,6 +192,8 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_START(clusters)
 	clusters = dasp::ComputeSuperpixels(points, seeds, super_params_ext);
 	DANVIL_BENCHMARK_STOP(clusters)
+
+	DANVIL_BENCHMARK_START(segmentation)
 
 	slimage::Image1f probability;
 	slimage::Image1f probability_2;
@@ -240,7 +238,7 @@ void DaspTracker::performSegmentationStep()
 		plot_graph.fill(0);
 		for(unsigned int i=0; i<G.nodes_.size(); i++) {
 			for(unsigned int k : G.node_connections_[i]) {
-				slimage::PaintLine(plot_graph, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{255,255,255});
+				slimage::PaintLine(plot_graph, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
 			}
 		}
 
@@ -257,7 +255,6 @@ void DaspTracker::performSegmentationStep()
 			};
 		});
 
-
 	}
 
 	result_.resize(kinect_color.width(), kinect_color.height());
@@ -268,6 +265,8 @@ void DaspTracker::performSegmentationStep()
 		result_.fill(0);
 	}
 
+	DANVIL_BENCHMARK_STOP(segmentation)
+
 	{
 		DANVIL_BENCHMARK_START(plotting)
 
@@ -275,7 +274,6 @@ void DaspTracker::performSegmentationStep()
 		slimage::Image3ub kinect_depth_color(kinect_depth.width(), kinect_depth.height());
 		for(size_t i=0; i<kinect_depth_color.size()/3; i++) {
 			unsigned int d16 = kinect_depth[i];
-			slimage::Pixel3ub color;
 			if(d16 == 0) {
 				kinect_depth_color(i) = {{0,0,0}};
 			}
@@ -294,19 +292,14 @@ void DaspTracker::performSegmentationStep()
 
 		// plot normals
 		slimage::Image3ub kinect_normals_vis;
-		if(kinect_normals) {
-			kinect_normals_vis.resize(kinect_normals.width(), kinect_normals.height());
-			slimage::ParallelProcess(kinect_normals, kinect_normals_vis, [](const float* src, unsigned char* dst) {
-				dst[0] = int(128.0f + 128.0f * src[0]);
-				dst[1] = int(128.0f + 128.0f * src[1]);
-				dst[2] = int(128.0f + 128.0f * src[2]);
-			}, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+		kinect_normals_vis.resize(points.width(), points.height());
+		for(unsigned int i=0; i<points.size(); i++) {
+			Eigen::Vector2f src = points[i].gradient;
+			kinect_normals_vis(i) = slimage::Pixel3ub{{
+					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 128.0f + 64.0f * src[0]))),
+					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 0.0f))),
+					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 128.0f + 64.0f * src[1])))}};
 		}
-
-		// plot seeds
-		slimage::Image1ub seeds_img(points.width(), points.height());
-		seeds_img.fill(255);
-		dasp::PlotSeeds(seeds, seeds_img, 0, false);
 
 		// plot super pixel with edges
 		slimage::Image3ub super(points.width(), points.height());
@@ -343,8 +336,10 @@ void DaspTracker::performSegmentationStep()
 			//dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
+		// plot density and seeds
 		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
-		density.scale(20.0f);
+		slimage::Image3ub seeds_img = ColorizeIntensity(density, 0.0f, 0.02f, thread_pool_index_, Danvil::Palettes::Blue_Red_Yellow);
+		dasp::PlotSeeds(seeds, seeds_img, slimage::Pixel3ub{{255,255,255}}, 3);
 
 		// set images for gui
 		{
@@ -353,7 +348,6 @@ void DaspTracker::performSegmentationStep()
 			images_["rgb"] = slimage::Ptr(kinect_color_rgb);
 //			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
 			images_["depth"] = slimage::Ptr(kinect_depth_color);
-			images_["rho"] = slimage::Ptr(slimage::Convert_f_2_ub(density));
 			images_["super"] = slimage::Ptr(super);
 		//	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
 		//	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));
@@ -370,7 +364,7 @@ void DaspTracker::performSegmentationStep()
 			images_["labels"] = slimage::Ptr(plot_labels);
 		}
 
-		DANVIL_BENCHMARK_STOP(clusters)
+		DANVIL_BENCHMARK_STOP(plotting)
 	}
 }
 
@@ -415,8 +409,7 @@ void DaspTracker::trainInitialColorModel()
 		if(in_roi_cnt > cluster.pixel_ids.size()/2) {
 			for(unsigned int i : cluster.pixel_ids) {
 				const dasp::Point& p = points[i];
-				uint16_t d = uint16_t(p.depth * 1000.0f); // TODO ........ pathetic
-				depth_hist.add(d);
+				depth_hist.add(p.depth_i16);
 			}
 			clusters_in_roi.push_back(cluster);
 			clusters_in_roi_ids.push_back(k);
@@ -432,7 +425,7 @@ void DaspTracker::trainInitialColorModel()
 	std::vector<unsigned int> clusters_selected_id;
 	for(unsigned int i=0; i<clusters_in_roi.size(); i++) {
 		const dasp::Cluster& cluster = clusters_in_roi[i];
-		uint16_t d = uint16_t(cluster.center.depth * 1000.0f); // TODO ........ pathetic
+		uint16_t d = cluster.center.depth_i16;
 		if(depth_min <= d && d <= depth_max) {
 			clusters_selected.push_back(cluster);
 			clusters_selected_id.push_back(clusters_in_roi_ids[i]);
