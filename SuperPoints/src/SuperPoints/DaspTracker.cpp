@@ -307,13 +307,6 @@ void DaspTracker::performSegmentationStep()
 		std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
 		dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
 
-	//	// plot mipmaps
-	//	slimage::Image1f num(points.width(), points.height());
-	//	for(unsigned int i=0; i<points.size(); i++) {
-	//		num[i] = points[i].estimatedCount();
-	//	}
-	//	std::vector<slimage::Image1f> mipmaps = dasp::Mipmaps::ComputeMipmaps(num, 16);
-
 		slimage::Image3ub probability_color;
 		slimage::Image3ub probability_2_color;
 
@@ -349,15 +342,8 @@ void DaspTracker::performSegmentationStep()
 //			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
 			images_["depth"] = slimage::Ptr(kinect_depth_color);
 			images_["super"] = slimage::Ptr(super);
-		//	images_["mm1"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[1], 256.0f));
-		//	images_["mm2"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[2], 16.0f));
-		//	images_["mm3"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[3], 4.0f));
-		//	images_["mm4"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[4], 1.0f));
-		//	images_["mm5"] = slimage::Ptr(slimage::Convert_f_2_ub(mipmaps[5], 0.25f));
 			images_["seeds"] = slimage::Ptr(seeds_img);
-			if(kinect_normals_vis) {
-				images_["normals"] = slimage::Ptr(kinect_normals_vis);
-			}
+			images_["normals"] = slimage::Ptr(kinect_normals_vis);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
 			images_["graph"] = slimage::Ptr(plot_graph);

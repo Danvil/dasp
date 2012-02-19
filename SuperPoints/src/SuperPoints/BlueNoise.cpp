@@ -126,7 +126,7 @@ std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
 	pnts.reserve(indices.size());
 	// compute current error in density
 	float error_current = Energy(pnts, density);
-	std::cout << "INITIAL ERROR: " << error_current << std::endl;
+//	std::cout << "INITIAL ERROR: " << error_current << std::endl;
 	// try add kernel points
 	for(unsigned int i : indices) {
 		float roh = density[i];
@@ -189,7 +189,7 @@ void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigne
 			}
 		}
 	}
-	std::cout << r_min << " " << r_max << std::endl;
+//	std::cout << r_min << " " << r_max << std::endl;
 }
 
 std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density, bool& result_added)
@@ -238,7 +238,7 @@ std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_ste
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
-		std::cout << "Blue noise step " << i << "... " << std::flush;
+//		std::cout << "Blue noise step " << i << "... " << std::flush;
 		bool need_refinement;
 		if(i == p) {
 			// place initial points
@@ -251,9 +251,9 @@ std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_ste
 		}
 		// refine points for new density map
 		if(need_refinement) {
-			Refine(pnts, mipmaps[i], 8);
+			Refine(pnts, mipmaps[i], 2);
 		}
-		std::cout << pnts.size() << " points." << std::endl;
+//		std::cout << pnts.size() << " points." << std::endl;
 		if(max_steps > 0 && p - i + 1 >= max_steps) {
 			break;
 		}
