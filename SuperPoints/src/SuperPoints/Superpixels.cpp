@@ -9,6 +9,7 @@
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
 #include "PointsAndNormals.hpp"
+#include <Slimage/Paint.hpp>
 #include <Danvil/Tools/MoreMath.h>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
@@ -35,12 +36,15 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 	center.pos = cam.project(center.world);
 	center.depth_i16 = cam.depth(center.world);
 
-	center.normal = FitNormal(pixel_ids, [&points](unsigned int i) { return points[i].world; });
+	center.normal = FitNormal(pixel_ids, [&points,&center](unsigned int i) { return points[i].world - center.world; });
 	if(center.normal[2] > 0.0f) {
 		center.normal *= -1.0f;
 	}
 	center.gradient[0] = - center.normal[0] / center.normal[2];
 	center.gradient[1] = - center.normal[1] / center.normal[2];
+
+//	center.normal = points(center.pos).normal;
+//	center.gradient = points(center.pos).gradient;
 
 	// scala is not changed!
 }
@@ -91,7 +95,6 @@ ImagePoints CreatePoints(
 	}
 
 	Camera camera{float(width)*0.5f, float(height)*0.5f, 580.0f, 0.001f};
-	const float cBaseScale = 0.05f;
 
 	ImagePoints points(width, height);
 
@@ -109,7 +112,7 @@ ImagePoints CreatePoints(
 			p.depth_i16 = *p_depth;
 			p.world = camera.unproject(x, y, p.depth_i16);
 			p.scala = (p.depth_i16 > 0) ? (pixel_size_factor / p.depth()) : 0;
-			p.gradient = LocalDepthGradient(depth, x, y, cBaseScale, camera);
+			p.gradient = LocalDepthGradient(depth, x, y, opt.base_scale, camera);
 			if(p_normals != 0) {
 				p.normal[0] = p_normals[0];
 				p.normal[1] = p_normals[1];
@@ -558,6 +561,49 @@ void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points
 	img.fill(0);
 	for(const Cluster& x : clusters) {
 		PlotCluster(x, points, img);
+	}
+}
+
+void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, const ParametersExt& opt)
+{
+	unsigned char c_col_r = 255.0f * cluster.center.color[0];
+	unsigned char c_col_g = 255.0f * cluster.center.color[1];
+	unsigned char c_col_b = 255.0f * cluster.center.color[2];
+	slimage::Pixel3ub color{{c_col_r,c_col_g,c_col_b}};
+
+	int cx = cluster.center.spatial_x();
+	int cy = cluster.center.spatial_y();
+
+	Eigen::Vector2f g0 = cluster.center.gradient;
+	float g_norm_sq = g0.squaredNorm();
+	if(g_norm_sq == 0.0f) {
+		g0 = Eigen::Vector2f::Unit(0);
+	}
+	else {
+		g0 /= std::sqrt(g_norm_sq);
+	}
+	float sp_0 = 5.0f;//cluster.center.scala;
+	int p1x = static_cast<int>(sp_0 * g0[0]);
+	int p1y = static_cast<int>(sp_0 * g0[1]);
+	float sp_small = sp_0 / std::sqrt(g_norm_sq + 1.0f);
+	int p2x = static_cast<int>(- sp_small * g0[1]);
+	int p2y = static_cast<int>(+ sp_small * g0[0]);
+//	std::cout << cluster.center.gradient.transpose() << " --- " << sp_0 << " --- " << sp_small << std::endl;
+//	std::cout << p1x << "," << p1y << " --- " << p2x << "," << p2y << std::endl;
+//	slimage::PaintLine(img, cx, cy, cx + p1x, cy + p1y, color);
+//	slimage::PaintLine(img, cx, cy, cx + p2x, cy + p2y, color);
+	slimage::PaintEllipse(img, cx, cy, p1x, p1y, p2x, p2y, color);
+
+	//	Eigen::Vector2f p3 = opt.camera.project(cluster.center.world + 0.05f*cluster.center.normal);
+	//	int p3x = std::round(p3[0]);
+	//	int p3y = std::round(p3[1]);
+	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
+}
+
+void PlotClustersCross(const std::vector<Cluster>& clusters, const slimage::Image3ub& img, const ParametersExt& opt)
+{
+	for(const Cluster& x : clusters) {
+		PlotClusterCross(x, img, opt);
 	}
 }
 
