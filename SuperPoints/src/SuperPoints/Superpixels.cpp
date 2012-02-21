@@ -582,12 +582,12 @@ void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, cons
 	else {
 		g0 /= std::sqrt(g_norm_sq);
 	}
-	float sp_0 = 5.0f;//cluster.center.scala;
-	int p1x = static_cast<int>(sp_0 * g0[0]);
-	int p1y = static_cast<int>(sp_0 * g0[1]);
+	float sp_0 = 0.5f * cluster.center.scala;
 	float sp_small = sp_0 / std::sqrt(g_norm_sq + 1.0f);
-	int p2x = static_cast<int>(- sp_small * g0[1]);
-	int p2y = static_cast<int>(+ sp_small * g0[0]);
+	int p1x = static_cast<int>(sp_small * g0[0]);
+	int p1y = static_cast<int>(sp_small * g0[1]);
+	int p2x = static_cast<int>(- sp_0 * g0[1]);
+	int p2y = static_cast<int>(+ sp_0 * g0[0]);
 //	std::cout << cluster.center.gradient.transpose() << " --- " << sp_0 << " --- " << sp_small << std::endl;
 //	std::cout << p1x << "," << p1y << " --- " << p2x << "," << p2y << std::endl;
 //	slimage::PaintLine(img, cx, cy, cx + p1x, cy + p1y, color);

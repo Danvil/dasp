@@ -343,11 +343,11 @@ void DaspTracker::performSegmentationStep()
 			vis_super_normal(p.spatial_x(), p.spatial_y()) = GradientColor(c.center.gradient);
 		});
 
-//		// plot superpixel crosses
-//		slimage::Image3ub vis_super_cross(points.width(), points.height());
-//		vis_super_cross.fill(0);
-//		//slimage::Image3ub super_cross = kinect_color_rgb.clone();
-//		dasp::PlotClustersCross(clusters, vis_super_cross, super_params_ext);
+		// plot superpixel crosses
+		slimage::Image3ub vis_super_cross(points.width(), points.height());
+		vis_super_cross.fill(0);
+		//slimage::Image3ub super_cross = kinect_color_rgb.clone();
+		dasp::PlotClustersCross(clusters, vis_super_cross, super_params_ext);
 
 		// plot label probability
 		slimage::Image3ub probability_color;
@@ -381,7 +381,7 @@ void DaspTracker::performSegmentationStep()
 			images_["s_rgb"] = slimage::Ptr(vis_super_color);
 			images_["s_depth"] = slimage::Ptr(vis_super_depth);
 			images_["s_normals"] = slimage::Ptr(vis_super_normal);
-//			images_["s_cross"] = slimage::Ptr(vis_super_cross);
+			images_["s_cross"] = slimage::Ptr(vis_super_cross);
 			images_["seeds"] = slimage::Ptr(seeds_img);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
