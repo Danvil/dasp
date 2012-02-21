@@ -115,6 +115,7 @@ namespace dasp
 		/// number of clusters
 		unsigned int cluster_count;
 
+		S weight_color;
 		S weight_spatial;
 //		S weight_world;
 		S weight_normal;
@@ -289,11 +290,11 @@ namespace dasp
 
 		// both points have valid depth information
 		return
-			d_color
+			opt.weight_color * d_color
 //			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
 //			+ opt.weight_depth*d_depth
-			+ opt.weight_spatial*d_world
-			+ opt.weight_normal*d_normal;
+			+ opt.weight_spatial * d_world / opt.base_scale
+			+ opt.weight_normal * d_normal;
 	}
 
 	inline S Distance(const Point& u, const Cluster& c, const ParametersExt& opt) {

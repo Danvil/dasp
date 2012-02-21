@@ -318,7 +318,7 @@ void DaspTracker::performSegmentationStep()
 		slimage::Image3ub vis_cluster_eccentricity(points.width(), points.height());
 		vis_cluster_eccentricity.fill(0);
 		dasp::ForPixelClusters(clusters, points, [&vis_cluster_eccentricity,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			vis_cluster_eccentricity(p.spatial_x(), p.spatial_y()) = IntensityColor(c_info[cid].eccentricity);
+			vis_cluster_eccentricity(p.spatial_x(), p.spatial_y()) = IntensityColor(c_info[cid].circularity);
 		});
 
 		// plot point depth

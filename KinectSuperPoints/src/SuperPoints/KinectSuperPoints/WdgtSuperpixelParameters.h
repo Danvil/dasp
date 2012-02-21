@@ -21,6 +21,7 @@ public Q_SLOTS:
 	void OnSuperSeedType(const QString& txt);
 	void ChangeSuperpixelCountOrDensity(int val);
 	void ChangeSuperpixelIterations(int val);
+	void ChangeSuperpixelWeightColor(double val);
 	void ChangeSuperpixelWeightSpatial(double val);
 	void ChangeSuperpixelWeightDepth(double val);
 	void ChangeSuperpixelWeightNormal(double val);

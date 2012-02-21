@@ -62,6 +62,11 @@ void WdgtSuperpixelParameters::ChangeSuperpixelIterations(int val)
 	dasp_params_->iterations = val;
 }
 
+void WdgtSuperpixelParameters::ChangeSuperpixelWeightColor(double val)
+{
+	dasp_params_->weight_color = val;
+}
+
 void WdgtSuperpixelParameters::ChangeSuperpixelWeightSpatial(double val)
 {
 	dasp_params_->weight_spatial = val;
