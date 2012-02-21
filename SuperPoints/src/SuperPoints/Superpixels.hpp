@@ -45,13 +45,13 @@ namespace dasp
 		/** position of world source point (meters) */
 		Eigen::Vector3f world;
 
-		/** local depth gradient (meter/px) */
+		/** local depth gradient (depth[m]/distance[m]) */
 		Eigen::Vector2f gradient;
 
 		/** local normal (meters) */
 		Eigen::Vector3f normal;
 
-		/** project size of a super pixel at point depth */
+		/** size [px] of a super pixel at point depth */
 		S scala;
 
 		float depth() const {
@@ -84,11 +84,11 @@ namespace dasp
 		}
 
 		int spatial_x() const {
-			return int(pos[0]);
+			return static_cast<int>(pos[0] + 0.5f);
 		}
 
 		int spatial_y() const {
-			return int(pos[1]);
+			return static_cast<int>(pos[1] + 0.5f);
 		}
 
 	public:
@@ -128,6 +128,8 @@ namespace dasp
 
 		/// superpixels per m^2
 		float roh;
+
+		float base_scale;
 
 		SeedMode seed_mode;
 
@@ -198,8 +200,8 @@ namespace dasp
 			return index(p.spatial_x(), p.spatial_y());
 		}
 		const Point& operator()(const Eigen::Vector2f& p) const {
-			int x = std::floor(p[0] + 0.5f);
-			int y = std::floor(p[1] + 0.5f);
+			int x = static_cast<int>(p[0] + 0.5f);
+			int y = static_cast<int>(p[1] + 0.5f);
 			return (*this)(x,y);
 		}
 		const Point& operator()(unsigned int x, unsigned int y) const {
@@ -226,7 +228,7 @@ namespace dasp
 		std::vector<unsigned int> pixel_ids;
 
 		bool hasPoints() const {
-			return pixel_ids.size() > 0;
+			return pixel_ids.size() > 3;
 		}
 
 		void UpdateCenter(const ImagePoints& points, const Camera& cam);
@@ -245,50 +247,53 @@ namespace dasp
 	template<bool cUseSqrt=true, bool cDisparity=true>
 	inline S Distance(const Point& u, const Point& v, const ParametersExt& opt) {
 		S d_color;
-		S d_point;
-//		S d_world;
+//		S d_point;
+		S d_world;
 		if(cUseSqrt) {
 			d_color = (u.color - v.color).norm();
-			d_point = (u.pos - v.pos).norm();
-//			d_world = (u.world - v.world).norm();
+//			d_point = (u.pos - v.pos).norm();
+			d_world = (u.world - v.world).norm();
 		}
 		else {
 			d_color = (u.color - v.color).squaredNorm();
-			d_point = (u.pos - v.pos).squaredNorm();
-//			d_world = (u.world - v.world).squaredNorm();
+//			d_point = (u.pos - v.pos).squaredNorm();
+			d_world = (u.world - v.world).squaredNorm();
 		}
 
 //		float mean_depth = 0.5f*(u.depth + v.depth);
 //		d_world /= mean_depth * mean_depth;
 //		d_point /= mean_depth;
 
-		S d_depth;
-		if(cDisparity) {
-			if(cUseSqrt) {
-				d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
-			}
-			else {
-				d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
-			}
-		}
-		else {
-			if(cUseSqrt) {
-				d_depth = std::abs(u.depth() - v.depth());
-			}
-			else {
-				d_depth = Square(u.depth() - v.depth());
-			}
-		}
+//		S d_depth;
+//		if(cDisparity) {
+//			if(cUseSqrt) {
+//				d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
+//			}
+//			else {
+//				d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
+//			}
+//		}
+//		else {
+//			if(cUseSqrt) {
+//				d_depth = std::abs(u.depth() - v.depth());
+//			}
+//			else {
+//				d_depth = Square(u.depth() - v.depth());
+//			}
+//		}
 
 		S d_normal = DistanceForNormals(u.normal, v.normal);
+		if(!cUseSqrt) {
+			d_normal *= d_normal;
+		}
 
 		// both points have valid depth information
 		return
 			d_color
-			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
-//			+ opt.weight_spatial*d_world
-			+ opt.weight_normal*d_normal
-			+ opt.weight_depth*d_depth;
+//			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
+//			+ opt.weight_depth*d_depth
+			+ opt.weight_spatial*d_world
+			+ opt.weight_normal*d_normal;
 	}
 
 	inline S Distance(const Point& u, const Cluster& c, const ParametersExt& opt) {
@@ -369,6 +374,10 @@ namespace dasp
 	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color);
 
 	void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const slimage::Image3ub& img);
+
+	void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, const ParametersExt& opt);
+
+	void PlotClustersCross(const std::vector<Cluster>& clusters, const slimage::Image3ub& img, const ParametersExt& opt);
 
 	void PlotEdges(const std::vector<int>& point_labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b);
 
