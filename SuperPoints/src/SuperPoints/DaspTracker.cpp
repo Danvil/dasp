@@ -182,6 +182,15 @@ slimage::Pixel3ub DepthColor(uint16_t d16)
 	}
 }
 
+slimage::Pixel3ub IntensityColor(float x)
+{
+	// base gradient: blue -> red -> yellow
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow();
+	cm.setRange(0.0f, 1.0f);
+	Danvil::Colorub color = cm(x);
+	return slimage::Pixel3ub{{color.r,color.g,color.b}};
+}
+
 
 void DaspTracker::performSegmentationStep()
 {
@@ -306,6 +315,12 @@ void DaspTracker::performSegmentationStep()
 		std::cout << "hist_radius: " << cg_info.hist_radius << std::endl;
 		std::cout << "hist_thickness: " << cg_info.hist_thickness << std::endl;
 
+		slimage::Image3ub vis_cluster_eccentricity(points.width(), points.height());
+		vis_cluster_eccentricity.fill(0);
+		dasp::ForPixelClusters(clusters, points, [&vis_cluster_eccentricity,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			vis_cluster_eccentricity(p.spatial_x(), p.spatial_y()) = IntensityColor(c_info[cid].eccentricity);
+		});
+
 		// plot point depth
 		slimage::Image3ub vis_point_depth(points.width(), points.height());
 		for(size_t i=0; i<points.size(); i++) {
@@ -388,6 +403,7 @@ void DaspTracker::performSegmentationStep()
 			images_["s_depth"] = slimage::Ptr(vis_super_depth);
 			images_["s_normals"] = slimage::Ptr(vis_super_normal);
 			images_["s_cross"] = slimage::Ptr(vis_super_cross);
+			images_["s_ecc"] = slimage::Ptr(vis_cluster_eccentricity);
 			images_["seeds"] = slimage::Ptr(seeds_img);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);

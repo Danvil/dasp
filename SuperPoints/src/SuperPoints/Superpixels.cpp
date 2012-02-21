@@ -531,13 +531,14 @@ ClusterInfo ComputeClusterInfo(const Cluster& cluster, const ImagePoints& points
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
 	solver.computeDirect(A);
 	ClusterInfo infos;
-	infos.l1 = std::abs(solver.eigenvalues()[0]);
-	infos.l2 = std::abs(solver.eigenvalues()[1]);
-	infos.l3 = std::abs(solver.eigenvalues()[2]);
-	infos.area = M_PI * infos.l2 * infos.l3;
-	float u = infos.l2/infos.l3;
+	infos.t = std::abs(solver.eigenvalues()[0]);
+	infos.b = std::abs(solver.eigenvalues()[1]);
+	infos.a = std::abs(solver.eigenvalues()[2]);
+	infos.area = M_PI * infos.a * infos.b;
+	float u = infos.b/infos.a;
 	infos.eccentricity = std::sqrt(1.0f - u*u);
-	infos.radius = std::sqrt(infos.l2 * infos.l3);
+	infos.radius = std::sqrt(infos.a * infos.b);
+	infos.circularity = (infos.a - infos.b)/infos.a;
 	return infos;
 }
 
@@ -548,10 +549,10 @@ ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster
 	cgi.hist_radius = Histogram<float>(50, 0, 0.20f);
 	cgi.hist_thickness = Histogram<float>(50, 0, 0.05f);
 	for(const ClusterInfo& ci : cluster_info) {
-		cgi.hist_eccentricity.add(ci.eccentricity);
+		cgi.hist_eccentricity.add(ci.circularity);
 		cgi.hist_radius.add(ci.radius);
-		cgi.hist_thickness.add(ci.l1);
-		std::cout << ci.l1 << " " << ci.l2 << " " << ci.l3 << std::endl;
+		cgi.hist_thickness.add(ci.t);
+//		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
 	}
 	return cgi;
 }

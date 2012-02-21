@@ -14,20 +14,21 @@
 #include <vector>
 #include <cmath>
 #include <ctype.h>
+#include <ostream>
 
 namespace dasp {
 
 template<typename K>
 std::ostream& operator<<(std::ostream& os, const std::vector<K>& v)
 {
-	std::cout << "{";
+	os << "{";
 	for(unsigned int i=0; i<v.size(); i++) {
-		std::cout << v[i];
+		os << v[i];
 		if(i + 1 != v.size()) {
-			std::cout << ", ";
+			os << ", ";
 		}
 	}
-	std::cout << "}";
+	os << "}";
 	return os;
 }
 

@@ -391,13 +391,15 @@ namespace dasp
 	struct ClusterInfo
 	{
 		/** Eigenvalues of the covariance matrix */
-		float l1, l2, l3;
-		/** eccentricity of the ellipse described by l2 and l3 */
+		float t, b, a;
+		/** eccentricity of the ellipse described by a and b */
 		float eccentricity;
-		/** pi*l2*l3 */
+		/** pi*a*b */
 		float area;
-		/** sqrt(hist_area) */
+		/** sqrt(a*b) */
 		float radius;
+		/** (a-b)/a */
+		float circularity;
 	};
 
 	ClusterInfo ComputeClusterInfo(const Cluster& clusters, const ImagePoints& points);
