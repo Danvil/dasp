@@ -28,6 +28,7 @@ DaspTracker::DaspTracker()
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->camera = Camera{320.0f, 240.0f, 580.0f, 0.001f};
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
+	dasp_params->base_scale = 0.01f;
 	color_model_sigma_scale_ = 1.0f;
 	thread_pool_index_ = 100;
 }
@@ -153,6 +154,35 @@ SuperpixelGraph CreateGraphFromClusters(const std::vector<dasp::Cluster>& cluste
 	return G;
 }
 
+slimage::Pixel3ub GradientColor(const Eigen::Vector2f& g)
+{
+	float x = std::max(0.0f, std::min(1.0f, 0.5f + g[0]));
+	float y = std::max(0.0f, std::min(1.0f, 0.5f + g[1]));
+	return slimage::Pixel3ub{{
+			static_cast<unsigned char>(255.0f*0.5f*(1.0f - x + y)),
+			static_cast<unsigned char>(255.0f*0.5f*(2.0f - x - y)),
+			static_cast<unsigned char>(255.0f*0.5f*(x + y))}};
+}
+
+slimage::Pixel3ub DepthColor(uint16_t d16)
+{
+	// base gradient: blue -> red -> yellow
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow();
+	cm.setRange(400,2000);
+	if(d16 == 0) {
+		return slimage::Pixel3ub{{0,0,0}};
+	}
+	else {
+		Danvil::Colorub color = cm(d16);
+		unsigned int q = d16 % 25;
+		unsigned char r = std::max(0, int(color.r) - int(q));
+		unsigned char g = std::max(0, int(color.g) - int(q));
+		unsigned char b = std::max(0, int(color.b) - int(q));
+		return slimage::Pixel3ub{{r,g,b}};
+	}
+}
+
+
 void DaspTracker::performSegmentationStep()
 {
 	// superpixel parameters
@@ -270,46 +300,58 @@ void DaspTracker::performSegmentationStep()
 	{
 		DANVIL_BENCHMARK_START(plotting)
 
-		// visualization of kinect depth image
-		slimage::Image3ub kinect_depth_color(kinect_depth.width(), kinect_depth.height());
-		for(size_t i=0; i<kinect_depth_color.size()/3; i++) {
-			unsigned int d16 = kinect_depth[i];
-			if(d16 == 0) {
-				kinect_depth_color(i) = {{0,0,0}};
+		// plot point depth
+		slimage::Image3ub vis_point_depth(points.width(), points.height());
+		for(size_t i=0; i<points.size(); i++) {
+			vis_point_depth(i) = DepthColor(points[i].depth_i16);
+		}
+
+		// plot point normals
+		slimage::Image3ub vis_point_normal(points.width(), points.height());
+		for(unsigned int i=0; i<points.size(); i++) {
+			if(points[i].isValid()) {
+				vis_point_normal(i) = GradientColor(points[i].gradient);
 			}
 			else {
-				// blue -> red -> yellow
-				auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow();
-				cm.setRange(400,2000);
-				auto color = cm(d16);
-				unsigned int q = d16 % 25;
-				unsigned char r = std::max(0, int(color.r) - int(q));
-				unsigned char g = std::max(0, int(color.g) - int(q));
-				unsigned char b = std::max(0, int(color.b) - int(q));
-				kinect_depth_color(i) = {{r,g,b}};
+				vis_point_normal(i) = slimage::Pixel3ub{{0,0,0}};
 			}
 		}
 
-		// plot normals
-		slimage::Image3ub kinect_normals_vis;
-		kinect_normals_vis.resize(points.width(), points.height());
-		for(unsigned int i=0; i<points.size(); i++) {
-			Eigen::Vector2f src = points[i].gradient;
-			kinect_normals_vis(i) = slimage::Pixel3ub{{
-					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 128.0f + 64.0f * src[0]))),
-					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 0.0f))),
-					static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, 128.0f + 64.0f * src[1])))}};
-		}
+		// plot density and seeds
+		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
+		slimage::Image3ub seeds_img = ColorizeIntensity(density, 0.0f, 0.02f, thread_pool_index_, Danvil::Palettes::Blue_Red_Yellow);
+		dasp::PlotSeeds(seeds, seeds_img, slimage::Pixel3ub{{255,255,255}}, 3);
 
-		// plot super pixel with edges
-		slimage::Image3ub super(points.width(), points.height());
-		dasp::PlotCluster(clusters, points, super);
+		// plot super pixel color (with edges)
+		slimage::Image3ub vis_super_color(points.width(), points.height());
+		dasp::PlotCluster(clusters, points, vis_super_color);
 		std::vector<int> superpixel_labels = dasp::ComputePixelLabels(clusters, points);
-		dasp::PlotEdges(superpixel_labels, super, 2, 0, 0, 0);
+		dasp::PlotEdges(superpixel_labels, vis_super_color, 2, 0, 0, 0);
 
+		// plot superpixel depth
+		slimage::Image3ub vis_super_depth(points.width(), points.height());
+		vis_super_depth.fill(0);
+		dasp::ForPixelClusters(clusters, points, [&vis_super_depth](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			vis_super_depth(p.spatial_x(), p.spatial_y()) = DepthColor(c.center.depth_i16);
+		});
+
+		// plot superpixel normals
+		slimage::Image3ub vis_super_normal;
+		vis_super_normal.resize(points.width(), points.height());
+		vis_super_normal.fill(0);
+		dasp::ForPixelClusters(clusters, points, [&vis_super_normal](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			vis_super_normal(p.spatial_x(), p.spatial_y()) = GradientColor(c.center.gradient);
+		});
+
+//		// plot superpixel crosses
+//		slimage::Image3ub vis_super_cross(points.width(), points.height());
+//		vis_super_cross.fill(0);
+//		//slimage::Image3ub super_cross = kinect_color_rgb.clone();
+//		dasp::PlotClustersCross(clusters, vis_super_cross, super_params_ext);
+
+		// plot label probability
 		slimage::Image3ub probability_color;
 		slimage::Image3ub probability_2_color;
-
 		if(probability) {
 			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f, thread_pool_index_);
 			//dasp::PlotEdges(superpixel_labels, probability_color, 2, 0, 0, 0);
@@ -323,27 +365,24 @@ void DaspTracker::performSegmentationStep()
 //			}
 
 		}
-
 		if(probability_2) {
 			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
 			//dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
-		// plot density and seeds
-		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
-		slimage::Image3ub seeds_img = ColorizeIntensity(density, 0.0f, 0.02f, thread_pool_index_, Danvil::Palettes::Blue_Red_Yellow);
-		dasp::PlotSeeds(seeds, seeds_img, slimage::Pixel3ub{{255,255,255}}, 3);
-
 		// set images for gui
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["rgb"] = slimage::Ptr(kinect_color_rgb);
+			images_["p_rgb"] = slimage::Ptr(kinect_color_rgb);
 //			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
-			images_["depth"] = slimage::Ptr(kinect_depth_color);
-			images_["super"] = slimage::Ptr(super);
+			images_["p_depth"] = slimage::Ptr(vis_point_depth);
+			images_["p_normals"] = slimage::Ptr(vis_point_normal);
+			images_["s_rgb"] = slimage::Ptr(vis_super_color);
+			images_["s_depth"] = slimage::Ptr(vis_super_depth);
+			images_["s_normals"] = slimage::Ptr(vis_super_normal);
+//			images_["s_cross"] = slimage::Ptr(vis_super_cross);
 			images_["seeds"] = slimage::Ptr(seeds_img);
-			images_["normals"] = slimage::Ptr(kinect_normals_vis);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
 			images_["graph"] = slimage::Ptr(plot_graph);
