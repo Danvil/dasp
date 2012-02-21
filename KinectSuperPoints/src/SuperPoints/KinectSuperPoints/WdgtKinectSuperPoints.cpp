@@ -44,7 +44,7 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
 	for(unsigned int i=0; i<kinect_depth.size(); i++) {
 		uint16_t d = (*raw_kinect_depth)[i];
-		if(d > 5000) {
+		if(d > 3000) {
 			d = 0;
 		}
 		kinect_depth[i] = d;
