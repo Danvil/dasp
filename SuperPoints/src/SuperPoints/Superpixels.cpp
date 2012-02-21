@@ -525,6 +525,37 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 	clusters = clusters_valid;
 }
 
+ClusterInfo ComputeClusterInfo(const Cluster& cluster, const ImagePoints& points)
+{
+	Eigen::Matrix3f A = PointCovariance(cluster.pixel_ids, [&points,&cluster](unsigned int i) { return points[i].world - cluster.center.world; });
+	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
+	solver.computeDirect(A);
+	ClusterInfo infos;
+	infos.l1 = std::abs(solver.eigenvalues()[0]);
+	infos.l2 = std::abs(solver.eigenvalues()[1]);
+	infos.l3 = std::abs(solver.eigenvalues()[2]);
+	infos.area = M_PI * infos.l2 * infos.l3;
+	float u = infos.l2/infos.l3;
+	infos.eccentricity = std::sqrt(1.0f - u*u);
+	infos.radius = std::sqrt(infos.l2 * infos.l3);
+	return infos;
+}
+
+ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info)
+{
+	ClusterGroupInfo cgi;
+	cgi.hist_eccentricity = Histogram<float>(50, 0, 1);
+	cgi.hist_radius = Histogram<float>(50, 0, 0.20f);
+	cgi.hist_thickness = Histogram<float>(50, 0, 0.05f);
+	for(const ClusterInfo& ci : cluster_info) {
+		cgi.hist_eccentricity.add(ci.eccentricity);
+		cgi.hist_radius.add(ci.radius);
+		cgi.hist_thickness.add(ci.l1);
+		std::cout << ci.l1 << " " << ci.l2 << " " << ci.l3 << std::endl;
+	}
+	return cgi;
+}
+
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img)
 {
 	unsigned char c_col_r = 255.0f * cluster.center.color[0];

@@ -300,6 +300,12 @@ void DaspTracker::performSegmentationStep()
 	{
 		DANVIL_BENCHMARK_START(plotting)
 
+		std::vector<ClusterInfo> c_info = ComputeClusterInfo(clusters, points);
+		ClusterGroupInfo cg_info = ComputeClusterGroupInfo(c_info);
+		std::cout << "hist_eccentricity: " << cg_info.hist_eccentricity << std::endl;
+		std::cout << "hist_radius: " << cg_info.hist_radius << std::endl;
+		std::cout << "hist_thickness: " << cg_info.hist_thickness << std::endl;
+
 		// plot point depth
 		slimage::Image3ub vis_point_depth(points.width(), points.height());
 		for(size_t i=0; i<points.size(); i++) {

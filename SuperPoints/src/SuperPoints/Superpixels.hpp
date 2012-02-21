@@ -369,6 +369,52 @@ namespace dasp
 
 	void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, const ParametersExt& opt);
 
+	template<typename F>
+	void ForPixelClusters(const std::vector<Cluster>& clusters, const ImagePoints& points, F f) {
+		for(unsigned int i=0; i<clusters.size(); i++) {
+			const Cluster& cluster = clusters[i];
+			for(unsigned int p : cluster.pixel_ids) {
+				f(i, cluster, p, points[p]);
+			}
+		}
+	}
+
+	template<typename F>
+	auto ForClusters(const std::vector<Cluster>& clusters, F f) -> std::vector<decltype(f(clusters[0]))> {
+		std::vector<decltype(f(clusters[0]))> data(clusters.size());
+		for(unsigned int i=0; i<clusters.size(); i++) {
+			data[i] = f(clusters[i]);
+		}
+		return data;
+	}
+
+	struct ClusterInfo
+	{
+		/** Eigenvalues of the covariance matrix */
+		float l1, l2, l3;
+		/** eccentricity of the ellipse described by l2 and l3 */
+		float eccentricity;
+		/** pi*l2*l3 */
+		float area;
+		/** sqrt(hist_area) */
+		float radius;
+	};
+
+	ClusterInfo ComputeClusterInfo(const Cluster& clusters, const ImagePoints& points);
+
+	inline std::vector<ClusterInfo> ComputeClusterInfo(const std::vector<Cluster>& clusters, const ImagePoints& points) {
+		return ForClusters(clusters, [&points](const Cluster& c) { return ComputeClusterInfo(c, points); });
+	}
+
+	struct ClusterGroupInfo
+	{
+		Histogram<float> hist_eccentricity;
+		Histogram<float> hist_radius;
+		Histogram<float> hist_thickness;
+	};
+
+	ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info);
+
 	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img);
 
 	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color);
@@ -380,16 +426,6 @@ namespace dasp
 	void PlotClustersCross(const std::vector<Cluster>& clusters, const slimage::Image3ub& img, const ParametersExt& opt);
 
 	void PlotEdges(const std::vector<int>& point_labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b);
-
-	template<typename F>
-	void ForPixelClusters(const std::vector<Cluster>& clusters, const ImagePoints& points, F f) {
-		for(unsigned int i=0; i<clusters.size(); i++) {
-			const Cluster& cluster = clusters[i];
-			for(unsigned int p : cluster.pixel_ids) {
-				f(i, cluster, p, points[p]);
-			}
-		}
-	}
 
 	template<typename F>
 	std::vector<float> ClassifyClusters(const std::vector<Cluster>& clusters, F f) {

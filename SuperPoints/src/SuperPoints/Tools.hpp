@@ -12,9 +12,53 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
 #include <vector>
+#include <cmath>
 #include <ctype.h>
 
 namespace dasp {
+
+template<typename K>
+std::ostream& operator<<(std::ostream& os, const std::vector<K>& v)
+{
+	std::cout << "{";
+	for(unsigned int i=0; i<v.size(); i++) {
+		std::cout << v[i];
+		if(i + 1 != v.size()) {
+			std::cout << ", ";
+		}
+	}
+	std::cout << "}";
+	return os;
+}
+
+template<typename K,typename U=unsigned int>
+struct Histogram
+{
+	Histogram()
+	: min_(0), max_(1) {}
+	Histogram(unsigned int bin_count, K min, K max)
+	: min_(min), max_(max), bins_(bin_count) {}
+	void add(K x, U v=U(1)) {
+		float p = float(x - min_) * float(bins_.size()) / float(max_ - min_);
+		int i = std::round(p);
+		if(i < 0) i = 0;
+		if(i >= int(bins_.size())) i = bins_.size() - 1;
+		bins_[i] += v;
+	}
+	const std::vector<U>& bins() const {
+		return bins_;
+	}
+	const U operator[](unsigned int i) const {
+		return bins_[i];
+	}
+	friend std::ostream& operator<<(std::ostream& os, const Histogram<K,U>& h) {
+		os << h.bins();
+		return os;
+	}
+private:
+	K min_, max_;
+	std::vector<U> bins_;
+};
 
 /***
  *
@@ -144,16 +188,13 @@ inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsi
 	return g;
 }
 
-/** Fits a plane into points and returns the plane normal */
 template<typename T, typename F>
-Eigen::Vector3f FitNormal(const std::vector<T>& points, F f)
+Eigen::Matrix3f PointCovariance(const std::vector<T>& points, F f)
 {
-//		return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
-	// compute covariance matrix
-//		Eigen::Matrix3f A = Eigen::Matrix3f::Zero();
-//		for(const Eigen::Vector3f& p : points) {
-//			A += p * p.transpose();
-//		}
+//	Eigen::Matrix3f A = Eigen::Matrix3f::Zero();
+//	for(const Eigen::Vector3f& p : points) {
+//		A += p * p.transpose();
+//	}
 	float xx=0.0f, xy=0.0f, xz=0.0f, yy=0.0f, yz=0.0f, zz=0.0f;
 	for(auto it=points.begin(); it!=points.end(); ++it) {
 		const Eigen::Vector3f& p = f(*it);
@@ -168,6 +209,16 @@ Eigen::Vector3f FitNormal(const std::vector<T>& points, F f)
 		zz += z*z;
 	};
 	Eigen::Matrix3f A; A << xx, xy, xz, xy, yy, yz, xz, yz, zz;
+	return A;
+}
+
+/** Fits a plane into points and returns the plane normal */
+template<typename T, typename F>
+Eigen::Vector3f FitNormal(const std::vector<T>& points, F f)
+{
+//		return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
+	// compute covariance matrix
+	Eigen::Matrix3f A = PointCovariance(points, f);
 	// compute eigenvalues/-vectors
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
 	solver.computeDirect(A);
