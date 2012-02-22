@@ -232,6 +232,14 @@ namespace dasp
 
 		std::vector<Cluster> cluster;
 
+		unsigned int width() const {
+			return points.width();
+		}
+
+		unsigned int height() const {
+			return points.height();
+		}
+
 		Clustering();
 
 		void CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
