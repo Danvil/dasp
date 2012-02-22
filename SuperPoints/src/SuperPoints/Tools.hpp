@@ -139,7 +139,7 @@ inline float LocalFiniteDifferencesKinect(K v0, K v1, K v2, K v3, K v4)
 	}
 }
 
-inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsigned int j, unsigned int i, float base_scale_m, const Camera& camera)
+inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsigned int j, unsigned int i, float base_radius_m, const Camera& camera)
 {
 	uint16_t d00 = depth(j,i);
 
@@ -150,7 +150,7 @@ inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsi
 	float h = camera.focal / camera.convertKinectToMeter(d00);
 
 	// compute w = base_scale*f/d
-	unsigned int w = std::max(static_cast<unsigned int>(std::round(base_scale_m*h)), 4u);
+	unsigned int w = std::max(static_cast<unsigned int>(std::round(base_radius_m*h)), 4u);
 	if(w % 2 == 1) w++;
 
 	// can not compute the gradient at the border, so return 0

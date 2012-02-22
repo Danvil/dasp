@@ -28,7 +28,7 @@ DaspTracker::DaspTracker()
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->camera = Camera{320.0f, 240.0f, 580.0f, 0.001f};
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
-	dasp_params->base_scale = 0.01f;
+	dasp_params->base_radius = 0.02f;
 	color_model_sigma_scale_ = 1.0f;
 	thread_pool_index_ = 100;
 }
@@ -147,7 +147,7 @@ SuperpixelGraph CreateGraphFromClusters(const std::vector<dasp::Cluster>& cluste
 		s.color = c.center.color;
 		s.normal = c.center.normal;
 		s.position = c.center.world;
-		s.scala = c.center.scala;
+		s.scala = c.center.image_super_radius;
 		G.nodes_.push_back(s);
 	}
 	G.createConnections(0.10f); // FIXME constant !!!

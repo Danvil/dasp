@@ -36,59 +36,56 @@ namespace dasp
 		/** pixel image position */
 		Eigen::Vector2f pos;
 
-		/** color */
+		/** point color */
 		Eigen::Vector3f color;
 
 		/** depth in mm as integer (0 if invalid) */
 		uint16_t depth_i16;
 
-		/** position of world source point (meters) */
+		/** position [m] of world source point */
 		Eigen::Vector3f world;
 
 		/** local depth gradient (depth[m]/distance[m]) */
 		Eigen::Vector2f gradient;
 
-		/** local normal (meters) */
+		/** direction of local normal */
 		Eigen::Vector3f normal;
 
-		/** size [px] of a super pixel at point depth */
-		S scala;
+		/** estimated radius [px] on the image screen of a super pixel at point depth */
+		S image_super_radius;
 
-		float depth() const {
-			return world[2];
-		}
-
-		/** Radius of a super pixel at point depth */
-		int radius() const {
-			return int(0.603553391f * std::round(scala));
-			// 0.603553391 = (0.5 + sqrt(2)/2)/2 // TODO what factor?
-			// 0.5 would be inner circle, sqrt(2)/2 would be outer circle
-		}
-
-		/** Estimated number of super pixels at this point */
-		float estimatedCount() const {
-			if(scala == 0.0f) {
-				return 0.0f;
-			}
-			// scala * scala is size of a projected super pixel at this depth.
-			// so the inverse is the estimated number of super pixels
-			return 1.0f / (scala * scala);
-		}
-
+		/** Invalid points have a kinect depth of 0 */
 		bool isInvalid() const {
 			return depth_i16 == 0;
 		}
 
+		/** Valid points have a kinect depth > 0 */
 		bool isValid() const {
-			return !isInvalid();
+			return depth_i16 > 0;
 		}
 
+		/** Image x coordinate [px] */
 		int spatial_x() const {
 			return static_cast<int>(pos[0] + 0.5f);
 		}
 
+		/** Image y coordinate [px] */
 		int spatial_y() const {
 			return static_cast<int>(pos[1] + 0.5f);
+		}
+
+		/** Depth [m] of point */
+		float depth() const {
+			return world[2];
+		}
+
+		/** Estimated number of super pixels at this point
+		 * We assume circular superpixels. So the area A of a superpixel at
+		 * point location is R*R*pi and the superpixel density is 1/A.
+		 * If the depth information is invalid, the density is 0.
+		 */
+		float estimatedCount() const {
+			return isInvalid() ? 0.0f : 1.0f / (M_PI * image_super_radius * image_super_radius);
 		}
 
 	public:
@@ -112,40 +109,29 @@ namespace dasp
 		/** camera parameters */
 		Camera camera;
 
-		/// number of clusters
-		unsigned int cluster_count;
-
 		S weight_color;
 		S weight_spatial;
-//		S weight_world;
 		S weight_normal;
 		S weight_depth;
 
-		/// number of iterations
+		/** Number of iterations for superpixel k-means clustering */
 		unsigned int iterations;
 
-		/// scale for cluster scala for search area
+		/** Superpixel cluster search radius factor */
 		float coverage;
 
-		/// superpixels per m^2
-		float roh;
+		/** Desired radius of a surface element */
+		float base_radius;
 
-		float base_scale;
-
+		/** Method used to compute seed points */
 		SeedMode seed_mode;
 
-		/**
-		 * n = roh * (z/f)^2
+		/** Pixel scala at depth
+		 * Radius [px] of a surface element of size base radius [m] and
+		 * at given depth [kinect] on the image sensor
 		 */
-		float computeClusterCountFactor() const {
-			return roh / (camera.focal * camera.focal);
-		}
-
-		/**
-		 * s_p = s_r * roh / z = f / sqrt(roh) / z
-		 */
-		float computePixelSizeFactor() const {
-			return camera.focal / std::sqrt(roh);
+		float computePixelScala(uint16_t depth) const {
+			return (depth == 0) ? 0.0f : (camera.focal / camera.convertKinectToMeter(depth) * base_radius);
 		}
 	};
 
@@ -290,10 +276,10 @@ namespace dasp
 
 		// both points have valid depth information
 		return
-			opt.weight_color * d_color
+			opt.weight_color * std::min(1.0f, d_color/0.25f)
 //			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
 //			+ opt.weight_depth*d_depth
-			+ opt.weight_spatial * d_world / opt.base_scale
+			+ opt.weight_spatial * d_world / opt.base_radius
 			+ opt.weight_normal * d_normal;
 	}
 
