@@ -19,6 +19,11 @@
 namespace dasp {
 
 template<typename K>
+K Square(K x) {
+	return x*x;
+}
+
+template<typename K>
 std::ostream& operator<<(std::ostream& os, const std::vector<K>& v)
 {
 	os << "{";

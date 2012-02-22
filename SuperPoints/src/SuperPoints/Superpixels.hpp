@@ -15,16 +15,8 @@
 #include <vector>
 #include <cmath>
 
-/** Depth-adaptive super pixels */
 namespace dasp
 {
-	typedef float S;
-
-	struct Position
-	{
-		int x, y;
-	};
-
 	struct Seed
 	{
 		int x, y;
@@ -52,7 +44,7 @@ namespace dasp
 		Eigen::Vector3f normal;
 
 		/** estimated radius [px] on the image screen of a super pixel at point depth */
-		S image_super_radius;
+		float image_super_radius;
 
 		/** Invalid points have a kinect depth of 0 */
 		bool isInvalid() const {
@@ -84,85 +76,8 @@ namespace dasp
 
 	};
 
-	namespace SeedModes {
-		enum Type {
-			EquiDistant,
-			DepthShooting,
-			DepthMipmap,
-			DepthBlueNoise,
-			DepthFloyd
-		};
-	}
-	typedef SeedModes::Type SeedMode;
-
-	struct Parameters
+	struct ImagePoints
 	{
-		Parameters() {
-			weight_color = 1.0f;
-			weight_spatial = 1.0f;
-			weight_normal = 1.0f;
-			weight_depth = 1.0f;
-			iterations = 3;
-			coverage = 1.7f;
-			base_radius = 0.02f;
-			seed_mode = SeedModes::DepthMipmap;
-			gradient_adaptive_density = true;
-		}
-
-		/** camera parameters */
-		Camera camera;
-
-		S weight_color;
-		S weight_spatial;
-		S weight_normal;
-		S weight_depth;
-
-		/** Number of iterations for superpixel k-means clustering */
-		unsigned int iterations;
-
-		/** Superpixel cluster search radius factor */
-		float coverage;
-
-		/** Desired radius of a surface element */
-		float base_radius;
-
-		/** Method used to compute seed points */
-		SeedMode seed_mode;
-
-		bool gradient_adaptive_density;
-
-		/** Pixel scala at depth
-		 * Radius [px] of a surface element of size base radius [m] and
-		 * at given depth [kinect] on the image sensor
-		 */
-		float computePixelScala(uint16_t depth) const {
-			return (depth == 0) ? 0.0f : (camera.focal / camera.convertKinectToMeter(depth) * base_radius);
-		}
-	};
-
-	struct ParametersExt
-	: public Parameters
-	  {
-		ParametersExt() {}
-		ParametersExt(const Parameters& p) : Parameters(p) {}
-		unsigned int width, height;
-//		unsigned int cluster_nx, cluster_ny;
-//		unsigned int cluster_dx, cluster_dy;
-//		float weight_spatial_final;
-	};
-
-	template<typename K>
-	K Square(K x) { return x*x; }
-
-//		inline S Distance(const Point& u, const Point& v, const ParametersExt& opt) {
-//			S d_color = (u.color - v.color).squaredNorm();
-//			S d_point = S(Square(u.spatial.x - v.spatial.x)) + S(Square(u.spatial.y - v.spatial.y));
-//			S d_depth = Square(u.depth - v.depth);
-//			return d_color + opt.weight_spatial_final*d_point + opt.weight_depth*d_depth;
-//			//return std::sqrt(d_color) + opt.weight_spatial*std::sqrt(d_point) + opt.weight_depth*std::sqrt(d_depth); // TODO more accurate
-//		}
-
-	struct ImagePoints {
 		ImagePoints()
 		: width_(0), height_(0) {}
 		ImagePoints(unsigned int width, unsigned int height)
@@ -213,172 +128,61 @@ namespace dasp
 		std::vector<Point> points_;
 	};
 
-	struct Cluster
+	namespace SeedModes {
+		enum Type {
+			EquiDistant,
+			DepthShooting,
+			DepthMipmap,
+			DepthBlueNoise,
+			DepthFloyd
+		};
+	}
+	typedef SeedModes::Type SeedMode;
+
+	struct Parameters
 	{
-		Point center;
-
-		std::vector<unsigned int> pixel_ids;
-
-		bool hasPoints() const {
-			return pixel_ids.size() > 3;
+		Parameters() {
+			weight_color = 1.0f;
+			weight_spatial = 1.0f;
+			weight_normal = 1.0f;
+			weight_depth = 1.0f;
+			iterations = 3;
+			coverage = 1.7f;
+			base_radius = 0.02f;
+			seed_mode = SeedModes::DepthMipmap;
+			gradient_adaptive_density = true;
 		}
 
-		void UpdateCenter(const ImagePoints& points, const Camera& cam);
+		/** camera parameters */
+		Camera camera;
 
+		float weight_color;
+		float weight_spatial;
+		float weight_normal;
+		float weight_depth;
+
+		/** Number of iterations for superpixel k-means clustering */
+		unsigned int iterations;
+
+		/** Superpixel cluster search radius factor */
+		float coverage;
+
+		/** Desired radius of a surface element */
+		float base_radius;
+
+		/** Method used to compute seed points */
+		SeedMode seed_mode;
+
+		bool gradient_adaptive_density;
+
+		/** Pixel scala at depth
+		 * Radius [px] of a surface element of size base radius [m] and
+		 * at given depth [kinect] on the image sensor
+		 */
+		float computePixelScala(uint16_t depth) const {
+			return (depth == 0) ? 0.0f : (camera.focal / camera.convertKinectToMeter(depth) * base_radius);
+		}
 	};
-
-	inline S DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y) {
-		// x and y are assumed to be normalized
-		// dot(x,y) yields the cos of the angle
-		// 1 is perfect, -1 is opposite
-		// map to [0|2]
-		return 1.0f - x.dot(y);
-		//return -0.434783f + 1.0f/(1.3f + x.dot(y));
-	}
-
-	template<bool cUseSqrt=true, bool cDisparity=true>
-	inline S Distance(const Point& u, const Point& v, const ParametersExt& opt) {
-		S d_color;
-//		S d_point;
-		S d_world;
-		if(cUseSqrt) {
-			d_color = (u.color - v.color).norm();
-//			d_point = (u.pos - v.pos).norm();
-			d_world = (u.world - v.world).norm();
-		}
-		else {
-			d_color = (u.color - v.color).squaredNorm();
-//			d_point = (u.pos - v.pos).squaredNorm();
-			d_world = (u.world - v.world).squaredNorm();
-		}
-
-//		float mean_depth = 0.5f*(u.depth + v.depth);
-//		d_world /= mean_depth * mean_depth;
-//		d_point /= mean_depth;
-
-//		S d_depth;
-//		if(cDisparity) {
-//			if(cUseSqrt) {
-//				d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
-//			}
-//			else {
-//				d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
-//			}
-//		}
-//		else {
-//			if(cUseSqrt) {
-//				d_depth = std::abs(u.depth() - v.depth());
-//			}
-//			else {
-//				d_depth = Square(u.depth() - v.depth());
-//			}
-//		}
-
-		S d_normal = DistanceForNormals(u.normal, v.normal);
-		if(!cUseSqrt) {
-			d_normal *= d_normal;
-		}
-
-		// both points have valid depth information
-		return
-			opt.weight_color * std::min(1.0f, d_color/0.25f)
-//			+ opt.weight_spatial * d_point * 2.0f / (u.scala + v.scala)
-//			+ opt.weight_depth*d_depth
-			+ opt.weight_spatial * d_world / opt.base_radius
-			+ opt.weight_normal * d_normal;
-	}
-
-	inline S Distance(const Point& u, const Cluster& c, const ParametersExt& opt) {
-		return Distance(u, c.center, opt);
-	}
-
-	inline S Distance(const Cluster& x, const Cluster& y, const ParametersExt& opt) {
-		return Distance(x.center, y.center, opt);
-	}
-
-	template<bool cUseSqrt=true>
-	inline S DistanceSpatial(const Point& x, const Point& y) {
-		S d_point;
-		if(cUseSqrt) {
-			d_point = (x.pos - y.pos).norm();
-		}
-		else {
-			d_point = (x.pos - y.pos).squaredNorm();
-		}
-		return d_point;
-	}
-
-	inline S DistanceSpatial(const Cluster& x, const Cluster& y) {
-		return DistanceSpatial(x.center, y.center);
-	}
-
-	inline S DistanceWorld(const Cluster& x, const Cluster& y, const ParametersExt& opt) {
-		// TODO compute distance between:
-		// mean cluster colors,
-		S d_color = (x.center.color - y.center.color).norm();
-		// mean cluster normals and
-		S d_normal = DistanceForNormals(x.center.normal, y.center.normal);
-		// world position of cluster centers.
-		S d_world = (x.center.world - y.center.world).norm();
-		return d_color
-			+ opt.weight_spatial*d_world // FIXME constant
-			+ opt.weight_normal*d_normal;
-//		return DistanceSpatial(x.center, y.center);
-	}
-
-	ParametersExt ComputeParameters(const Parameters& opt, unsigned int width, unsigned int height);
-
-	ImagePoints CreatePoints(
-			const slimage::Image3f& image,
-			const slimage::Image1ui16& depth,
-			const slimage::Image3f& normals,
-			const ParametersExt& opt
-			);
-
-	ImagePoints CreatePoints(
-			const slimage::Image3ub& image,
-			const slimage::Image1ui16& depth,
-			const slimage::Image3f& normals,
-			const ParametersExt& opt
-			);
-
-	/** Find super pixel clusters */
-	std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt);
-
-	std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const ImagePoints& points);
-
-	std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::vector<Seed>& seeds, const ParametersExt& opt);
-
-	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const ParametersExt& opt);
-
-	std::vector<Seed> FindSeeds(const ImagePoints& points, const ParametersExt& opt);
-
-	void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges, const ParametersExt& opt, slimage::ThreadingOptions threadopt);
-
-	void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges, const ParametersExt& opt);
-
-	std::vector<Cluster> CreateClusters(const std::vector<Seed>& seeds, const ImagePoints& points, const ParametersExt& opt);
-
-	void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, const ParametersExt& opt);
-
-	template<typename F>
-	void ForPixelClusters(const std::vector<Cluster>& clusters, const ImagePoints& points, F f) {
-		for(unsigned int i=0; i<clusters.size(); i++) {
-			const Cluster& cluster = clusters[i];
-			for(unsigned int p : cluster.pixel_ids) {
-				f(i, cluster, p, points[p]);
-			}
-		}
-	}
-
-	template<typename F>
-	auto ForClusters(const std::vector<Cluster>& clusters, F f) -> std::vector<decltype(f(clusters[0]))> {
-		std::vector<decltype(f(clusters[0]))> data(clusters.size());
-		for(unsigned int i=0; i<clusters.size(); i++) {
-			data[i] = f(clusters[i]);
-		}
-		return data;
-	}
 
 	struct ClusterInfo
 	{
@@ -394,11 +198,21 @@ namespace dasp
 		float coverage;
 	};
 
-	ClusterInfo ComputeClusterInfo(const Cluster& clusters, const ImagePoints& points, const ParametersExt& opt);
+	struct Cluster
+	{
+		Point center;
 
-	inline std::vector<ClusterInfo> ComputeClusterInfo(const std::vector<Cluster>& clusters, const ImagePoints& points, const ParametersExt& opt) {
-		return ForClusters(clusters, [&points, &opt](const Cluster& c) { return ComputeClusterInfo(c, points, opt); });
-	}
+		std::vector<unsigned int> pixel_ids;
+
+		bool hasPoints() const {
+			return pixel_ids.size() > 3;
+		}
+
+		void UpdateCenter(const ImagePoints& points, const Camera& cam);
+
+		ClusterInfo ComputeClusterInfo(const ImagePoints& points, const Parameters& opt) const;
+
+	};
 
 	struct ClusterGroupInfo
 	{
@@ -407,36 +221,218 @@ namespace dasp
 		Histogram<float> hist_thickness;
 	};
 
-	ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info);
+	class Clustering
+	{
+	public:
+		slimage::ThreadingOptions threadopt;
 
-	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img);
+		Parameters opt;
 
-	void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color);
+		ImagePoints points;
 
-	void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const slimage::Image3ub& img);
+		std::vector<Cluster> cluster;
 
-	void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, const ParametersExt& opt);
+		Clustering();
 
-	void PlotClustersCross(const std::vector<Cluster>& clusters, const slimage::Image3ub& img, const ParametersExt& opt);
+		ImagePoints CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
-	void PlotEdges(const std::vector<int>& point_labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b);
+		ImagePoints CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
-	template<typename F>
-	std::vector<float> ClassifyClusters(const std::vector<Cluster>& clusters, F f) {
-		std::vector<float> values(clusters.size());
-		for(unsigned int i=0; i<clusters.size(); i++) {
-			values[i] = f(clusters[i].center);
+		/** Find super pixel clusters */
+		std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const slimage::Image1f& edges);
+
+		std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const ImagePoints& points);
+
+		std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::vector<Seed>& seeds);
+
+		slimage::Image1f ComputeDepthDensity(const ImagePoints& points);
+
+		std::vector<Seed> FindSeeds(const ImagePoints& points);
+
+		void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges);
+
+		void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges);
+
+		std::vector<Cluster> CreateClusters(const std::vector<Seed>& seeds, const ImagePoints& points);
+
+		void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points);
+
+		template<typename F>
+		void ForPixelClusters(F f) {
+			for(unsigned int i=0; i<cluster.size(); i++) {
+				const Cluster& c = cluster[i];
+				for(unsigned int p : c.pixel_ids) {
+					f(i, c, p, points[p]);
+				}
+			}
 		}
-		return values;
-	}
 
-	struct Color {
-		unsigned char r,g,b;
+		template<typename F>
+		auto ForClusters(F f) -> std::vector<decltype(f(cluster[0]))> {
+			std::vector<decltype(f(cluster[0]))> data(cluster.size());
+			for(unsigned int i=0; i<cluster.size(); i++) {
+				data[i] = f(cluster[i]);
+			}
+			return data;
+		}
+
+		template<typename F>
+		auto ForClusterCenters(F f) -> std::vector<decltype(f(cluster[0]))> {
+			std::vector<decltype(f(cluster[0]))> data(cluster.size());
+			for(unsigned int i=0; i<cluster.size(); i++) {
+				data[i] = f(cluster[i].center);
+			}
+			return data;
+		}
+
+		template<typename F>
+		std::vector<float> ClassifyClusters(F f) {
+			return ForClusterCenters(f);
+		}
+
+		std::vector<ClusterInfo> ComputeClusterInfo() {
+			return ForClusters([this](const Cluster& c) { return c.ComputeClusterInfo(points, opt); });
+		}
+
+		ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info);
+
+
+		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y)
+		{
+			// x and y are assumed to be normalized
+			// dot(x,y) yields the cos of the angle
+			// 1 is perfect, -1 is opposite
+			// map to [0|2]
+			return 1.0f - x.dot(y);
+		}
+
+		template<bool cUseSqrt=false>
+		inline float Distance(const Point& u, const Point& v)
+		{
+			float d_color;
+			if(cUseSqrt) {
+				d_color = (u.color - v.color).norm();
+				d_color /= 0.25f;
+			}
+			else {
+				d_color = (u.color - v.color).squaredNorm();
+				d_color /= (0.25f * 0.25f);
+			}
+			if(d_color > 1.0f) {
+				d_color = 1.0f;
+			}
+
+			float d_world;
+			if(cUseSqrt) {
+				d_world = (u.world - v.world).norm();
+				d_world /= opt.base_radius;
+			}
+			else {
+				d_world = (u.world - v.world).squaredNorm();
+				d_world /= opt.base_radius * opt.base_radius;
+			}
+
+			float d_normal = DistanceForNormals(u.normal, v.normal);
+
+			return
+				opt.weight_color * d_color
+				+ opt.weight_spatial * d_world
+				+ opt.weight_normal * d_normal;
+		}
+
+		template<bool cUseSqrt=false, bool cDisparity=true>
+		inline float DistancePlanar(const Point& u, const Point& v)
+		{
+			float d_color;
+			if(cUseSqrt) {
+				d_color = (u.color - v.color).norm();
+				d_color /= 0.25f;
+			}
+			else {
+				d_color = (u.color - v.color).squaredNorm();
+				d_color /= (0.25f * 0.25f);
+			}
+			if(d_color > 1.0f) {
+				d_color = 1.0f;
+			}
+
+			float d_point;
+			if(cUseSqrt) {
+				d_point = (u.pos - v.pos).norm();
+				d_point /= 0.5f*(u.image_super_radius + v.image_super_radius);
+			}
+			else {
+				d_point = (u.pos - v.pos).squaredNorm();
+				float q = 0.5f*(u.image_super_radius + v.image_super_radius);
+				d_point /= q*q;
+			}
+
+			float d_depth;
+			if(cDisparity) {
+				if(cUseSqrt) {
+					d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
+				}
+				else {
+					d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
+				}
+			}
+			else {
+				if(cUseSqrt) {
+					d_depth = std::abs(u.depth() - v.depth());
+				}
+				else {
+					d_depth = Square(u.depth() - v.depth());
+				}
+			}
+
+			float d_normal = DistanceForNormals(u.normal, v.normal);
+
+			return
+				opt.weight_color * d_color
+				+ opt.weight_spatial * d_point
+				+ opt.weight_depth*d_depth
+				+ opt.weight_normal * d_normal;
+		}
+
+		inline float Distance(const Point& u, const Cluster& c) {
+			return Distance(u, c.center);
+		}
+
+		inline float Distance(const Cluster& x, const Cluster& y) {
+			return Distance(x.center, y.center);
+		}
+
+		template<bool cUseSqrt=true>
+		inline float DistanceSpatial(const Point& x, const Point& y) {
+			float d_point;
+			if(cUseSqrt) {
+				d_point = (x.pos - y.pos).norm();
+			}
+			else {
+				d_point = (x.pos - y.pos).squaredNorm();
+			}
+			return d_point;
+		}
+
+		inline float DistanceSpatial(const Cluster& x, const Cluster& y) {
+			return DistanceSpatial(x.center, y.center);
+		}
+
+		inline float DistanceWorld(const Cluster& x, const Cluster& y) {
+			// TODO compute distance between:
+			// mean cluster colors,
+			float d_color = (x.center.color - y.center.color).norm();
+			// mean cluster normals and
+			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			// world position of cluster centers.
+			float d_world = (x.center.world - y.center.world).norm();
+			return d_color
+				+ opt.weight_spatial*d_world // FIXME constant
+				+ opt.weight_normal*d_normal;
+	//		return DistanceSpatial(x.center, y.center);
+		}
+
 	};
-
-	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey=0, int size=1);
-
-	void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, int size=1);
 
 }
 
