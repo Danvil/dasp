@@ -79,15 +79,6 @@ namespace dasp
 			return world[2];
 		}
 
-		/** Estimated number of super pixels at this point
-		 * We assume circular superpixels. So the area A of a superpixel at
-		 * point location is R*R*pi and the superpixel density is 1/A.
-		 * If the depth information is invalid, the density is 0.
-		 */
-		float estimatedCount() const {
-			return isInvalid() ? 0.0f : 1.0f / (M_PI * image_super_radius * image_super_radius);
-		}
-
 	public:
 		 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -106,6 +97,18 @@ namespace dasp
 
 	struct Parameters
 	{
+		Parameters() {
+			weight_color = 1.0f;
+			weight_spatial = 1.0f;
+			weight_normal = 1.0f;
+			weight_depth = 1.0f;
+			iterations = 3;
+			coverage = 1.7f;
+			base_radius = 0.02f;
+			seed_mode = SeedModes::DepthMipmap;
+			gradient_adaptive_density = true;
+		}
+
 		/** camera parameters */
 		Camera camera;
 
@@ -125,6 +128,8 @@ namespace dasp
 
 		/** Method used to compute seed points */
 		SeedMode seed_mode;
+
+		bool gradient_adaptive_density;
 
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and
@@ -385,14 +390,14 @@ namespace dasp
 		float area;
 		/** sqrt(a*b) */
 		float radius;
-		/** (a-b)/a */
-		float circularity;
+		/** number of pixel which are within superpixel radius but are not part of the superpixel */
+		float coverage;
 	};
 
-	ClusterInfo ComputeClusterInfo(const Cluster& clusters, const ImagePoints& points);
+	ClusterInfo ComputeClusterInfo(const Cluster& clusters, const ImagePoints& points, const ParametersExt& opt);
 
-	inline std::vector<ClusterInfo> ComputeClusterInfo(const std::vector<Cluster>& clusters, const ImagePoints& points) {
-		return ForClusters(clusters, [&points](const Cluster& c) { return ComputeClusterInfo(c, points); });
+	inline std::vector<ClusterInfo> ComputeClusterInfo(const std::vector<Cluster>& clusters, const ImagePoints& points, const ParametersExt& opt) {
+		return ForClusters(clusters, [&points, &opt](const Cluster& c) { return ComputeClusterInfo(c, points, opt); });
 	}
 
 	struct ClusterGroupInfo

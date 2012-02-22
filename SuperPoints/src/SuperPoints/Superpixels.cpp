@@ -278,10 +278,22 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 	slimage::Image1f num(points.width(), points.height());
 	for(unsigned int i=0; i<points.height(); i++) {
 		for(unsigned int j=0; j<points.width(); j++) {
-			float lambda = std::sqrt(points(j,i).gradient.squaredNorm() + 1.0f);
-			lambda = std::min(20.0f, lambda); // limit
-			// compute number of seeds per pixel
-			num(j,i) = lambda * points(j,i).estimatedCount();
+			const Point& p = points(j,i);
+			/** Estimated number of super pixels at this point
+			 * We assume circular superpixels. So the area A of a superpixel at
+			 * point location is R*R*pi and the superpixel density is 1/A.
+			 * If the depth information is invalid, the density is 0.
+			 */
+			float cnt = p.isInvalid() ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
+			// Additionally the local gradient has to be considered.
+			// We assume local affine projection and compute the distortion
+			// factor.
+			float lambda = 1.0f;
+			if(opt.gradient_adaptive_density) {
+				lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
+			}
+//			lambda = std::min(20.0f, lambda); // limit
+			num(j,i) = lambda * cnt;
 		}
 	}
 	return num;
@@ -532,7 +544,7 @@ void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points, con
 	clusters = clusters_valid;
 }
 
-ClusterInfo ComputeClusterInfo(const Cluster& cluster, const ImagePoints& points)
+ClusterInfo ComputeClusterInfo(const Cluster& cluster, const ImagePoints& points, const ParametersExt& opt)
 {
 	Eigen::Matrix3f A = PointCovariance(cluster.pixel_ids, [&points,&cluster](unsigned int i) { return points[i].world - cluster.center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
@@ -545,7 +557,40 @@ ClusterInfo ComputeClusterInfo(const Cluster& cluster, const ImagePoints& points
 	float u = infos.b/infos.a;
 	infos.eccentricity = std::sqrt(1.0f - u*u);
 	infos.radius = std::sqrt(infos.a * infos.b);
-	infos.circularity = (infos.a - infos.b)/infos.a;
+
+	{
+		float error_area = 0;
+		float expected_area = 0;
+		int cx = cluster.center.spatial_x();
+		int cy = cluster.center.spatial_y();
+		int R = int(2.0f * cluster.center.image_super_radius);
+		unsigned int xmin = std::max(0, cx - R);
+		unsigned int xmax = std::min(int(points.width()), cx + R);
+		unsigned int ymin = std::max(0, cy - R);
+		unsigned int ymax = std::min(int(points.height()), cy + R);
+		for(unsigned int y=ymin; y<ymax; y++) {
+			for(unsigned int x=xmin; x<xmax; x++) {
+				unsigned int i = points.index(x,y);
+				const Point& p = points[i];
+				bool expected = (cluster.center.world - p.world).squaredNorm() < opt.base_radius*opt.base_radius;
+				bool actual = std::find(cluster.pixel_ids.begin(), cluster.pixel_ids.end(), i) != cluster.pixel_ids.end();
+				float size_of_a_px = p.depth() / opt.camera.focal;
+				float area_of_a_px = size_of_a_px*size_of_a_px*std::sqrt(p.gradient.squaredNorm() + 1.0f);
+				if(expected != actual) {
+					error_area += area_of_a_px;
+				}
+				if(expected) {
+					expected_area += area_of_a_px;
+				}
+			}
+		}
+		float real_expected_area = M_PI * opt.base_radius * opt.base_radius;
+//		std::cout << 10000.0f*error_area << " - " << 10000.0f*expected_area << " - " << 10000.0f*real_expected_area << std::endl;
+		//float expected_area = opt.base_radius*opt.base_radius*M_PI;
+//		infos.coverage = error_area / expected_area;
+		infos.coverage = error_area / real_expected_area;
+	}
+
 	return infos;
 }
 
@@ -553,10 +598,10 @@ ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster
 {
 	ClusterGroupInfo cgi;
 	cgi.hist_eccentricity = Histogram<float>(50, 0, 1);
-	cgi.hist_radius = Histogram<float>(50, 0, 0.20f);
-	cgi.hist_thickness = Histogram<float>(50, 0, 0.05f);
+	cgi.hist_radius = Histogram<float>(50, 0, 0.10f);
+	cgi.hist_thickness = Histogram<float>(50, 0, 0.01f);
 	for(const ClusterInfo& ci : cluster_info) {
-		cgi.hist_eccentricity.add(ci.circularity);
+		cgi.hist_eccentricity.add(ci.eccentricity);
 		cgi.hist_radius.add(ci.radius);
 		cgi.hist_thickness.add(ci.t);
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
@@ -621,7 +666,7 @@ void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, cons
 	else {
 		g0 /= std::sqrt(g_norm_sq);
 	}
-	float sp_0 = 0.5f * cluster.center.image_super_radius;
+	float sp_0 = cluster.center.image_super_radius;
 	float sp_small = sp_0 / std::sqrt(g_norm_sq + 1.0f);
 	int p1x = static_cast<int>(sp_small * g0[0]);
 	int p1y = static_cast<int>(sp_small * g0[1]);

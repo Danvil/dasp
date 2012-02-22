@@ -16,9 +16,12 @@ public:
 
     std::function<void()> on_train_;
     std::function<void(float)> on_change_cm_sigma_scale_;
+    std::function<void(bool)> on_set_create_plots_;
 
 public Q_SLOTS:
+	void ChangeSuperCreatePlots(int state);
 	void OnSuperSeedType(const QString& txt);
+	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelRadius(double val);
 	void ChangeSuperpixelIterations(int val);
 	void ChangeSuperpixelWeightColor(double val);

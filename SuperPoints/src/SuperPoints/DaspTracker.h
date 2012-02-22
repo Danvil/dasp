@@ -41,6 +41,8 @@ private:
 public:
 	bool training_;
 
+	bool create_plots_;
+
     boost::shared_ptr<dasp::Parameters> dasp_params;
 
     float color_model_sigma_scale_;

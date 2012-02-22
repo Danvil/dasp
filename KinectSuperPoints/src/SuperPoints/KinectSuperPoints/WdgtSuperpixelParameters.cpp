@@ -7,7 +7,9 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 
 	ui.setupUi(this);
 
+	QObject::connect(ui.checkBoxCreatePlots, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperCreatePlots(int)));
 	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(OnSuperSeedType(const QString&)));
+	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
 	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
@@ -18,6 +20,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.pushButtonColorModelTrain, SIGNAL(clicked()), this, SLOT(OnColorModelTrain()));
 	QObject::connect(ui.doubleSpinBoxColorSoftness, SIGNAL(valueChanged(double)), this, SLOT(ChangeColorModelSigmaScale(double)));
 
+	dasp_params_->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_params_->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
 	dasp_params_->iterations = ui.spinBoxIterations->value();
 	dasp_params_->weight_color = ui.doubleSpinBoxWeightColor->value();
@@ -31,6 +34,13 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 WdgtSuperpixelParameters::~WdgtSuperpixelParameters()
 {
 
+}
+
+void WdgtSuperpixelParameters::ChangeSuperCreatePlots(int state)
+{
+	if(on_set_create_plots_) {
+		on_set_create_plots_(state);
+	}
 }
 
 void WdgtSuperpixelParameters::OnSuperSeedType(const QString& txt)
@@ -47,6 +57,11 @@ void WdgtSuperpixelParameters::OnSuperSeedType(const QString& txt)
 	else {
 		throw 0;
 	}
+}
+
+void WdgtSuperpixelParameters::ChangeSuperUseGradientDensity(int state)
+{
+	dasp_params_->gradient_adaptive_density = state;
 }
 
 void WdgtSuperpixelParameters::ChangeSuperpixelRadius(double val)
