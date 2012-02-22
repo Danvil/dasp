@@ -54,14 +54,6 @@ namespace detail
 	}
 }
 
-void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img)
-{
-	unsigned char c_col_r = 255.0f * cluster.center.color[0];
-	unsigned char c_col_g = 255.0f * cluster.center.color[1];
-	unsigned char c_col_b = 255.0f * cluster.center.color[2];
-	PlotCluster(cluster, points, img, slimage::Pixel3ub{{c_col_r, c_col_g, c_col_b}});
-}
-
 void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color)
 {
 	assert(cluster.hasPoints());
@@ -82,14 +74,15 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimag
 
 }
 
-void PlotCluster(const std::vector<Cluster>& clusters, const ImagePoints& points, const slimage::Image3ub& img)
+void PlotCluster(const Clustering& clustering, const slimage::Image3ub& img, const std::vector<slimage::Pixel3ub>& colors)
 {
 //	std::vector<Danvil::ColorUB> cols = {
 //			Danvil::Color::Red, Danvil::Color::Green, Danvil::Color::Blue, Danvil::Color::Yellow, Danvil::Color::Cyan, Danvil::Color::Magenta, Danvil::Color::Black
 //	};
+	assert(clustering.cluster.size() == colors.size());
 	img.fill(0);
-	for(const Cluster& x : clusters) {
-		PlotCluster(x, points, img);
+	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
+		PlotCluster(clustering.cluster[i], clustering.points, img, colors[i]);
 	}
 }
 
@@ -129,10 +122,10 @@ void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, cons
 	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
 }
 
-void PlotClustersCross(const std::vector<Cluster>& clusters, const slimage::Image3ub& img, const Parameters& opt)
+void PlotClustersCross(const Clustering& clustering, const slimage::Image3ub& img)
 {
-	for(const Cluster& x : clusters) {
-		PlotClusterCross(x, img, opt);
+	for(const Cluster& x : clustering.cluster) {
+		PlotClusterCross(x, img, clustering.opt);
 	}
 }
 
@@ -260,7 +253,7 @@ slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode cm, ColorMode cc
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
 	slimage::Image3ub img(c.points.width(), c.points.height());
-	// FIXME implement
+	PlotCluster(c, img, colors);
 	return img;
 }
 
@@ -273,11 +266,7 @@ namespace detail
 
 	template<>
 	slimage::Pixel3ub ComputePointColor<Color>(const Point& p) {
-		return {{
-			static_cast<unsigned char>(std::min(255.0f, std::max(0.0f, 255.0f*p.color[0]))),
-			static_cast<unsigned char>(std::min(255.0f, std::max(0.0f, 255.0f*p.color[1]))),
-			static_cast<unsigned char>(std::min(255.0f, std::max(0.0f, 255.0f*p.color[2])))
-		}};
+		return RgbColor(p);
 	}
 
 	template<>

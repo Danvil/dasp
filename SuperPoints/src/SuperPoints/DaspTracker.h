@@ -57,8 +57,7 @@ private:
 
 	slimage::Image1ub result_;
 
-	dasp::ImagePoints points;
-	std::vector<dasp::Cluster> clusters;
+	Clustering clustering_;
 
 	bool has_hand_gmm_model_;
 	boost::shared_ptr<SuperpixelHistogramModel> model_;

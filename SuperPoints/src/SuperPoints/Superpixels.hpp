@@ -234,28 +234,28 @@ namespace dasp
 
 		Clustering();
 
-		ImagePoints CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
+		void CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
-		ImagePoints CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
+		void CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
 		/** Find super pixel clusters */
-		std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const slimage::Image1f& edges);
+		void ComputeSuperpixels(const slimage::Image1f& edges);
 
-		std::vector<int> ComputePixelLabels(const std::vector<Cluster>& clusters, const ImagePoints& points);
+		std::vector<int> ComputePixelLabels();
 
-		std::vector<Cluster> ComputeSuperpixels(const ImagePoints& points, const std::vector<Seed>& seeds);
+		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
-		slimage::Image1f ComputeDepthDensity(const ImagePoints& points);
+		slimage::Image1f ComputeDepthDensity();
 
-		std::vector<Seed> FindSeeds(const ImagePoints& points);
+		std::vector<Seed> FindSeeds();
 
-		void ComputeEdges(const ImagePoints& points, slimage::Image1f& edges);
+		void ComputeEdges(slimage::Image1f& edges);
 
-		void ImproveSeeds(std::vector<Seed>& seeds, const ImagePoints& points, const slimage::Image1f& edges);
+		void ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges);
 
-		std::vector<Cluster> CreateClusters(const std::vector<Seed>& seeds, const ImagePoints& points);
+		void CreateClusters(const std::vector<Seed>& seeds);
 
-		void MoveClusters(std::vector<Cluster>& clusters, const ImagePoints& points);
+		void MoveClusters();
 
 		template<typename F>
 		void ForPixelClusters(F f) {
@@ -277,17 +277,12 @@ namespace dasp
 		}
 
 		template<typename F>
-		auto ForClusterCenters(F f) -> std::vector<decltype(f(cluster[0]))> {
-			std::vector<decltype(f(cluster[0]))> data(cluster.size());
+		auto ForClusterCenters(F f) -> std::vector<decltype(f(cluster[0].center))> {
+			std::vector<decltype(f(cluster[0].center))> data(cluster.size());
 			for(unsigned int i=0; i<cluster.size(); i++) {
 				data[i] = f(cluster[i].center);
 			}
 			return data;
-		}
-
-		template<typename F>
-		std::vector<float> ClassifyClusters(F f) {
-			return ForClusterCenters(f);
 		}
 
 		std::vector<ClusterInfo> ComputeClusterInfo() {
