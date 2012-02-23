@@ -164,21 +164,6 @@
         <property name="currentIndex">
          <number>1</number>
         </property>
-        <item>
-         <property name="text">
-          <string>Depth Invariant</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Mipmap</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Blue Noise</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item row="8" column="0">

@@ -15,7 +15,7 @@ public:
 	~WdgtSuperpixelParameters();
 
 public Q_SLOTS:
-	void OnSuperSeedType(const QString& txt);
+	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelRadius(double val);
 	void ChangeSuperpixelIterations(int val);

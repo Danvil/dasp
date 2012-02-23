@@ -7,6 +7,12 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 
 	ui.setupUi(this);
 
+	ui.comboBoxSeedType->addItem("EquiDistant", dasp::SeedModes::EquiDistant);
+	ui.comboBoxSeedType->addItem("DepthMipmap", dasp::SeedModes::DepthMipmap);
+	ui.comboBoxSeedType->addItem("DepthBlueNoise", dasp::SeedModes::DepthBlueNoise);
+	ui.comboBoxSeedType->addItem("Delta", dasp::SeedModes::Delta);
+	ui.comboBoxSeedType->setCurrentIndex(1);
+
 	ui.comboBoxPlotPointsColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotPointsColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotPointsColor->addItem("Gradient", dasp::plots::Gradient);
@@ -27,7 +33,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterMode->addItem("ClusterEllipsesFilled", dasp::plots::ClusterEllipsesFilled);
 	ui.comboBoxPlotClusterMode->setCurrentIndex(1);
 
-	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(OnSuperSeedType(const QString&)));
+	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSuperSeedType(int)));
 	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
@@ -71,20 +77,9 @@ WdgtSuperpixelParameters::~WdgtSuperpixelParameters()
 
 }
 
-void WdgtSuperpixelParameters::OnSuperSeedType(const QString& txt)
+void WdgtSuperpixelParameters::OnSuperSeedType(int selection)
 {
-	if(txt == "Depth Invariant") {
-		dasp_tracker_->dasp_params->seed_mode = dasp::SeedModes::EquiDistant;
-	}
-	else if(txt == "Mipmap") {
-		dasp_tracker_->dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
-	}
-	else if(txt == "Blue Noise") {
-		dasp_tracker_->dasp_params->seed_mode = dasp::SeedModes::DepthBlueNoise;
-	}
-	else {
-		throw 0;
-	}
+	dasp_tracker_->dasp_params->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(selection).toInt());
 }
 
 void WdgtSuperpixelParameters::ChangeSuperUseGradientDensity(int state)
