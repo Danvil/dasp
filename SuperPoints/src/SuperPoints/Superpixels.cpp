@@ -9,6 +9,7 @@
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
 #include "PointsAndNormals.hpp"
+#define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
 #include <eigen3/Eigen/Eigenvalues>
@@ -506,7 +507,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	// compute old density
 	DANVIL_BENCHMARK_START(FindSeedsDelta_densityfromseeds)
 	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
-	DANVIL_BENCHMARK_START(FindSeedsDelta_densityfromseeds)
+	DANVIL_BENCHMARK_STOP(FindSeedsDelta_densityfromseeds)
 	// difference
 	slimage::Image1f density_delta = density_new - density_old;
 	// compute mipmaps

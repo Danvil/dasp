@@ -11,8 +11,8 @@
 #include "PointsAndNormals.hpp"
 #include "AutoDepth.hpp"
 #include "Plots.hpp"
-#define DANVIL_ENABLE_BENCHMARK
 #include <Slimage/Paint.hpp>
+#define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
