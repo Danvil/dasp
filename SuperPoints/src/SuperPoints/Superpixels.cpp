@@ -310,9 +310,9 @@ void FindSeedsDepthMipmap_Walk(
 			if(s.x < int(points.width()) && s.y < int(points.height())) {
 				s.scala = points(s.x, s.y).image_super_radius;
 //				std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
-//				if(s.scala > 2.0f) {
+				if(s.scala >= 2.0f) {
 					seeds.push_back(s);
-//				}
+				}
 			}
 		}
 	}
@@ -470,9 +470,9 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				if(sx < int(points.width()) && sy < int(points.height())) {
 					Seed s{sx, sy, points(s.x, s.y).image_super_radius};
 //					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
-//					if(s.scala > 2.0f) {
+					if(s.scala >= 2.0f) {
 						seeds.push_back(s);
-//					}
+					}
 				}
 			}
 			else {
@@ -518,7 +518,15 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	for(Seed& s : seeds) {
 		s.scala = points(s.x, s.y).image_super_radius;
 	}
-	return seeds;
+	// delete seeds with low scala
+	std::vector<Seed> ok_size_seeds;
+	ok_size_seeds.reserve(seeds.size());
+	for(Seed& s : seeds) {
+		if(s.scala >= 2.0f) {
+			ok_size_seeds.push_back(s);
+		}
+	}
+	return ok_size_seeds;
 }
 
 std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
