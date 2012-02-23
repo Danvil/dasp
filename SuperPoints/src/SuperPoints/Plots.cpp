@@ -171,10 +171,20 @@ namespace detail
 		return ComputePointColor<M>(c.center);
 	}
 
-//	template<>
-//	slimage::Pixel3ub ComputeClusterColor<Eccentricity>(const Cluster& c) {
-//		return IntensityColor(c.)
-//	}
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<Eccentricity>(const Cluster& c) {
+		return IntensityColor(c.eccentricity, 0.0f, 1.0f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<Circularity>(const Cluster& c) {
+		return IntensityColor(c.coverage, 0.0f, 1.0f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<Thickness>(const Cluster& c) {
+		return IntensityColor(c.t, 0.0f, 0.01f);
+	}
 
 	template<int M>
 	std::vector<slimage::Pixel3ub> ComputePixelColorsImpl(const dasp::ImagePoints& points)

@@ -301,6 +301,9 @@ void DaspTracker::performSegmentationStep()
 			vis_img.fill(0);
 		}
 		if(show_clusters_) {
+			if(cluster_color_mode_ == plots::Eccentricity || cluster_color_mode_ == plots::Circularity || cluster_color_mode_ == plots::Thickness) {
+				clustering_.ComputeClusterInfo();
+			}
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
 		}
 		if(show_cluster_borders_) {

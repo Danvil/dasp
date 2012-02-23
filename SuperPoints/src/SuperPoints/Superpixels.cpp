@@ -57,19 +57,18 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 	// scala is not changed!
 }
 
-ClusterInfo Cluster::ComputeClusterInfo(const ImagePoints& points, const Parameters& opt) const
+void Cluster::ComputeClusterInfo(const ImagePoints& points, const Parameters& opt)
 {
 	Eigen::Matrix3f A = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
 	solver.computeDirect(A);
-	ClusterInfo infos;
-	infos.t = std::abs(solver.eigenvalues()[0]);
-	infos.b = std::abs(solver.eigenvalues()[1]);
-	infos.a = std::abs(solver.eigenvalues()[2]);
-	infos.area = M_PI * infos.a * infos.b;
-	float u = infos.b/infos.a;
-	infos.eccentricity = std::sqrt(1.0f - u*u);
-	infos.radius = std::sqrt(infos.a * infos.b);
+	t = std::abs(solver.eigenvalues()[0]);
+	b = std::abs(solver.eigenvalues()[1]);
+	a = std::abs(solver.eigenvalues()[2]);
+	area = M_PI * a * b;
+	float u = b/a;
+	eccentricity = std::sqrt(1.0f - u*u);
+	radius = std::sqrt(a * b);
 
 	{
 		float error_area = 0;
@@ -101,10 +100,9 @@ ClusterInfo Cluster::ComputeClusterInfo(const ImagePoints& points, const Paramet
 //		std::cout << 10000.0f*error_area << " - " << 10000.0f*expected_area << " - " << 10000.0f*real_expected_area << std::endl;
 		//float expected_area = opt.base_radius*opt.base_radius*M_PI;
 //		infos.coverage = error_area / expected_area;
-		infos.coverage = error_area / real_expected_area;
+		coverage = error_area / real_expected_area;
 	}
 
-	return infos;
 }
 
 //------------------------------------------------------------------------------
@@ -732,16 +730,16 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 	return G;
 }
 
-ClusterGroupInfo Clustering::ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info)
+ClusterGroupInfo Clustering::ComputeClusterGroupInfo()
 {
 	ClusterGroupInfo cgi;
 	cgi.hist_eccentricity = Histogram<float>(50, 0, 1);
 	cgi.hist_radius = Histogram<float>(50, 0, 0.10f);
 	cgi.hist_thickness = Histogram<float>(50, 0, 0.01f);
-	for(const ClusterInfo& ci : cluster_info) {
-		cgi.hist_eccentricity.add(ci.eccentricity);
-		cgi.hist_radius.add(ci.radius);
-		cgi.hist_thickness.add(ci.t);
+	for(const Cluster& c : cluster) {
+		cgi.hist_eccentricity.add(c.eccentricity);
+		cgi.hist_radius.add(c.radius);
+		cgi.hist_thickness.add(c.t);
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
 	}
 	return cgi;

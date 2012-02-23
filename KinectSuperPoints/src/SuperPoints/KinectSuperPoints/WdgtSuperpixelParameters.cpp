@@ -25,6 +25,9 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotClusterColor->addItem("Gradient", dasp::plots::Gradient);
 	ui.comboBoxPlotClusterColor->addItem("Color", dasp::plots::Color);
+	ui.comboBoxPlotClusterColor->addItem("Eccentricity", dasp::plots::Eccentricity);
+	ui.comboBoxPlotClusterColor->addItem("Circularity", dasp::plots::Circularity);
+	ui.comboBoxPlotClusterColor->addItem("Thickness", dasp::plots::Thickness);
 	ui.comboBoxPlotClusterColor->setCurrentIndex(2);
 
 	ui.comboBoxPlotClusterMode->addItem("ClusterCenter", dasp::plots::ClusterCenter);

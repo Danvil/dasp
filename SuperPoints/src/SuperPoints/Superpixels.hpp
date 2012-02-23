@@ -186,20 +186,6 @@ namespace dasp
 		}
 	};
 
-	struct ClusterInfo
-	{
-		/** Eigenvalues of the covariance matrix */
-		float t, b, a;
-		/** eccentricity of the ellipse described by a and b */
-		float eccentricity;
-		/** pi*a*b */
-		float area;
-		/** sqrt(a*b) */
-		float radius;
-		/** number of pixel which are within superpixel radius but are not part of the superpixel */
-		float coverage;
-	};
-
 	struct Cluster
 	{
 		Point center;
@@ -210,9 +196,20 @@ namespace dasp
 			return pixel_ids.size() > 3;
 		}
 
+		/** Eigenvalues of the covariance matrix */
+		float t, b, a;
+		/** eccentricity of the ellipse described by a and b */
+		float eccentricity;
+		/** pi*a*b */
+		float area;
+		/** sqrt(a*b) */
+		float radius;
+		/** number of pixel which are within superpixel radius but are not part of the superpixel */
+		float coverage;
+
 		void UpdateCenter(const ImagePoints& points, const Camera& cam);
 
-		ClusterInfo ComputeClusterInfo(const ImagePoints& points, const Parameters& opt) const;
+		void ComputeClusterInfo(const ImagePoints& points, const Parameters& opt);
 
 	};
 
@@ -282,6 +279,13 @@ namespace dasp
 		}
 
 		template<typename F>
+		void ForClustersNoReturn(F f) {
+			for(unsigned int i=0; i<cluster.size(); i++) {
+				f(cluster[i]);
+			}
+		}
+
+		template<typename F>
 		auto ForClusters(F f) -> std::vector<decltype(f(cluster[0]))> {
 			std::vector<decltype(f(cluster[0]))> data(cluster.size());
 			for(unsigned int i=0; i<cluster.size(); i++) {
@@ -299,11 +303,11 @@ namespace dasp
 			return data;
 		}
 
-		std::vector<ClusterInfo> ComputeClusterInfo() {
-			return ForClusters([this](const Cluster& c) { return c.ComputeClusterInfo(points, opt); });
+		void ComputeClusterInfo() {
+			return ForClustersNoReturn([this](Cluster& c) { c.ComputeClusterInfo(points, opt); });
 		}
 
-		ClusterGroupInfo ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info);
+		ClusterGroupInfo ComputeClusterGroupInfo();
 
 
 		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y)
