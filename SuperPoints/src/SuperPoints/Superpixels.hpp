@@ -9,6 +9,7 @@
 #define SUPERPIXELS_HPP_
 
 #include "Tools.hpp"
+#include "SuperpixelHistogram.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
@@ -264,6 +265,8 @@ namespace dasp
 		void CreateClusters(const std::vector<Seed>& seeds);
 
 		void MoveClusters();
+
+		SuperpixelGraph CreateNeighborhoodGraph();
 
 		template<typename F>
 		void ForPixelClusters(F f) {

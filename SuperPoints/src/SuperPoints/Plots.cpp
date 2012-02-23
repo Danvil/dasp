@@ -13,7 +13,7 @@ namespace dasp {
 namespace plots {
 //----------------------------------------------------------------------------//
 
-void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color)
+void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color)
 {
 	assert(cluster.hasPoints());
 	// plot all pixels belonging to the cluster in the color of the cluster center
@@ -33,25 +33,16 @@ void PlotCluster(const Cluster& cluster, const ImagePoints& points, const slimag
 
 }
 
-void PlotCluster(const Clustering& clustering, const slimage::Image3ub& img, const std::vector<slimage::Pixel3ub>& colors)
+void PlotClusters(const slimage::Image3ub& img, const Clustering& clustering, const std::vector<slimage::Pixel3ub>& colors)
 {
-//	std::vector<Danvil::ColorUB> cols = {
-//			Danvil::Color::Red, Danvil::Color::Green, Danvil::Color::Blue, Danvil::Color::Yellow, Danvil::Color::Cyan, Danvil::Color::Magenta, Danvil::Color::Black
-//	};
 	assert(clustering.cluster.size() == colors.size());
-	img.fill(0);
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
-		PlotCluster(clustering.cluster[i], clustering.points, img, colors[i]);
+		PlotClusterPoints(img, clustering.cluster[i], clustering.points, colors[i]);
 	}
 }
 
-void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, const Parameters& opt)
+void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled)
 {
-	unsigned char c_col_r = 255.0f * cluster.center.color[0];
-	unsigned char c_col_g = 255.0f * cluster.center.color[1];
-	unsigned char c_col_b = 255.0f * cluster.center.color[2];
-	slimage::Pixel3ub color{{c_col_r,c_col_g,c_col_b}};
-
 	int cx = cluster.center.spatial_x();
 	int cy = cluster.center.spatial_y();
 
@@ -73,7 +64,12 @@ void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, cons
 //	std::cout << p1x << "," << p1y << " --- " << p2x << "," << p2y << std::endl;
 //	slimage::PaintLine(img, cx, cy, cx + p1x, cy + p1y, color);
 //	slimage::PaintLine(img, cx, cy, cx + p2x, cy + p2y, color);
-	slimage::PaintEllipse(img, cx, cy, p1x, p1y, p2x, p2y, color);
+	if(filled) {
+		slimage::FillEllipse(img, cx, cy, p1x, p1y, p2x, p2y, color);
+	}
+	else {
+		slimage::PaintEllipse(img, cx, cy, p1x, p1y, p2x, p2y, color);
+	}
 
 	//	Eigen::Vector2f p3 = opt.camera.project(cluster.center.world + 0.05f*cluster.center.normal);
 	//	int p3x = std::round(p3[0]);
@@ -81,14 +77,7 @@ void PlotClusterCross(const Cluster& cluster, const slimage::Image3ub& img, cons
 	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
 }
 
-void PlotClustersCross(const Clustering& clustering, const slimage::Image3ub& img)
-{
-	for(const Cluster& x : clustering.cluster) {
-		PlotClusterCross(x, img, clustering.opt);
-	}
-}
-
-void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, unsigned int edge_w, unsigned char edge_r, unsigned char edge_g, unsigned char edge_b)
+void PlotEdges(const slimage::Image3ub& img, const std::vector<int>& labels, const slimage::Pixel3ub& color, unsigned int size)
 {
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
@@ -115,8 +104,8 @@ void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, uns
 					}
 				}
 			}
-			if(np > edge_w) {
-				img(x,y) = slimage::Pixel3ub{{edge_r, edge_g, edge_b}};
+			if(np > size) {
+				img(x,y) = color;
 				istaken[i] = true;
 			}
 		}
@@ -124,99 +113,22 @@ void PlotEdges(const std::vector<int>& labels, const slimage::Image3ub& img, uns
 }
 
 template<typename K, unsigned int CC>
-void PlotSeedsImpl(const std::vector<Seed>& seeds, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, int size)
+void PlotSeedsImpl(const slimage::Image<K,CC>& img, const std::vector<Seed>& seeds, const slimage::Pixel<K,CC>& color, int size)
 {
 	for(Seed s : seeds) {
 		// round position
-		int px = s.x;
-		int py = s.y;
-		if(px < 0 || int(img.width()) <= px || py < 0 || int(img.height()) <= py) {
-			continue;
-		}
-		if(size == 1) {
-			img(px, py) = color;
-
-		}
-		else if(size == 2) {
-			// paint a star
-			//    X
-			//   X X
-			//    X
-			if(1 <= px) {
-				img(px-1, py) = color;
-			}
-			if(px + 1 < int(img.width())) {
-				img(px+1, py) = color;
-			}
-			if(1 <= py) {
-				img(px, py-1) = color;
-			}
-			if(py + 1 < int(img.height())) {
-				img(px, py+1) = color;
-			}
-		}
-		else {
-			// paint a circle
-			//    X
-			//   X X
-			//  X   X
-			//   X X
-			//    X
-			if(1 <= px && 1 <= py) {
-				img(px-1, py-1) = color;
-			}
-			if(1 <= px && py + 1 < int(img.height())) {
-				img(px-1, py+1) = color;
-			}
-			if(px + 1 < int(img.width()) && 1 <= py) {
-				img(px+1, py-1) = color;
-			}
-			if(px + 1 < int(img.width()) && py + 1 < int(img.height())) {
-				img(px+1, py+1) = color;
-			}
-			if(2 <= px) {
-				img(px-2, py) = color;
-			}
-			if(px + 2 < int(img.width())) {
-				img(px+2, py) = color;
-			}
-			if(2 <= py) {
-				img(px, py-2) = color;
-			}
-			if(py + 2 < int(img.height())) {
-				img(px, py+2) = color;
-			}
-		}
+		slimage::PaintPoint(img, s.x, s.y, color, size);
 	}
 }
 
-void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image1ub& img, unsigned char grey, int size)
+void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey, int size)
 {
-	PlotSeedsImpl(seeds, img, slimage::Pixel1ub{grey}, size);
+	PlotSeedsImpl(img, seeds, slimage::Pixel1ub{grey}, size);
 }
 
-void PlotSeeds(const std::vector<Seed>& seeds, const slimage::Image3ub& img, const slimage::Pixel3ub& color, int size)
+void PlotSeeds(const slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color, int size)
 {
-	PlotSeedsImpl(seeds, img, color, size);
-}
-
-slimage::Image3ub PlotPoints(const Clustering& c, ColorMode pcm)
-{
-	std::vector<slimage::Pixel3ub> colors = ComputePixelColors(c, pcm);
-	slimage::Image3ub img(c.points.width(), c.points.height());
-	for(size_t i=0; i<img.size(); i++) {
-		img(i) = colors[i];
-	}
-	return img;
-}
-
-slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode cm, ColorMode ccm)
-{
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
-	slimage::Image3ub img(c.points.width(), c.points.height());
-	img.fill(0);
-	PlotCluster(c, img, colors);
-	return img;
+	PlotSeedsImpl(img, seeds, color, size);
 }
 
 namespace detail
@@ -224,6 +136,16 @@ namespace detail
 	template<int M>
 	slimage::Pixel3ub ComputePointColor(const Point&) {
 		return {{0,0,0}};
+	}
+
+	template<>
+	slimage::Pixel3ub ComputePointColor<UniBlack>(const Point& p) {
+		return {{0,0,0}};
+	}
+
+	template<>
+	slimage::Pixel3ub ComputePointColor<UniWhite>(const Point& p) {
+		return {{255,255,255}};
 	}
 
 	template<>
@@ -245,16 +167,6 @@ namespace detail
 	}
 
 	template<int M>
-	std::vector<slimage::Pixel3ub> ComputePixelColors(const dasp::ImagePoints& points, ColorMode ccm)
-	{
-		std::vector<slimage::Pixel3ub> colors(points.size());
-		for(unsigned int i=0; i<points.size(); i++) {
-			colors[i] = ComputePointColor<M>(points[i]);
-		}
-		return colors;
-	}
-
-	template<int M>
 	slimage::Pixel3ub ComputeClusterColor(const Cluster& c) {
 		return ComputePointColor<M>(c.center);
 	}
@@ -265,7 +177,17 @@ namespace detail
 //	}
 
 	template<int M>
-	std::vector<slimage::Pixel3ub> ComputeClusterColors(const std::vector<Cluster>& clusters, ColorMode ccm)
+	std::vector<slimage::Pixel3ub> ComputePixelColorsImpl(const dasp::ImagePoints& points)
+	{
+		std::vector<slimage::Pixel3ub> colors(points.size());
+		for(unsigned int i=0; i<points.size(); i++) {
+			colors[i] = ComputePointColor<M>(points[i]);
+		}
+		return colors;
+	}
+
+	template<int M>
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const std::vector<Cluster>& clusters)
 	{
 		std::vector<slimage::Pixel3ub> colors(clusters.size());
 		for(unsigned int i=0; i<clusters.size(); i++) {
@@ -274,33 +196,113 @@ namespace detail
 		return colors;
 	}
 
+	template<int M>
+	void PlotPointsImpl(const slimage::Image3ub& img, const Clustering& c)
+	{
+		for(size_t i=0; i<img.getPixelCount(); i++) {
+			img(i) = ComputePointColor<M>(c.points[i]);
+		}
+	}
+
 }
 
-#define ComputePixelColors_HELPER(T) case T: return detail::ComputePixelColors<T>(c.points, ccm);
+#define ComputePixelColors_HELPER(T) case T: return detail::ComputePixelColorsImpl<T>(c.points);
 
 std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm)
 {
 	switch(ccm) {
+	ComputePixelColors_HELPER(UniBlack)
+	ComputePixelColors_HELPER(UniWhite)
 	ComputePixelColors_HELPER(Color)
 	ComputePixelColors_HELPER(Depth)
 	ComputePixelColors_HELPER(Gradient)
-	default: return detail::ComputePixelColors<-1>(c.points, ccm);
+	default: return detail::ComputePixelColorsImpl<-1>(c.points);
 	}
 }
 
-#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColors<T>(c.cluster, ccm);
+#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c.cluster);
 
 std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm)
 {
 	switch(ccm) {
+	ComputeClusterColors_HELPER(UniBlack)
+	ComputeClusterColors_HELPER(UniWhite)
 	ComputeClusterColors_HELPER(Color)
 	ComputeClusterColors_HELPER(Depth)
 	ComputeClusterColors_HELPER(Gradient)
 	ComputeClusterColors_HELPER(Eccentricity)
 	ComputeClusterColors_HELPER(Circularity)
 	ComputeClusterColors_HELPER(Thickness)
-	default: return detail::ComputeClusterColors<-1>(c.cluster, ccm);
+	default: return detail::ComputeClusterColorsImpl<-1>(c.cluster);
 	}
+}
+
+#define PlotPoints_HELPER(T) case T: detail::PlotPointsImpl<T>(img, c); break;
+
+slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
+{
+	slimage::Image3ub img(c.width(), c.height());
+	img.fill(0);
+	switch(cm) {
+	PlotPoints_HELPER(UniBlack)
+	PlotPoints_HELPER(UniWhite)
+	PlotPoints_HELPER(Color)
+	PlotPoints_HELPER(Depth)
+	PlotPoints_HELPER(Gradient)
+	default: detail::PlotPointsImpl<-1>(img, c); break;
+	}
+	return img;
+}
+
+void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, int size)
+{
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	for(size_t i=0; i<c.cluster.size(); i++) {
+		const Cluster& cluster = c.cluster[i];
+		slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), colors[i], size);
+	}
+}
+
+void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+{
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	for(size_t i=0; i<c.cluster.size(); i++) {
+		PlotClusterPoints(img, c.cluster[i], c.points, colors[i]);
+	}
+}
+
+void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+{
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	for(size_t i=0; i<c.cluster.size(); i++) {
+		PlotClusterEllipse(img, c.cluster[i], colors[i], false);
+	}
+}
+
+void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+{
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	for(size_t i=0; i<c.cluster.size(); i++) {
+		PlotClusterEllipse(img, c.cluster[i], colors[i], true);
+	}
+}
+
+void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm)
+{
+	switch(mode) {
+	case ClusterCenter: PlotClusterCenters(img, c, cm, 1); break;
+	default: case ClusterPoints: PlotClusterPoints(img, c, cm); break;
+	case ClusterEllipses: PlotClusterEllipses(img, c, cm); break;
+	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm); break;
+	}
+}
+
+slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode cm)
+{
+	slimage::Image3ub img(c.width(), c.height());
+	img.fill(0);
+	PlotClusters(img, c, mode, cm);
+	return img;
 }
 
 //----------------------------------------------------------------------------//

@@ -10,10 +10,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 	dasp_tracker_.reset(new dasp::DaspTracker());
 
-	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_->dasp_params));
-	gui_params_->on_train_ = [this]() { dasp_tracker_->training_ = true; };
-	gui_params_->on_change_cm_sigma_scale_ = [this](float val) { dasp_tracker_->color_model_sigma_scale_ = val; };
-	gui_params_->on_set_create_plots_ = [this](bool val) { dasp_tracker_->create_plots_ = val; };
+	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_));
 	gui_params_->show();
 
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());

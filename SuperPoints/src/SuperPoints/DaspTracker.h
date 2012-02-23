@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------//
 #include "Superpixels.hpp"
 #include "SuperpixelHistogram.hpp"
+#include "Plots.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Danvil/Statistics/GMM.h>
 #include <boost/thread.hpp>
@@ -41,7 +42,13 @@ private:
 public:
 	bool training_;
 
-	bool create_plots_;
+	bool show_points_;
+	bool show_clusters_;
+	bool show_cluster_borders_;
+	plots::ColorMode point_color_mode_;
+	plots::ColorMode cluster_color_mode_;
+	plots::ClusterMode cluster_mode_;
+	bool show_graph_;
 
     boost::shared_ptr<dasp::Parameters> dasp_params;
 

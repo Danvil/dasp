@@ -33,6 +33,16 @@ DaspTracker::DaspTracker()
 	dasp_params->gradient_adaptive_density = true;
 	color_model_sigma_scale_ = 1.0f;
 	thread_pool_index_ = 100;
+	has_hand_gmm_model_ = false;
+
+	show_points_ = false;
+	show_clusters_ = true;
+	show_cluster_borders_ = true;
+	cluster_color_mode_ = plots::UniBlack;
+	point_color_mode_ = plots::Color;
+	cluster_mode_ = plots::ClusterPoints;
+	show_graph_ = false;
+
 }
 
 DaspTracker::~DaspTracker()
@@ -139,23 +149,6 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 	return col;
 }
 
-SuperpixelGraph CreateGraphFromClusters(const std::vector<dasp::Cluster>& clusters)
-{
-	SuperpixelGraph G;
-	for(const dasp::Cluster& c : clusters) {
-		SuperpixelState s;
-		s.x = c.center.spatial_x();
-		s.y = c.center.spatial_y();
-		s.color = c.center.color;
-		s.normal = c.center.normal;
-		s.position = c.center.world;
-		s.scala = c.center.image_super_radius;
-		G.nodes_.push_back(s);
-	}
-	G.createConnections(0.10f); // FIXME constant !!!
-	return G;
-}
-
 void DaspTracker::performSegmentationStep()
 {
 	// superpixel parameters
@@ -200,7 +193,6 @@ void DaspTracker::performSegmentationStep()
 
 	slimage::Image1f probability;
 	slimage::Image1f probability_2;
-	slimage::Image3ub plot_graph;
 	slimage::Image3ub plot_labels;
 
 	if(has_hand_gmm_model_) {
@@ -227,7 +219,7 @@ void DaspTracker::performSegmentationStep()
 		});
 
 		// histogram color model
-		SuperpixelGraph G = CreateGraphFromClusters(clustering_.cluster);
+		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
 		std::vector<float> cluster_probability_2 = model_->evaluate(G);
 
 		probability_2.resize(kinect_depth.width(), kinect_depth.height());
@@ -236,14 +228,6 @@ void DaspTracker::performSegmentationStep()
 			float p_base = cluster_probability_2[cid];
 			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
 		});
-
-		plot_graph.resize(kinect_color.width(), kinect_color.height());
-		plot_graph.fill(0);
-		for(unsigned int i=0; i<G.nodes_.size(); i++) {
-			for(unsigned int k : G.node_connections_[i]) {
-				slimage::PaintLine(plot_graph, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
-			}
-		}
 
 		// plot model gaussian cluster id for each superpixel
 		std::vector<unsigned int> labels = model_->label(G);
@@ -273,96 +257,96 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_START(plotting)
 
 	{
-		// plot super pixel color (with edges)
-		slimage::Image3ub vis_super_color = plots::PlotClusters(clustering_, plots::ClusterPixels, plots::Color);
-		std::vector<int> superpixel_labels = clustering_.ComputePixelLabels();
-		plots::PlotEdges(superpixel_labels, vis_super_color, 2, 0, 0, 0);
+//		// plot super pixel color (with edges)
+//		slimage::Image3ub vis_super_color = plots::PlotClusters(clustering_, plots::ClusterPoints, plots::Color);
+//		std::vector<int> superpixel_labels = clustering_.ComputePixelLabels();
+//		plots::PlotEdges(vis_super_color, superpixel_labels, slimage::Pixel3ub{{0, 0, 0}}, 2);
+//
+//		boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
+//		images_["s_rgb"] = slimage::Ptr(vis_super_color);
 
-		boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
-		images_["s_rgb"] = slimage::Ptr(vis_super_color);
-	}
+//		std::vector<ClusterInfo> c_info = clustering_.ComputeClusterInfo();
+//		ClusterGroupInfo cg_info = clustering_.ComputeClusterGroupInfo(c_info);
+//		std::cout << "hist_eccentricity: " << cg_info.hist_eccentricity << std::endl;
+//		std::cout << "hist_radius: " << cg_info.hist_radius << std::endl;
+//		std::cout << "hist_thickness: " << cg_info.hist_thickness << std::endl;
+//
+//		slimage::Image3ub vis_cluster_circularity(clustering_.width(), clustering_.height());
+//		vis_cluster_circularity.fill(0);
+//		clustering_.ForPixelClusters([&vis_cluster_circularity,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+//			vis_cluster_circularity(p.spatial_x(), p.spatial_y()) = plots::IntensityColor(c_info[cid].coverage, 0.0f, 1.0f);
+//		});
+//
+//		slimage::Image3ub vis_cluster_thickness(clustering_.width(), clustering_.height());
+//		vis_cluster_thickness.fill(0);
+//		clustering_.ForPixelClusters([&vis_cluster_thickness,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+//			vis_cluster_thickness(p.spatial_x(), p.spatial_y()) = plots::IntensityColor(c_info[cid].t, 0.0f, 0.01f);
+//		});
 
-	if(create_plots_)
-	{
-		std::vector<ClusterInfo> c_info = clustering_.ComputeClusterInfo();
-		ClusterGroupInfo cg_info = clustering_.ComputeClusterGroupInfo(c_info);
-		std::cout << "hist_eccentricity: " << cg_info.hist_eccentricity << std::endl;
-		std::cout << "hist_radius: " << cg_info.hist_radius << std::endl;
-		std::cout << "hist_thickness: " << cg_info.hist_thickness << std::endl;
+		slimage::Image3ub vis_img;
+		if(show_points_) {
+			vis_img = plots::PlotPoints(clustering_, point_color_mode_);
+		}
+		else {
+			vis_img.resize(clustering_.width(), clustering_.height());
+			vis_img.fill(0);
+		}
+		if(show_clusters_) {
+			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
+		}
+		if(show_cluster_borders_) {
+			plots::PlotEdges(vis_img, clustering_.ComputePixelLabels(), slimage::Pixel3ub{{0,0,0}}, 2);
+		}
 
-		slimage::Image3ub vis_cluster_circularity(clustering_.width(), clustering_.height());
-		vis_cluster_circularity.fill(0);
-		clustering_.ForPixelClusters([&vis_cluster_circularity,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			vis_cluster_circularity(p.spatial_x(), p.spatial_y()) = plots::IntensityColor(c_info[cid].coverage, 0.0f, 1.0f);
-		});
+		// create and plot neighbourhood graph
+		if(show_graph_) {
+			SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+			for(unsigned int i=0; i<G.nodes_.size(); i++) {
+				for(unsigned int k : G.node_connections_[i]) {
+					slimage::PaintLine(vis_img, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
+				}
+			}
+		}
 
-		slimage::Image3ub vis_cluster_thickness(clustering_.width(), clustering_.height());
-		vis_cluster_thickness.fill(0);
-		clustering_.ForPixelClusters([&vis_cluster_thickness,&c_info](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			vis_cluster_thickness(p.spatial_x(), p.spatial_y()) = plots::IntensityColor(c_info[cid].t, 0.0f, 0.01f);
-		});
-
-		// plot point depth
-		slimage::Image3ub vis_point_depth = plots::PlotPoints(clustering_, plots::Depth);
-
-		// plot point normals
-		slimage::Image3ub vis_point_normal = plots::PlotPoints(clustering_, plots::Gradient);
-
-//		// plot density and seeds
-//		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
-//		slimage::Image3ub seeds_img = ColorizeIntensity(density, 0.0f, 0.02f, thread_pool_index_, Danvil::Palettes::Blue_Red_Yellow);
-//		dasp::PlotSeeds(seeds, seeds_img, slimage::Pixel3ub{{255,255,255}}, 3);
-
-		// plot superpixel depth
-		slimage::Image3ub vis_super_depth = plots::PlotClusters(clustering_, plots::ClusterPixels, plots::Depth);
-
-		// plot superpixel normals
-		slimage::Image3ub vis_super_normal = plots::PlotClusters(clustering_, plots::ClusterPixels, plots::Gradient);
-
-		// plot superpixel crosses
-		slimage::Image3ub vis_super_cross(clustering_.width(), clustering_.height());
-		vis_super_cross.fill(0);
-		//slimage::Image3ub super_cross = kinect_color_rgb.clone();
-		plots::PlotClustersCross(clustering_, vis_super_cross);
+//		// plot point depth
+//		slimage::Image3ub vis_point_depth = plots::PlotPoints(clustering_, plots::Depth);
+//
+//		// plot point normals
+//		slimage::Image3ub vis_point_normal = plots::PlotPoints(clustering_, plots::Gradient);
+//
+////		// plot density and seeds
+////		slimage::Image1f density = dasp::ComputeDepthDensity(points, super_params_ext);
+////		slimage::Image3ub seeds_img = ColorizeIntensity(density, 0.0f, 0.02f, thread_pool_index_, Danvil::Palettes::Blue_Red_Yellow);
+////		dasp::PlotSeeds(seeds, seeds_img, slimage::Pixel3ub{{255,255,255}}, 3);
+//
+//		// plot superpixel depth
+//		slimage::Image3ub vis_super_depth = plots::PlotClusters(clustering_, plots::ClusterPoints, plots::Depth);
+//
+//		// plot superpixel normals
+//		slimage::Image3ub vis_super_normal = plots::PlotClusters(clustering_, plots::ClusterPoints, plots::Gradient);
+//
+//		// plot superpixel crosses
+//		slimage::Image3ub vis_super_cross = plots::PlotClusters(clustering_, plots::ClusterEllipses, plots::Color);
 
 		// plot label probability
 		slimage::Image3ub probability_color;
 		slimage::Image3ub probability_2_color;
 		if(probability) {
 			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f, thread_pool_index_);
-			//dasp::PlotEdges(superpixel_labels, probability_color, 2, 0, 0, 0);
-
-//			for(unsigned int i=0; i<probability_color.size(); i++) {
-//				if(probability(i) > 0.90f) {
-//					probability_color(i)[0] = kinect_color_rgb(i)[0];
-//					probability_color(i)[1] = kinect_color_rgb(i)[1];
-//					probability_color(i)[2] = kinect_color_rgb(i)[2];
-//				}
-//			}
-
 		}
 		if(probability_2) {
 			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
-			//dasp::PlotEdges(superpixel_labels, probability_2_color, 2, 0, 0, 0);
 		}
 
 		// set images for gui
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["p_rgb"] = slimage::Ptr(kinect_color_rgb);
+			images_["vis"] = slimage::Ptr(vis_img);
 //			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
-			images_["p_depth"] = slimage::Ptr(vis_point_depth);
-			images_["p_normals"] = slimage::Ptr(vis_point_normal);
-			images_["s_depth"] = slimage::Ptr(vis_super_depth);
-			images_["s_normals"] = slimage::Ptr(vis_super_normal);
-			images_["s_cross"] = slimage::Ptr(vis_super_cross);
-			images_["s_circ"] = slimage::Ptr(vis_cluster_circularity);
-			images_["s_thi"] = slimage::Ptr(vis_cluster_thickness);
 //			images_["seeds"] = slimage::Ptr(seeds_img);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
-			images_["graph"] = slimage::Ptr(plot_graph);
 			images_["labels"] = slimage::Ptr(plot_labels);
 		}
 
@@ -437,7 +421,7 @@ void DaspTracker::trainInitialColorModel()
 	{
 		// render all super pixel in range
 		for(const dasp::Cluster& cluster : clusters_selected) {
-			plots::PlotCluster(cluster, clustering_.points, initial_, plots::RgbColor(cluster.center));
+			plots::PlotClusterPoints(initial_, cluster, clustering_.points, plots::RgbColor(cluster.center));
 		}
 
 //		// render roi
@@ -468,7 +452,7 @@ void DaspTracker::trainInitialColorModel()
 
 		// collect histograms for superpixels
 		model_.reset(new SuperpixelHistogramModel());
-		SuperpixelGraph G = CreateGraphFromClusters(clustering_.cluster);
+		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
 		model_->train(G, clusters_selected_id);
 	}
 

@@ -594,6 +594,23 @@ void Clustering::MoveClusters()
 //#endif
 }
 
+SuperpixelGraph Clustering::CreateNeighborhoodGraph()
+{
+	SuperpixelGraph G;
+	for(const dasp::Cluster& c : cluster) {
+		SuperpixelState s;
+		s.x = c.center.spatial_x();
+		s.y = c.center.spatial_y();
+		s.color = c.center.color;
+		s.normal = c.center.normal;
+		s.position = c.center.world;
+		s.scala = c.center.image_super_radius;
+		G.nodes_.push_back(s);
+	}
+	G.createConnections(3.0f * opt.base_radius);
+	return G;
+}
+
 ClusterGroupInfo Clustering::ComputeClusterGroupInfo(const std::vector<ClusterInfo>& cluster_info)
 {
 	ClusterGroupInfo cgi;
