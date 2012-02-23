@@ -135,7 +135,8 @@ namespace dasp
 			DepthShooting,
 			DepthMipmap,
 			DepthBlueNoise,
-			DepthFloyd
+			DepthFloyd,
+			Delta
 		};
 	}
 	typedef SeedModes::Type SeedMode;
@@ -243,12 +244,14 @@ namespace dasp
 
 		Clustering();
 
+		std::vector<Seed> getClusterCentersAsSeeds() const;
+
 		void CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
 		void CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
 
-		/** Find super pixel clusters */
-		void ComputeSuperpixels(const slimage::Image1f& edges);
+//		/** Find super pixel clusters */
+//		void ComputeSuperpixels(const slimage::Image1f& edges);
 
 		std::vector<int> ComputePixelLabels();
 
@@ -256,7 +259,7 @@ namespace dasp
 
 		slimage::Image1f ComputeDepthDensity();
 
-		std::vector<Seed> FindSeeds();
+		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);
 
 		void ComputeEdges(slimage::Image1f& edges);
 
@@ -440,6 +443,9 @@ namespace dasp
 
 	};
 
+	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
+
+	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt);
 }
 
 #endif

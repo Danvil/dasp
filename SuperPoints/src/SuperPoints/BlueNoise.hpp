@@ -180,6 +180,13 @@ namespace BlueNoise
 		return std::exp(-cPi*d*d);
 	}
 
+	/**
+	 * Warning: only defined for y <= 1!
+	 */
+	inline float KernelFunctorInverse(float y) {
+		return std::sqrt(- std::log(y) / cPi);
+	}
+
 	inline
 	float KernelFunctor(float d) {
 		static Danvil::FunctionCache<float,1> cache(0.0f, KernelRange, &KernelFunctorImpl);

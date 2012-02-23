@@ -166,14 +166,23 @@ void DaspTracker::performSegmentationStep()
 
 	// prepare super pixel points
 	DANVIL_BENCHMARK_START(points)
+	ImagePoints old_points = clustering_.points;
 	clustering_.CreatePoints(kinect_color, kinect_depth, kinect_normals);
 	DANVIL_BENCHMARK_STOP(points)
 
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(seeds)
-	std::vector<dasp::Seed> seeds = clustering_.FindSeeds();
+	std::vector<Seed> old_seeds = clustering_.getClusterCentersAsSeeds();
+	seeds = clustering_.FindSeeds(old_seeds, old_points);
 	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(seeds)
+
+	slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
+	slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
+	slimage::Image3ub density_delta(density.width(), density.height());
+	for(unsigned int i=0; i<density.getPixelCount(); i++) {
+		density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.05f);
+	}
 
 	// compute super pixel point edges and improve seeds with it
 //	slimage::Image1f edges;
@@ -343,7 +352,9 @@ void DaspTracker::performSegmentationStep()
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
 			images_["vis"] = slimage::Ptr(vis_img);
-//			images_["lab"] = slimage::Ptr(slimage::Convert_f_2_ub(kinect_color));
+			images_["rhoE"] = slimage::Ptr(slimage::Convert_f_2_ub(density, 20.0f));
+			images_["rhoA"] = slimage::Ptr(slimage::Convert_f_2_ub(seed_density, 20.0f));
+			images_["rhoD"] = slimage::Ptr(density_delta);
 //			images_["seeds"] = slimage::Ptr(seeds_img);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);

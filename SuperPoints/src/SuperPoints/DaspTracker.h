@@ -64,6 +64,8 @@ private:
 
 	slimage::Image1ub result_;
 
+	std::vector<dasp::Seed> seeds;
+
 	Clustering clustering_;
 
 	bool has_hand_gmm_model_;

@@ -9,6 +9,7 @@
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
 #include "PointsAndNormals.hpp"
+#include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
@@ -112,6 +113,16 @@ Clustering::Clustering()
 
 }
 
+std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
+{
+	std::vector<Seed> seeds(cluster.size());
+	for(std::size_t i=0; i<cluster.size(); i++) {
+		const Cluster& c = cluster[i];
+		seeds[i] = Seed{c.center.spatial_x(), c.center.spatial_y(), c.center.image_super_radius};
+	}
+	return seeds;
+}
+
 void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	slimage::Image3f colf(image.width(), image.height());
@@ -164,14 +175,14 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 	}
 }
 
-void Clustering::ComputeSuperpixels(const slimage::Image1f& edges)
-{
-	std::vector<Seed> seeds = FindSeeds();
-	if(!edges.isNull()) {
-		ImproveSeeds(seeds, edges);
-	}
-	ComputeSuperpixels(seeds);
-}
+//void Clustering::ComputeSuperpixels(const slimage::Image1f& edges)
+//{
+//	std::vector<Seed> seeds = FindSeeds();
+//	if(!edges.isNull()) {
+//		ImproveSeeds(seeds, edges);
+//	}
+//	ComputeSuperpixels(seeds);
+//}
 
 void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
@@ -334,6 +345,34 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 	return num;
 }
 
+slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt)
+{
+	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	slimage::Image1f density(target.width(), target.height());
+	density.fill(0);
+	for(const Seed& s : seeds) {
+		// dimension is 2!
+		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
+		float norm = target(s.x, s.y);
+		float sigma = 1.0f / std::sqrt(norm);
+		float sigma_inv_2 = norm;
+		// kernel influence range
+		int R = static_cast<int>(std::ceil(cRange * sigma));
+		int xmin = std::max<int>(s.x - R, 0);
+		int xmax = std::min<int>(s.x + R, int(target.width()) - 1);
+		int ymin = std::max<int>(s.y - R, 0);
+		int ymax = std::min<int>(s.y + R, int(target.height()) - 1);
+		for(int yi=ymin; yi<=ymax; yi++) {
+			for(int xi=xmin; xi<=xmax; xi++) {
+				float d = static_cast<float>(Square(xi - s.x) + Square(yi - s.y));
+				float delta = norm * BlueNoise::KernelFunctorSquare(d*sigma_inv_2);
+				density(xi, yi) += delta;
+			}
+		}
+	}
+	return density;
+}
+
 //slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
 //{
 //	slimage::Image1d num(points.width(), points.height());
@@ -404,7 +443,86 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Parameter
 	return seeds;
 }
 
-std::vector<Seed> Clustering::FindSeeds()
+void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image1f>& mipmaps, int level, unsigned int x, unsigned int y)
+{
+	static boost::mt19937 rng;
+	static boost::uniform_real<float> rnd(0.0f, 1.0f);
+	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
+
+	const slimage::Image1f& mm = mipmaps[level];
+
+	float v = mm(x, y);
+
+	if(std::abs(v) > 1.0f && level > 1) { // do not access mipmap 0!
+		// go down
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
+	}
+	else {
+		if(die() < std::abs(v))
+		{
+			unsigned int half = (1 << (level - 1));
+			int sx = (x << level) + half;
+			int sy = (y << level) + half;
+			if(v > 0.0f) {
+				// create seed in the middle
+				if(sx < int(points.width()) && sy < int(points.height())) {
+					Seed s{sx, sy, points(s.x, s.y).image_super_radius};
+//					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
+//					if(s.scala > 2.0f) {
+						seeds.push_back(s);
+//					}
+				}
+			}
+			else {
+				// find nearest
+				int best_dist = 1000000000;
+				std::size_t best_index = 0;
+				for(std::size_t i=0; i<seeds.size(); i++) {
+					const Seed& s = seeds[i];
+					int dist =  Square(sx - s.x) + Square(sy - s.y);
+					if(dist < best_dist) {
+						best_dist = dist;
+						best_index = i;
+					}
+				}
+//				auto it = std::min_element(seeds.begin(), seeds.end(), [sx, sy](const Seed& a, const Seed& b) {
+//					return Square(sx - a.x) + Square(sy - a.y) < Square(sx - b.x) + Square(sy - b.y);
+//				});
+				// delete nearest seed
+//				seeds.erase(it);
+				seeds.erase(seeds.begin() + best_index);
+			}
+		}
+	}
+}
+
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Parameters& opt)
+{
+	// compute desired density
+	slimage::Image1f density_new = ComputeDepthDensity(points, opt);
+	// compute old density
+	DANVIL_BENCHMARK_START(FindSeedsDelta_densityfromseeds)
+	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
+	DANVIL_BENCHMARK_START(FindSeedsDelta_densityfromseeds)
+	// difference
+	slimage::Image1f density_delta = density_new - density_old;
+	// compute mipmaps
+	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density_delta, 1);
+	// we need to add and delete points!
+	std::vector<Seed> seeds = old_seeds;
+	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
+	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
+	// give all seed points the correct scala
+	for(Seed& s : seeds) {
+		s.scala = points(s.x, s.y).image_super_radius;
+	}
+	return seeds;
+}
+
+std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
 {
 	switch(opt.seed_mode) {
 	case SeedModes::EquiDistant:
@@ -417,6 +535,8 @@ std::vector<Seed> Clustering::FindSeeds()
 		return FindSeedsDepthBlue(points, opt);
 	case SeedModes::DepthFloyd:
 		return FindSeedsDepthFloyd(points, opt);
+	case SeedModes::Delta:
+		return FindSeedsDelta(points, old_seeds, old_points, opt);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
