@@ -88,9 +88,9 @@ public:
 		for(std::size_t i=0; i<g.size(); i++) {
 			SuperpixelNeighbourhoodGraph ng = g.createNeighbourhoodGraph(i);
 			result[i] = evaluateNeighbourhood(ng);
-			if(i % 37 == 0) {
-				std::cout << i << ": n=" << ng.neighbours_.size() << ", v=" << result[i] << std::endl;
-			}
+//			if(i % 37 == 0) {
+//				std::cout << i << ": n=" << ng.neighbours_.size() << ", v=" << result[i] << std::endl;
+//			}
 		}
 		return result;
 	}

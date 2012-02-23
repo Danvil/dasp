@@ -38,7 +38,7 @@ DaspTracker::DaspTracker()
 	show_points_ = false;
 	show_clusters_ = true;
 	show_cluster_borders_ = true;
-	cluster_color_mode_ = plots::UniBlack;
+	cluster_color_mode_ = plots::Color;
 	point_color_mode_ = plots::Color;
 	cluster_mode_ = plots::ClusterPoints;
 	show_graph_ = false;
@@ -218,29 +218,29 @@ void DaspTracker::performSegmentationStep()
 			probability(p.spatial_x(), p.spatial_y()) = p_base;
 		});
 
-		// histogram color model
-		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
-		std::vector<float> cluster_probability_2 = model_->evaluate(G);
-
-		probability_2.resize(kinect_depth.width(), kinect_depth.height());
-		probability_2.fill(-1.0f);
-		clustering_.ForPixelClusters([&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			float p_base = cluster_probability_2[cid];
-			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
-		});
-
-		// plot model gaussian cluster id for each superpixel
-		std::vector<unsigned int> labels = model_->label(G);
-		plot_labels.resize(kinect_color.width(), kinect_color.height());
-		plot_labels.fill(0);
-		std::vector<Eigen::Vector3f> model_colors = model_->getClusterColors();
-		clustering_.ForPixelClusters([&plot_labels,&labels,&model_colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			unsigned int l = labels[cid];
-			Eigen::Vector3f color = model_colors[l];
-			plot_labels(p.spatial_x(), p.spatial_y()) = slimage::Pixel3ub{
-				{(unsigned char)(255.0f*color[0]), (unsigned char)(255.0f*color[1]), (unsigned char)(255.0f*color[2])}
-			};
-		});
+//		// histogram color model
+//		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+//		std::vector<float> cluster_probability_2 = model_->evaluate(G);
+//
+//		probability_2.resize(kinect_depth.width(), kinect_depth.height());
+//		probability_2.fill(-1.0f);
+//		clustering_.ForPixelClusters([&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+//			float p_base = cluster_probability_2[cid];
+//			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
+//		});
+//
+//		// plot model gaussian cluster id for each superpixel
+//		std::vector<unsigned int> labels = model_->label(G);
+//		plot_labels.resize(kinect_color.width(), kinect_color.height());
+//		plot_labels.fill(0);
+//		std::vector<Eigen::Vector3f> model_colors = model_->getClusterColors();
+//		clustering_.ForPixelClusters([&plot_labels,&labels,&model_colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+//			unsigned int l = labels[cid];
+//			Eigen::Vector3f color = model_colors[l];
+//			plot_labels(p.spatial_x(), p.spatial_y()) = slimage::Pixel3ub{
+//				{(unsigned char)(255.0f*color[0]), (unsigned char)(255.0f*color[1]), (unsigned char)(255.0f*color[2])}
+//			};
+//		});
 
 	}
 

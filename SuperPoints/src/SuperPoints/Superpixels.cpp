@@ -607,7 +607,7 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 		s.scala = c.center.image_super_radius;
 		G.nodes_.push_back(s);
 	}
-	G.createConnections(3.0f * opt.base_radius);
+	G.createConnections(5.0f * opt.base_radius);
 	return G;
 }
 
