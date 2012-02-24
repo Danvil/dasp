@@ -129,7 +129,7 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 		cf[0] = float(cub[0]) / 255.0f;
 		cf[1] = float(cub[1]) / 255.0f;
 		cf[2] = float(cub[2]) / 255.0f;
-	});
+	}, slimage::ThreadingOptions::Single());
 	CreatePoints(colf, depth, normals);
 }
 
@@ -140,6 +140,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 	assert(width == depth.width() && height == depth.height());
 	if(!normals.isNull()) {
 		assert(width == normals.width() && height == normals.height());
+		// FIXME this case is disabled!
 	}
 
 	points = ImagePoints(width, height);
@@ -158,18 +159,19 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 			p.world = opt.camera.unproject(x, y, p.depth_i16);
 			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
-			if(p_normals != 0) {
-				p.normal[0] = p_normals[0];
-				p.normal[1] = p_normals[1];
-				p.normal[2] = p_normals[2];
-				p_normals += 3;
-			}
-			else {
+//			if(p_normals != 0) {
+//				p.normal[0] = p_normals[0];
+//				p.normal[1] = p_normals[1];
+//				p.normal[2] = p_normals[2];
+//				p_normals += 3;
+//			}
+//			else {
 				p.normal[0] = p.gradient[0];
 				p.normal[1] = p.gradient[1];
 				p.normal[2] = -1.0f;
-				p.normal.normalize();
-			}
+				p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
+				//p.normal.normalize();
+//			}
 		}
 	}
 }
