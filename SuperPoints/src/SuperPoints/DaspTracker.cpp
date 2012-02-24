@@ -42,6 +42,7 @@ DaspTracker::DaspTracker()
 	point_color_mode_ = plots::Color;
 	cluster_mode_ = plots::ClusterPoints;
 	show_graph_ = false;
+	plot_density_ = false;
 
 }
 
@@ -344,21 +345,28 @@ void DaspTracker::performSegmentationStep()
 		}
 
 		// visualize density, seed density and density error
-		slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
-		slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
-		slimage::Image3ub density_delta(density.width(), density.height());
-		for(unsigned int i=0; i<density.getPixelCount(); i++) {
-			density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.05f);
+		slimage::Image1ub vis_density;
+		slimage::Image1ub vis_seed_density;
+		slimage::Image3ub vis_density_delta;
+		if(plot_density_) {
+			slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
+			vis_density = slimage::Convert_f_2_ub(density, 20.0f);
+			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
+			vis_seed_density = slimage::Convert_f_2_ub(seed_density, 20.0f);
+			vis_density_delta.resize(density.width(), density.height());
+			for(unsigned int i=0; i<density.getPixelCount(); i++) {
+				vis_density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.025f);
+			}
 		}
 
 		// set images for gui
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["vis"] = slimage::Ptr(vis_img);
-			images_["rhoE"] = slimage::Ptr(slimage::Convert_f_2_ub(density, 20.0f));
-			images_["rhoA"] = slimage::Ptr(slimage::Convert_f_2_ub(seed_density, 20.0f));
-			images_["rhoD"] = slimage::Ptr(density_delta);
+			images_["_vis"] = slimage::Ptr(vis_img);
+			images_["rhoE"] = slimage::Ptr(vis_density);
+			images_["rhoA"] = slimage::Ptr(vis_seed_density);
+			images_["rhoD"] = slimage::Ptr(vis_density_delta);
 //			images_["seeds"] = slimage::Ptr(seeds_img);
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);

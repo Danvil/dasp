@@ -33,6 +33,7 @@ public Q_SLOTS:
 	void ChangePlotClusterColor(int selection);
 	void ChangePlotBorders(int state);
 	void ChangePlotGraph(int state);
+	void ChangePlotDensity(int state);
 
 private:
 	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;

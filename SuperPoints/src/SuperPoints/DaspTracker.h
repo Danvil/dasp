@@ -49,6 +49,7 @@ public:
 	plots::ColorMode cluster_color_mode_;
 	plots::ClusterMode cluster_mode_;
 	bool show_graph_;
+	bool plot_density_;
 
     boost::shared_ptr<dasp::Parameters> dasp_params;
 

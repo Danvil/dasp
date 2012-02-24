@@ -55,6 +55,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.comboBoxPlotClusterColor, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotClusterColor(int)));
 	QObject::connect(ui.checkBoxPlotBorders, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotBorders(int)));
 	QObject::connect(ui.checkBoxPlotGraph, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraph(int)));
+	QObject::connect(ui.checkBoxPlotDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotDensity(int)));
 
 	dasp_tracker_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_tracker_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
@@ -72,6 +73,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	dasp_tracker_->cluster_color_mode_ = (dasp::plots::ColorMode)(ui.comboBoxPlotClusterColor->itemData(ui.comboBoxPlotClusterColor->currentIndex()).toInt());
 	dasp_tracker_->show_cluster_borders_ = ui.checkBoxPlotBorders->isChecked();
 	dasp_tracker_->show_graph_ = ui.checkBoxPlotGraph->isChecked();
+	dasp_tracker_->plot_density_ = ui.checkBoxPlotDensity->isChecked();
 
 }
 
@@ -168,4 +170,9 @@ void WdgtSuperpixelParameters::ChangePlotBorders(int state)
 void WdgtSuperpixelParameters::ChangePlotGraph(int state)
 {
 	dasp_tracker_->show_graph_ = state;
+}
+
+void WdgtSuperpixelParameters::ChangePlotDensity(int state)
+{
+	dasp_tracker_->plot_density_ = state;
 }
