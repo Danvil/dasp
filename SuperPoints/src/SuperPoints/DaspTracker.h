@@ -26,6 +26,10 @@ public:
 
 	virtual ~DaspTracker();
 
+	/**
+	 * Memory contents for raw_kinect_depth and raw_kinect_color must not be
+	 * altered until the function step has returned.
+	 */
 	void step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color);
 
 	std::map<std::string, slimage::ImagePtr> getImages() const;

@@ -76,9 +76,9 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 {
 	DANVIL_BENCHMARK_START(step)
 
-	kinect_depth = raw_kinect_depth.clone();
+	kinect_depth = raw_kinect_depth;
 
-	kinect_color_rgb = raw_kinect_color.clone();
+	kinect_color_rgb = raw_kinect_color;
 
 	// convert rgb to lab
 	kinect_color.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
@@ -216,7 +216,7 @@ void DaspTracker::performSegmentationStep()
 				});
 
 		// paint cluster probabilities
-		probability.resize(kinect_depth.width(), kinect_depth.height());
+		probability.resize(clustering_.width(), clustering_.height());
 		probability.fill(-1.0f);
 		clustering_.ForPixelClusters([&probability,&cluster_probability,&scaled_model](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
 //			Danvil::ctLinAlg::Vec3f v(p.color[0], p.color[1], p.color[2]);
@@ -230,7 +230,7 @@ void DaspTracker::performSegmentationStep()
 //		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
 //		std::vector<float> cluster_probability_2 = model_->evaluate(G);
 //
-//		probability_2.resize(kinect_depth.width(), kinect_depth.height());
+//		probability_2.resize(clustering_.width(), clustering_.height());
 //		probability_2.fill(-1.0f);
 //		clustering_.ForPixelClusters([&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
 //			float p_base = cluster_probability_2[cid];
