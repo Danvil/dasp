@@ -120,6 +120,10 @@ void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode cm, C
 
 slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode cm, ColorMode ccm);
 
+void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& color);
+
+void RenderClusters(const Clustering& clustering, ColorMode ccm);
+
 //----------------------------------------------------------------------------//
 }}
 //----------------------------------------------------------------------------//

@@ -1,10 +1,12 @@
 TEMPLATE = app
 QT += core \
-    gui
+    gui \
+    opengl
 CONFIG += no_keywords
 GIT_BASE = /home/david/git
 HEADERS += src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.h \
-    src/SuperPoints/KinectSuperPoints/WdgtSuperpixelParameters.h
+    src/SuperPoints/KinectSuperPoints/WdgtSuperpixelParameters.h \
+    $$GIT_BASE/DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GLSystemQtWindow.h
 SOURCES += src/SuperPoints/KinectSuperPoints/WdgtKinectSuperPoints.cpp \
     src/SuperPoints/KinectSuperPoints/WdgtSuperpixelParameters.cpp \
     src/SuperPoints/KinectSuperPoints/main.cpp
@@ -27,6 +29,7 @@ CONFIG(debug, debug|release) {
     TARGET = KinectSuperPoints-Debug
     LIBS += -lRomeoKinect-Debug \
         -lDanvilImages-Debug \
+        -lDanvilSimpleEngine-Debug \
         -lVoxello-Debug \
         -lSuperPoints-Debug
 }
@@ -35,6 +38,7 @@ CONFIG(release, debug|release) {
     TARGET = KinectSuperPoints
     LIBS += -lRomeoKinect \
         -lDanvilImages \
+        -lDanvilSimpleEngine \
         -lVoxello \
         -lSuperPoints
 }

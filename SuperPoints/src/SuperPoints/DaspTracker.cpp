@@ -189,7 +189,12 @@ void DaspTracker::performSegmentationStep()
 
 	// compute clusters
 	DANVIL_BENCHMARK_START(clusters)
-	clustering_.ComputeSuperpixels(seeds);
+	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+		clustering_.ComputeSuperpixels(seeds);
+		if(show_clusters_ && (cluster_color_mode_ == plots::Eccentricity || cluster_color_mode_ == plots::Circularity || cluster_color_mode_ == plots::Thickness)) {
+			clustering_.ComputeClusterInfo();
+		}
+	}
 	DANVIL_BENCHMARK_STOP(clusters)
 
 	DANVIL_BENCHMARK_START(segmentation)
@@ -295,9 +300,6 @@ void DaspTracker::performSegmentationStep()
 			vis_img.fill(0);
 		}
 		if(show_clusters_) {
-			if(cluster_color_mode_ == plots::Eccentricity || cluster_color_mode_ == plots::Circularity || cluster_color_mode_ == plots::Thickness) {
-				clustering_.ComputeClusterInfo();
-			}
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
 		}
 		if(show_cluster_borders_) {
@@ -505,6 +507,13 @@ slimage::Image1ub DaspTracker::getResultImage() const
 {
 	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 	return result_;
+}
+
+void DaspTracker::Render() const
+{
+	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+		plots::RenderClusters(clustering_, cluster_color_mode_);
+	}
 }
 
 //----------------------------------------------------------------------------//

@@ -32,6 +32,8 @@ public:
 
 	slimage::Image1ub getResultImage() const;
 
+	void Render() const;
+
 private:
 	void performSegmentationStep();
 
@@ -76,6 +78,8 @@ private:
 	std::map<std::string, slimage::ImagePtr> images_;
 
 	mutable boost::mutex images_mutex_;
+
+	mutable boost::mutex render_mutex_;
 
 };
 

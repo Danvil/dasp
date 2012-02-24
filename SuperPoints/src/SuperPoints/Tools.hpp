@@ -83,9 +83,22 @@ struct Camera
 	/** Computes a 3D point from pixel position and depth */
 	Eigen::Vector3f unproject(unsigned int x, unsigned int y, uint16_t depth) const {
 		float z = convertKinectToMeter(depth);
-		return Eigen::Vector3f(z*(float(x) - cx)/focal, z*(float(y) - cy)/focal, z);
+		float h = z / focal;
+		return Eigen::Vector3f(h*(float(x) - cx), h*(float(y) - cy), z);
 	}
 
+	/** Size of a pixel at given depth in world coordinates */
+	float scala(uint16_t depth) const {
+		return focal / convertKinectToMeter(depth);
+	}
+
+	/** Computes a 3D point from pixel position and scala
+	 * scala = f / z
+	 */
+	Eigen::Vector3f unprojectUsingScala(unsigned int x, unsigned int y, float scala) const {
+		float scala_inv = 1.0f / scala; // scala_inv = z / f
+		return scala_inv * Eigen::Vector3f(float(x) - cx, float(y) - cy, focal);
+	}
 	/** Gets kinect depth for a 3D point */
 	uint16_t depth(const Eigen::Vector3f& p) const {
 		return convertMeterToKinect(p[2]);
@@ -144,6 +157,78 @@ inline float LocalFiniteDifferencesKinect(K v0, K v1, K v2, K v3, K v4)
 	}
 }
 
+template<typename K>
+inline K LocalFiniteDifferencesKinectSimple(K v0, K v1, K v2, K v3, K v4)
+{
+	if(v0 == 0 && v4 == 0 && v1 != 0 && v3 != 0) {
+		return v3 - v1;
+	}
+
+	bool left_invalid = (v0 == 0 || v1 == 0);
+	bool right_invalid = (v3 == 0 || v4 == 0);
+	if(left_invalid && right_invalid) {
+		return 0;
+	}
+	else if(left_invalid) {
+		return v4 - v2;
+	}
+	else if(right_invalid) {
+		return v2 - v0;
+	}
+	else {
+		K a = std::abs(v2 + v0 - static_cast<K>(2)*v1);
+		K b = std::abs(v4 + v2 - static_cast<K>(2)*v3);
+		if(a < b) {
+			return v2 - v0;
+		}
+		else {
+			return v4 - v2;
+		}
+	}
+}
+
+inline Eigen::Vector2f LocalDepthGradientUsingScala(const slimage::Image1ui16& depth, unsigned int j, unsigned int i, float scala, float window, const Camera& camera)
+{
+	// compute w = base_scale*f/d
+	unsigned int w = std::max(static_cast<unsigned int>(window + 0.5f), 4u);
+	if(w % 2 == 1) w++;
+
+	// can not compute the gradient at the border, so return 0
+	if(i < w || depth.height() - w <= i || j < w || depth.width() - w <= j) {
+		return Eigen::Vector2f::Zero();
+	}
+
+	float dx = LocalFiniteDifferencesKinect<int>(
+		depth(j-w,i),
+		depth(j-w/2,i),
+		depth(j,i),
+		depth(j+w/2,i),
+		depth(j+w,i)
+	);
+
+	float dy = LocalFiniteDifferencesKinect<int>(
+		depth(j,i-w),
+		depth(j,i-w/2),
+		depth(j,i),
+		depth(j,i+w/2),
+		depth(j,i+w)
+	);
+
+	// Theoretically scale == base_scale, but w must be an integer, so we
+	// compute scale from the actually used w.
+
+	// compute 1 / (scale) = 1 / (w*d/f) = f / (w*d)
+	float scl = scala / float(w);
+
+	Eigen::Vector2f g(camera.convertKinectToMeter(dx) * scl, camera.convertKinectToMeter(dy) * scl);
+
+//	const float cGMax = 3.0f;
+//	g[0] = std::min(+cGMax, std::max(-cGMax, g[0]));
+//	g[1] = std::min(+cGMax, std::max(-cGMax, g[1]));
+
+	return g;
+}
+
 inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsigned int j, unsigned int i, float base_radius_m, const Camera& camera)
 {
 	uint16_t d00 = depth(j,i);
@@ -152,10 +237,10 @@ inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsi
 		return Eigen::Vector2f::Zero();
 	}
 
-	float h = camera.focal / camera.convertKinectToMeter(d00);
+	float scala = camera.focal / camera.convertKinectToMeter(d00);
 
 	// compute w = base_scale*f/d
-	unsigned int w = std::max(static_cast<unsigned int>(std::round(base_radius_m*h)), 4u);
+	unsigned int w = std::max(static_cast<unsigned int>(std::round(base_radius_m*scala)), 4u);
 	if(w % 2 == 1) w++;
 
 	// can not compute the gradient at the border, so return 0
@@ -183,7 +268,7 @@ inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsi
 	// compute scale from the actually used w.
 
 	// compute 1 / (scale) = 1 / (w*d/f) = f / (w*d)
-	float scl = h / float(w);
+	float scl = scala / float(w);
 
 	Eigen::Vector2f g(camera.convertKinectToMeter(dx) * scl, camera.convertKinectToMeter(dy) * scl);
 

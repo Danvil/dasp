@@ -5,6 +5,8 @@
 #include "WdgtSuperpixelParameters.h"
 #include <SuperPoints/DaspTracker.h>
 #include <Romeo/Kinect/KinectGrabber.h>
+#include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
+#include <Danvil/SimpleEngine.h>
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
 #include <QtCore/QMutex>
@@ -27,6 +29,11 @@ public Q_SLOTS:
 	void OnUpdateImages();
 
 private:
+ 	PTR(Danvil::SimpleEngine::View) view_;
+	PTR(Danvil::SimpleEngine::Scene) scene_;
+	PTR(Danvil::SimpleEngine::Engine) engine_;
+	Danvil::SimpleEngine::GLSystemQtWindow* gl_wdgt_;
+
 	QTimer timer_;
 
 	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;

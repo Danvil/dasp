@@ -37,6 +37,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SimpleEngine/src}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1599794331" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -50,7 +51,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.2066370031" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.libs.969558671" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" value="DanvilImages"/>
+									<listOptionValue builtIn="false" value="DanvilSimpleEngine-Debug"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1354080514" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${DANVIL_LIB_PATH}&quot;"/>
@@ -108,6 +109,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SimpleEngine/src}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1234323194" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1558872892" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -122,7 +124,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.368728751" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.libs.1926479485" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" value="DanvilImages"/>
+									<listOptionValue builtIn="false" value="DanvilSimpleEngine"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1189197114" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${DANVIL_LIB_PATH}&quot;"/>

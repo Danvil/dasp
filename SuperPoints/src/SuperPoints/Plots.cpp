@@ -7,6 +7,8 @@
 
 #include "Superpixels.hpp"
 #include "Plots.hpp"
+#include <Danvil/SimpleEngine/Primitives.h>
+#include <Danvil/SimpleEngine/GlHelpers.h>
 #include <Slimage/Paint.hpp>
 //----------------------------------------------------------------------------//
 namespace dasp {
@@ -313,6 +315,31 @@ slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode 
 	img.fill(0);
 	PlotClusters(img, c, mode, cm);
 	return img;
+}
+
+void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& color)
+{
+	glDisable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT, GL_FILL);
+	glPolygonMode(GL_BACK, GL_LINE);
+	// render circle at position
+	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.world);
+	Eigen::Vector3f v = cluster.center.world.cross(cluster.center.normal).normalized();
+	Eigen::Vector3f u = v.cross(cluster.center.normal);
+	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);
+	Danvil::ctLinAlg::Vec3f minor = r * Danvil::ctLinAlg::Convert(u);
+	glColor3ub(color[0], color[1], color[2]);
+	Danvil::SimpleEngine::Primitives::RenderEllipseCap(pos, major, minor);
+	glColor3f(0.9f, 0.9f, 0.9f);
+	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.02f * Danvil::ctLinAlg::Convert(cluster.center.normal));
+}
+
+void RenderClusters(const Clustering& clustering, ColorMode ccm)
+{
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm);
+	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
+		RenderCluster(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
+	}
 }
 
 //----------------------------------------------------------------------------//

@@ -147,7 +147,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 
 	const float* p_col = image.begin();
 	const uint16_t* p_depth = depth.begin();
-	const float* p_normals = normals.isNull() ? 0 : normals.begin();
+//	const float* p_normals = normals.isNull() ? 0 : normals.begin();
 
 	for(unsigned int y=0; y<height; y++) {
 		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
@@ -156,22 +156,34 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 			p.color[1] = p_col[1];
 			p.color[2] = p_col[2];
 			p.depth_i16 = *p_depth;
-			p.world = opt.camera.unproject(x, y, p.depth_i16);
-			p.image_super_radius = opt.computePixelScala(p.depth_i16);
-			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
-//			if(p_normals != 0) {
-//				p.normal[0] = p_normals[0];
-//				p.normal[1] = p_normals[1];
-//				p.normal[2] = p_normals[2];
-//				p_normals += 3;
-//			}
-//			else {
-				p.normal[0] = p.gradient[0];
-				p.normal[1] = p.gradient[1];
-				p.normal[2] = -1.0f;
-				p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
-				//p.normal.normalize();
-//			}
+			if(p.depth_i16 == 0) {
+				p.world = Eigen::Vector3f::Zero();
+				p.image_super_radius = 0.0f;
+				p.gradient = Eigen::Vector2f::Zero();
+				p.normal = Eigen::Vector3f::Zero();
+			}
+			else {
+				float scala = opt.camera.scala(p.depth_i16);
+	//			p.world = opt.camera.unproject(x, y, p.depth_i16);
+	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
+	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
+				p.world = opt.camera.unprojectUsingScala(x, y, scala);
+				p.image_super_radius = opt.base_radius * scala;
+				p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
+	//			if(p_normals != 0) {
+	//				p.normal[0] = p_normals[0];
+	//				p.normal[1] = p_normals[1];
+	//				p.normal[2] = p_normals[2];
+	//				p_normals += 3;
+	//			}
+	//			else {
+					p.normal[0] = p.gradient[0];
+					p.normal[1] = p.gradient[1];
+					p.normal[2] = -1.0f;
+					p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
+					//p.normal.normalize();
+	//			}
+			}
 		}
 	}
 }

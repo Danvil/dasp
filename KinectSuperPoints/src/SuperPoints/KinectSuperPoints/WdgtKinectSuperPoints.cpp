@@ -13,6 +13,30 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_));
 	gui_params_->show();
 
+	LOG_NOTICE << "Creating OpenGL Widget ...";
+
+	view_ = Danvil::SimpleEngine::View::FactorDefaultPerspectiveView();
+	scene_ = view_->getScene();
+
+	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light1(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
+	light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+	view_->getScene()->addLight(light1);
+	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light2(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
+	light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+	view_->getScene()->addLight(light2);
+
+	engine_.reset(new Danvil::SimpleEngine::Engine(view_));
+	engine_->setClearColor(Danvil::Color::Grey);
+
+	gl_wdgt_ = new Danvil::SimpleEngine::GLSystemQtWindow(0, engine_);
+	ui.tabs->addTab(gl_wdgt_, "3D");
+
+	boost::shared_ptr<Danvil::SimpleEngine::IRenderable> dasp_renderling(
+			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->Render(); }));
+	scene_->addItem(dasp_renderling);
+
+	LOG_NOTICE << "Starting Kinect ...";
+
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
@@ -68,7 +92,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 	// prepare tabs
 	for(int i=0; i<ui.tabs->count(); i++) {
 		std::string text = ui.tabs->tabText(i).toStdString();
-		tabs_usage[text] = false;
+		tabs_usage[text] = (text == "3D");
 		tabs_labels[text] = ui.tabs->widget(i);
 	}
 	// add / renew tabs

@@ -309,7 +309,6 @@ namespace dasp
 
 		ClusterGroupInfo ComputeClusterGroupInfo();
 
-
 		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y)
 		{
 			// x and y are assumed to be normalized
