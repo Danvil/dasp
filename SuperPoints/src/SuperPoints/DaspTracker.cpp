@@ -118,7 +118,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 		lab[0] = r;
 		lab[1] = g;
 		lab[2] = b;
-	}, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+	}, slimage::ThreadingOptions::Single());
 
 	DANVIL_BENCHMARK_STOP(step)
 
@@ -176,13 +176,6 @@ void DaspTracker::performSegmentationStep()
 	seeds = clustering_.FindSeeds(old_seeds, old_points);
 	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(seeds)
-
-	slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
-	slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
-	slimage::Image3ub density_delta(density.width(), density.height());
-	for(unsigned int i=0; i<density.getPixelCount(); i++) {
-		density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.05f);
-	}
 
 	// compute super pixel point edges and improve seeds with it
 //	slimage::Image1f edges;
@@ -348,6 +341,14 @@ void DaspTracker::performSegmentationStep()
 		}
 		if(probability_2) {
 			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
+		}
+
+		// visualize density, seed density and density error
+		slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
+		slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
+		slimage::Image3ub density_delta(density.width(), density.height());
+		for(unsigned int i=0; i<density.getPixelCount(); i++) {
+			density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.05f);
 		}
 
 		// set images for gui
