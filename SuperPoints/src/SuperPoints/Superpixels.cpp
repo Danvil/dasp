@@ -346,15 +346,21 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 
 slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt)
 {
+	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
 	slimage::Image1f density(target.width(), target.height());
 	density.fill(0);
 	for(const Seed& s : seeds) {
-		// dimension is 2!
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-		float norm = target(s.x, s.y);
+		float rho = target(s.x, s.y);
+		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
+			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
+			rho *= 0.25f;
+		}
+		// dimension is 2!
+		float norm = rho;
 		float sigma = 1.0f / std::sqrt(norm);
-		float sigma_inv_2 = norm;
+		float sigma_inv_2 = rho;
 		// kernel influence range
 		int R = static_cast<int>(std::ceil(cRange * sigma));
 		int xmin = std::max<int>(s.x - R, 0);
@@ -503,9 +509,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	// compute desired density
 	slimage::Image1f density_new = ComputeDepthDensity(points, opt);
 	// compute old density
-	DANVIL_BENCHMARK_START(FindSeedsDelta_densityfromseeds)
 	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
-	DANVIL_BENCHMARK_STOP(FindSeedsDelta_densityfromseeds)
 	// difference
 	slimage::Image1f density_delta = density_new - density_old;
 	// compute mipmaps
