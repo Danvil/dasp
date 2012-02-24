@@ -199,11 +199,11 @@ namespace detail
 	}
 
 	template<int M>
-	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const std::vector<Cluster>& clusters)
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const std::vector<Cluster>& clusters, const ClusterSelection& selection)
 	{
 		std::vector<slimage::Pixel3ub> colors(clusters.size());
 		for(unsigned int i=0; i<clusters.size(); i++) {
-			colors[i] = ComputeClusterColor<M>(clusters[i]);
+			colors[i] = selection[i] ? ComputeClusterColor<M>(clusters[i]) : slimage::Pixel3ub{{0,0,0}};
 		}
 		return colors;
 	}
@@ -232,9 +232,9 @@ std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode
 	}
 }
 
-#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c.cluster);
+#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c.cluster, selection);
 
-std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm)
+std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	switch(ccm) {
 	ComputeClusterColors_HELPER(UniBlack)
@@ -245,7 +245,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMo
 	ComputeClusterColors_HELPER(Eccentricity)
 	ComputeClusterColors_HELPER(Circularity)
 	ComputeClusterColors_HELPER(Thickness)
-	default: return detail::ComputeClusterColorsImpl<-1>(c.cluster);
+	default: return detail::ComputeClusterColorsImpl<-1>(c.cluster, selection);
 	}
 }
 
@@ -266,54 +266,62 @@ slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
 	return img;
 }
 
-void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, int size)
+void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, int size, const ClusterSelection& selection)
 {
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
-		const Cluster& cluster = c.cluster[i];
-		slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), colors[i], size);
+		if(selection[i]) {
+			const Cluster& cluster = c.cluster[i];
+			slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), colors[i], size);
+		}
 	}
 }
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
 {
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
-		PlotClusterPoints(img, c.cluster[i], c.points, colors[i]);
+		if(selection[i]) {
+			PlotClusterPoints(img, c.cluster[i], c.points, colors[i]);
+		}
 	}
 }
 
-void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
 {
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
-		PlotClusterEllipse(img, c.cluster[i], colors[i], false);
+		if(selection[i]) {
+			PlotClusterEllipse(img, c.cluster[i], colors[i], false);
+		}
 	}
 }
 
-void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm)
+void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
 {
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm);
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
-		PlotClusterEllipse(img, c.cluster[i], colors[i], true);
+		if(selection[i]) {
+			PlotClusterEllipse(img, c.cluster[i], colors[i], true);
+		}
 	}
 }
 
-void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm)
+void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	switch(mode) {
-	case ClusterCenter: PlotClusterCenters(img, c, cm, 1); break;
-	default: case ClusterPoints: PlotClusterPoints(img, c, cm); break;
-	case ClusterEllipses: PlotClusterEllipses(img, c, cm); break;
-	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm); break;
+	case ClusterCenter: PlotClusterCenters(img, c, cm, 1, selection); break;
+	default: case ClusterPoints: PlotClusterPoints(img, c, cm, selection); break;
+	case ClusterEllipses: PlotClusterEllipses(img, c, cm, selection); break;
+	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm, selection); break;
 	}
 }
 
-slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode cm)
+slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	slimage::Image3ub img(c.width(), c.height());
 	img.fill(0);
-	PlotClusters(img, c, mode, cm);
+	PlotClusters(img, c, mode, cm, selection);
 	return img;
 }
 
@@ -334,11 +342,13 @@ void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& col
 	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.02f * Danvil::ctLinAlg::Convert(cluster.center.normal));
 }
 
-void RenderClusters(const Clustering& clustering, ColorMode ccm)
+void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
-	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm);
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
-		RenderCluster(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
+		if(selection[i]) {
+			RenderCluster(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
+		}
 	}
 }
 

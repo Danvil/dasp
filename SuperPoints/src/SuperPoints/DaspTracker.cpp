@@ -215,15 +215,18 @@ void DaspTracker::performSegmentationStep()
 					return scaled_model(v);
 				});
 
+		{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+			selection_ = plots::ClusterSelection::Empty(clustering_.clusterCount());
+			for(unsigned int i=0; i<cluster_probability.size(); i++) {
+				selection_[i] = (cluster_probability[i] > 0.80f);
+			}
+		}
+
 		// paint cluster probabilities
 		probability.resize(clustering_.width(), clustering_.height());
-		probability.fill(-1.0f);
-		clustering_.ForPixelClusters([&probability,&cluster_probability,&scaled_model](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-//			Danvil::ctLinAlg::Vec3f v(p.color[0], p.color[1], p.color[2]);
-//			float p_pixel = scaled_model(v);
-			float p_base = cluster_probability[cid];
-//			float p_final = 0.5f * (p_pixel + p_base);
-			probability(p.spatial_x(), p.spatial_y()) = p_base;
+		probability.fill(0.0f);
+		clustering_.ForPixelClusters([&probability,&cluster_probability](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+			probability(p.spatial_x(), p.spatial_y()) = cluster_probability[cid];
 		});
 
 //		// histogram color model
@@ -365,7 +368,7 @@ void DaspTracker::performSegmentationStep()
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["_vis"] = slimage::Ptr(vis_img);
+			images_["2D"] = slimage::Ptr(vis_img);
 			images_["rhoE"] = slimage::Ptr(vis_density);
 			images_["rhoA"] = slimage::Ptr(vis_seed_density);
 			images_["rhoD"] = slimage::Ptr(vis_density_delta);
@@ -512,7 +515,7 @@ slimage::Image1ub DaspTracker::getResultImage() const
 void DaspTracker::Render() const
 {
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
-		plots::RenderClusters(clustering_, cluster_color_mode_);
+		plots::RenderClusters(clustering_, cluster_color_mode_, selection_);
 	}
 }
 

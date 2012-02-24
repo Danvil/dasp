@@ -79,6 +79,8 @@ private:
 	boost::shared_ptr<SuperpixelHistogramModel> model_;
 	Danvil::GMM::GaussianMixtureModel<5,3,float> hand_gmm_model_;
 
+    plots::ClusterSelection selection_;
+
 	std::map<std::string, slimage::ImagePtr> images_;
 
 	mutable boost::mutex images_mutex_;

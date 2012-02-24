@@ -231,6 +231,10 @@ namespace dasp
 
 		std::vector<Cluster> cluster;
 
+		std::size_t clusterCount() const {
+			return cluster.size();
+		}
+
 		unsigned int width() const {
 			return points.width();
 		}
