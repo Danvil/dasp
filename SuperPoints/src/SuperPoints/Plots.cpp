@@ -23,16 +23,15 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, con
 		const Point& p = points[i];
 		img(p.spatial_x(), p.spatial_y()) = color;
 	}
-	// plot the cluster center (using some kind of inverse color)
-	int cx = cluster.center.spatial_x();
-	int cy = cluster.center.spatial_y();
-	if(0 <= cx && cx < int(points.width()) && 0 <= cy && cy < int(points.height())) {
-		unsigned char* col = img.pointer(cx, cy);
-		col[0] = 255 - color[0];
-		col[1] = 255 - color[1];
-		col[2] = 255 - color[2];
-	}
-
+//	// plot the cluster center (using some kind of inverse color)
+//	int cx = cluster.center.spatial_x();
+//	int cy = cluster.center.spatial_y();
+//	if(0 <= cx && cx < int(points.width()) && 0 <= cy && cy < int(points.height())) {
+//		unsigned char* col = img.pointer(cx, cy);
+//		col[0] = 255 - color[0];
+//		col[1] = 255 - color[1];
+//		col[2] = 255 - color[2];
+//	}
 }
 
 void PlotClusters(const slimage::Image3ub& img, const Clustering& clustering, const std::vector<slimage::Pixel3ub>& colors)
@@ -310,7 +309,7 @@ void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c
 void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	switch(mode) {
-	case ClusterCenter: PlotClusterCenters(img, c, cm, 1, selection); break;
+	case ClusterCenter: PlotClusterCenters(img, c, cm, 2, selection); break;
 	default: case ClusterPoints: PlotClusterPoints(img, c, cm, selection); break;
 	case ClusterEllipses: PlotClusterEllipses(img, c, cm, selection); break;
 	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm, selection); break;
@@ -339,7 +338,7 @@ void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& col
 	glColor3ub(color[0], color[1], color[2]);
 	Danvil::SimpleEngine::Primitives::RenderEllipseCap(pos, major, minor);
 	glColor3f(0.9f, 0.9f, 0.9f);
-	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.02f * Danvil::ctLinAlg::Convert(cluster.center.normal));
+	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(cluster.center.normal));
 }
 
 void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
