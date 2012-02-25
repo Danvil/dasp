@@ -3,7 +3,7 @@
 #include <Slimage/impl/io.hpp>
 #include <Slimage/Parallel.h>
 
-WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
+WdgtKinectSuperPoints::WdgtKinectSuperPoints(const QString& fn, QWidget *parent)
     : QMainWindow(parent)
 {
 	ui.setupUi(this);
@@ -40,8 +40,17 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 
+	if(fn.endsWith(".oni")) {
+		LOG_NOTICE << "Opening oni file: " << fn.toStdString();
+		kinect_grabber_->OpenFile(fn.toStdString());
+	}
+	else {
+		LOG_NOTICE << "Opening kinect config file: " << fn.toStdString();
+		kinect_grabber_->OpenConfig(fn.toStdString());
+	}
 //	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
-	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
+//	kinect_grabber_->OpenFile("/home/david/Desktop/Kinect/2012-02-25 Stuff On Table.oni");
+//	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
 
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 

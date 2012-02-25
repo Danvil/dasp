@@ -17,7 +17,7 @@ class WdgtKinectSuperPoints : public QMainWindow
     Q_OBJECT
 
 public:
-    WdgtKinectSuperPoints(QWidget *parent = 0);
+    WdgtKinectSuperPoints(const QString& fn, QWidget *parent = 0);
     ~WdgtKinectSuperPoints();
 
 private:
