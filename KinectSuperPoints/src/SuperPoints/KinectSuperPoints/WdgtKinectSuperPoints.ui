@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Depth-adaptive Superpixels</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="2">
+    <item row="1" column="2">
      <widget class="QTabWidget" name="tabs">
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -28,6 +28,38 @@
        </attribute>
       </widget>
      </widget>
+    </item>
+    <item row="0" column="2">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="pushButtonSaveOne">
+        <property name="text">
+         <string>Save One</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButtonLoadOne">
+        <property name="text">
+         <string>Load One</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButtonLoadOni">
+        <property name="text">
+         <string>Load OpenNi Oni</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButtonLive">
+        <property name="text">
+         <string>Live</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>

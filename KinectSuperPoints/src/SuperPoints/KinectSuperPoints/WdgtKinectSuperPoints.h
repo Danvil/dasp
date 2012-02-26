@@ -17,7 +17,7 @@ class WdgtKinectSuperPoints : public QMainWindow
     Q_OBJECT
 
 public:
-    WdgtKinectSuperPoints(const QString& fn, QWidget *parent = 0);
+    WdgtKinectSuperPoints(QWidget *parent = 0);
     ~WdgtKinectSuperPoints();
 
 private:
@@ -27,6 +27,10 @@ private:
 
 public Q_SLOTS:
 	void OnUpdateImages();
+	void OnCaptureOne();
+	void OnLoadOne();
+	void OnLoadOni();
+	void OnLive();
 
 private:
  	PTR(Danvil::SimpleEngine::View) view_;

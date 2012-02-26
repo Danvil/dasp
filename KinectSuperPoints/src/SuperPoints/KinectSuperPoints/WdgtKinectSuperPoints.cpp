@@ -2,11 +2,18 @@
 #include <Slimage/Qt.hpp>
 #include <Slimage/impl/io.hpp>
 #include <Slimage/Parallel.h>
+#include <QtGui/QMessageBox>
+#include <QtGui/QFileDialog>
 
-WdgtKinectSuperPoints::WdgtKinectSuperPoints(const QString& fn, QWidget *parent)
+WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
 {
 	ui.setupUi(this);
+
+	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
+	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
+	QObject::connect(ui.pushButtonLoadOni, SIGNAL(clicked()), this, SLOT(OnLoadOni()));
+	QObject::connect(ui.pushButtonLive, SIGNAL(clicked()), this, SLOT(OnLive()));
 
 	dasp_tracker_.reset(new dasp::DaspTracker());
 
@@ -37,24 +44,12 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(const QString& fn, QWidget *parent)
 
 	LOG_NOTICE << "Starting Kinect ...";
 
-	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
-
-	if(fn.endsWith(".oni")) {
-		LOG_NOTICE << "Opening oni file: " << fn.toStdString();
-		kinect_grabber_->OpenFile(fn.toStdString());
-	}
-	else {
-		LOG_NOTICE << "Opening kinect config file: " << fn.toStdString();
-		kinect_grabber_->OpenConfig(fn.toStdString());
-	}
+//	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+//	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 //	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
 //	kinect_grabber_->OpenFile("/home/david/Desktop/Kinect/2012-02-25 Stuff On Table.oni");
 //	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
-
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-
-	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+//	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
 	QObject::connect(&timer_, SIGNAL(timeout()), this, SLOT(OnUpdateImages()));
 	timer_.setInterval(20);
@@ -64,8 +59,62 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(const QString& fn, QWidget *parent)
 
 WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
-	//kinect_grabber_->
-	kinect_thread_.join();
+}
+
+void WdgtKinectSuperPoints::OnCaptureOne()
+{
+	if(!kinect_grabber_) {
+		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
+		return;
+	}
+	// FIXME
+}
+
+void WdgtKinectSuperPoints::OnLoadOne()
+{
+	if(!kinect_grabber_) {
+		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
+		return;
+	}
+	// FIXME
+}
+
+void WdgtKinectSuperPoints::OnLoadOni()
+{
+	QString fn = QFileDialog::getOpenFileName(this, "Open ONI file", "/home/david", tr("ONI files (*.oni)"));
+	if(fn.isEmpty()) {
+		return;
+	}
+
+	if(kinect_grabber_) {
+		kinect_grabber_->stop_requested_ = true;
+		kinect_thread_.join();
+		kinect_grabber_.reset();
+	}
+
+	LOG_NOTICE << "Opening oni file: " << fn.toStdString();
+	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
+	kinect_grabber_->OpenFile(fn.toStdString());
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+}
+
+void WdgtKinectSuperPoints::OnLive()
+{
+	if(kinect_grabber_) {
+		kinect_grabber_->stop_requested_ = true;
+		kinect_thread_.join();
+		kinect_grabber_.reset();
+	}
+
+	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
+	LOG_NOTICE << "Opening kinect config file: " << config.toStdString();
+	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
+	kinect_grabber_->OpenConfig(config.toStdString());
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
 void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
