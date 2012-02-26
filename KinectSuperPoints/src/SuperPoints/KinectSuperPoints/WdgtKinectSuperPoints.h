@@ -49,6 +49,10 @@ private:
 
 	boost::thread kinect_thread_;
 
+	bool capture_next_;
+	std::string capture_filename_;
+	bool interrupt_loaded_thread_;
+
 private:
     Ui::WdgtKinectSuperPointsClass ui;
 };

@@ -1,4 +1,6 @@
 #include "WdgtKinectSuperPoints.h"
+#include <Danvil/Images/ImageIO.h>
+#include <Danvil/Images/ImageOps.h>
 #include <Slimage/Qt.hpp>
 #include <Slimage/impl/io.hpp>
 #include <Slimage/Parallel.h>
@@ -9,6 +11,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
 {
 	ui.setupUi(this);
+
+	capture_next_ = false;
 
 	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
@@ -59,6 +63,11 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
+	if(kinect_grabber_) {
+		kinect_grabber_->stop_requested_ = true;
+	}
+	interrupt_loaded_thread_ = true;
+	kinect_thread_.join();
 }
 
 void WdgtKinectSuperPoints::OnCaptureOne()
@@ -67,16 +76,38 @@ void WdgtKinectSuperPoints::OnCaptureOne()
 		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
 		return;
 	}
-	// FIXME
+	QString fn = QFileDialog::getSaveFileName(this, "Open ONI file", "/home/david");
+	if(fn.isEmpty()) {
+		return;
+	}
+	capture_filename_ = fn.toStdString();
+	capture_next_ = true;
 }
 
 void WdgtKinectSuperPoints::OnLoadOne()
 {
-	if(!kinect_grabber_) {
-		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
+	QString fn = QFileDialog::getSaveFileName(this, "Open ONI file", "/home/david");
+	if(fn.isEmpty()) {
 		return;
 	}
-	// FIXME
+	capture_filename_ = fn.toStdString();
+
+	if(kinect_grabber_) {
+		kinect_grabber_->stop_requested_ = true;
+	}
+	interrupt_loaded_thread_ = true;
+	kinect_thread_.join();
+	kinect_grabber_.reset();
+
+	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn.toStdString() + "_color.png"));
+	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn.toStdString() + "_depth.gz", false));
+	interrupt_loaded_thread_ = false;
+	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
+		while(!interrupt_loaded_thread_) {
+			this->OnImages(loaded_kinect_depth, loaded_kinect_color);
+		}
+	});
+
 }
 
 void WdgtKinectSuperPoints::OnLoadOni()
@@ -88,9 +119,10 @@ void WdgtKinectSuperPoints::OnLoadOni()
 
 	if(kinect_grabber_) {
 		kinect_grabber_->stop_requested_ = true;
-		kinect_thread_.join();
-		kinect_grabber_.reset();
 	}
+	interrupt_loaded_thread_ = true;
+	kinect_thread_.join();
+	kinect_grabber_.reset();
 
 	LOG_NOTICE << "Opening oni file: " << fn.toStdString();
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
@@ -104,9 +136,10 @@ void WdgtKinectSuperPoints::OnLive()
 {
 	if(kinect_grabber_) {
 		kinect_grabber_->stop_requested_ = true;
-		kinect_thread_.join();
-		kinect_grabber_.reset();
 	}
+	interrupt_loaded_thread_ = true;
+	kinect_thread_.join();
+	kinect_grabber_.reset();
 
 	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
 	LOG_NOTICE << "Opening kinect config file: " << config.toStdString();
@@ -119,6 +152,12 @@ void WdgtKinectSuperPoints::OnLive()
 
 void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
+	if(capture_next_) {
+		Danvil::Images::ImageIO::Save(raw_kinect_color, capture_filename_ + "_color.png");
+		Danvil::Images::ImageIO::Save(raw_kinect_depth, capture_filename_ + "_depth.gz");
+		capture_next_ = false;
+	}
+
 	// kinect 16-bit depth image
 	slimage::Image1ui16 kinect_depth;
 	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
