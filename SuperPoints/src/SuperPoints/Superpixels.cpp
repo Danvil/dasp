@@ -316,11 +316,18 @@ void FindSeedsDepthMipmap_Walk(
 	else {
 		if(die() < v)
 		{
-			// create seed in the middle
 			Seed s;
 			unsigned int half = (1 << (level - 1));
+			// create seed in the middle
 			s.x = (x << level) + half;
 			s.y = (y << level) + half;
+			// add random offset to add noise
+
+			std::cout << half << std::endl;
+			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
+					rng, boost::uniform_int<>(-int(half/2), +int(half/2)));
+			s.x += delta();
+			s.y += delta();
 			if(s.x < int(points.width()) && s.y < int(points.height())) {
 				s.scala = points(s.x, s.y).image_super_radius;
 //				std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
@@ -483,13 +490,21 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 		if(die() < std::abs(v))
 		{
 			unsigned int half = (1 << (level - 1));
+			// create seed in the middle
 			int sx = (x << level) + half;
 			int sy = (y << level) + half;
+			// add random offset to add noise
+			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
+					rng, boost::uniform_int<>(-int(half/2), +int(half/2)));
+			sx += delta();
+			sy += delta();
+
 			if(v > 0.0f) {
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
-					Seed s{sx, sy, points(s.x, s.y).image_super_radius};
-//					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
+					float scala = points(sx, sy).image_super_radius;
+					Seed s{sx, sy, scala};
+//					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					if(s.scala >= 2.0f) {
 						seeds.push_back(s);
 					}
