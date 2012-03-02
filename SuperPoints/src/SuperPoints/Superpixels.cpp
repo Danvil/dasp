@@ -323,7 +323,6 @@ void FindSeedsDepthMipmap_Walk(
 			s.y = (y << level) + half;
 			// add random offset to add noise
 
-			std::cout << half << std::endl;
 			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
 					rng, boost::uniform_int<>(-int(half/2), +int(half/2)));
 			s.x += delta();
@@ -562,7 +561,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	return ok_size_seeds;
 }
 
-std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
+std::vector<Seed> Clustering::FindSeeds()
 {
 	switch(opt.seed_mode) {
 	case SeedModes::EquiDistant:
@@ -575,11 +574,19 @@ std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, cons
 		return FindSeedsDepthBlue(points, opt);
 	case SeedModes::DepthFloyd:
 		return FindSeedsDepthFloyd(points, opt);
-	case SeedModes::Delta:
-		return FindSeedsDelta(points, old_seeds, old_points, opt);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
+}
+
+std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
+{
+	if(opt.seed_mode == SeedModes::Delta) {
+		return FindSeedsDelta(points, old_seeds, old_points, opt);
+	}
+	else {
+		return FindSeeds();
+	}
 }
 
 void Clustering::CreateClusters(const std::vector<Seed>& seeds)

@@ -247,9 +247,9 @@ namespace dasp
 
 		std::vector<Seed> getClusterCentersAsSeeds() const;
 
-		void CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
+		void CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals=slimage::Image3f());
 
-		void CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals);
+		void CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals=slimage::Image3f());
 
 //		/** Find super pixel clusters */
 //		void ComputeSuperpixels(const slimage::Image1f& edges);
@@ -259,6 +259,8 @@ namespace dasp
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
 		slimage::Image1f ComputeDepthDensity();
+
+		std::vector<Seed> FindSeeds();
 
 		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);
 
