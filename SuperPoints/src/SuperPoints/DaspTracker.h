@@ -77,7 +77,7 @@ private:
 
 	bool has_hand_gmm_model_;
 	boost::shared_ptr<SuperpixelHistogramModel> model_;
-	Danvil::GMM::GaussianMixtureModel<5,3,float> hand_gmm_model_;
+	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;
 
     plots::ClusterSelection selection_;
 

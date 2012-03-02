@@ -17,7 +17,10 @@
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
 #include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
 #include <stdexcept>
+#include <fstream>
 using namespace std;
 //----------------------------------------------------------------------------//
 namespace dasp {
@@ -26,11 +29,17 @@ namespace dasp {
 DaspTracker::DaspTracker()
 {
 	training_ = false;
+
 	dasp_params.reset(new dasp::Parameters());
-	dasp_params->camera = Camera{320.0f, 240.0f, 580.0f, 0.001f};
+//	// opencv calibration
+//	528.293477 0.000000 318.394546
+//	0.000000 527.719472 271.987945
+//	0.000000 0.000000 1.000000
+	dasp_params->camera = Camera{318.39f, 271.99f, 528.01f, 0.001f};
 	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
 	dasp_params->base_radius = 0.02f;
 	dasp_params->gradient_adaptive_density = true;
+
 	color_model_sigma_scale_ = 1.0f;
 	thread_pool_index_ = 100;
 	has_hand_gmm_model_ = false;
@@ -132,7 +141,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	performTrackingStep();
 
-	DANVIL_BENCHMARK_PRINTALL_COUT
+//	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
 slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)
@@ -149,6 +158,12 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 	}
 	return col;
 }
+
+typedef boost::accumulators::accumulator_set<
+	unsigned int,
+	boost::accumulators::stats<boost::accumulators::tag::variance>
+> CoverageAccType;
+CoverageAccType coverage;
 
 void DaspTracker::performSegmentationStep()
 {
@@ -175,7 +190,7 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_START(seeds)
 	std::vector<Seed> old_seeds = clustering_.getClusterCentersAsSeeds();
 	seeds = clustering_.FindSeeds(old_seeds, old_points);
-	std::cout << "Seeds: " << seeds.size() << std::endl;
+//	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(seeds)
 
 	// compute super pixel point edges and improve seeds with it
@@ -213,7 +228,22 @@ void DaspTracker::performSegmentationStep()
 				[&scaled_model](const dasp::Point& center) {
 					Danvil::ctLinAlg::Vec3f v(center.color[0], center.color[1], center.color[2]);
 					return scaled_model(v);
+//					// detect red
+//					return v.x / (v.x + v.y + v.z);
 				});
+
+		unsigned int cnt_over_active = 0;
+		for(float& v : cluster_probability) {
+			if(v > 0.50) {
+				cnt_over_active ++;
+				v = 1.0f;
+			}
+			else {
+				v = 0.0f;
+			}
+		}
+		coverage(cnt_over_active);
+		std::cout << "Active cluster: " << cnt_over_active << std::endl;
 
 		{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 			selection_ = plots::ClusterSelection::Empty(clustering_.clusterCount());
@@ -387,6 +417,16 @@ void DaspTracker::trainInitialColorModel()
 	const unsigned int cWidth = 640;
 	const unsigned int cHeight = 480;
 
+	if(boost::accumulators::count(coverage) > 0) {
+		std::ofstream fs("coverage.txt", std::ios_base::app);
+		double mean = boost::accumulators::mean(coverage);
+		double var = boost::accumulators::variance(coverage);
+
+		fs << mean << "\t" << std::sqrt(var) << std::endl;
+		std::cout << "Mean=" << mean << ", sqrt(variance)=" << std::sqrt(var) << std::endl;
+	}
+	coverage = CoverageAccType();
+
 	// capture all super pixels which are in the ROI and near to the camera
 	LOG_NOTICE << "Initializing Appearance model --- STARTED";
 
@@ -473,7 +513,7 @@ void DaspTracker::trainInitialColorModel()
 				gmm_training.push_back(Danvil::ctLinAlg::Vec3f(p.color[0], p.color[1], p.color[2]));
 			}
 		}
-		hand_gmm_model_ = Danvil::GMM::GmmExpectationMaximization<5,3,float>(gmm_training);
+		hand_gmm_model_ = Danvil::GMM::GmmExpectationMaximization<2,3,float>(gmm_training);
 		std::cout << hand_gmm_model_ << std::endl;
 		std::cout << std::sqrt(std::abs(Danvil::ctLinAlg::Det(hand_gmm_model_.gaussians_[0].sigma()))) << std::endl;
 		has_hand_gmm_model_ = true;
