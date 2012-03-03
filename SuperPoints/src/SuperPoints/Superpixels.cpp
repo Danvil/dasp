@@ -205,7 +205,7 @@ void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 	}
 }
 
-std::vector<int> Clustering::ComputePixelLabels()
+std::vector<int> Clustering::ComputePixelLabels() const
 {
 	std::vector<int> labels(points.size(), -1);
 	for(unsigned int j=0; j<cluster.size(); j++) {
@@ -774,7 +774,7 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 		s.scala = c.center.image_super_radius;
 		G.nodes_.push_back(s);
 	}
-	G.createConnections(5.0f * opt.base_radius);
+	G.createConnections(3.0f * opt.base_radius);
 	return G;
 }
 

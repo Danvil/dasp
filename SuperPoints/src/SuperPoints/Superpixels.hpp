@@ -254,7 +254,7 @@ namespace dasp
 //		/** Find super pixel clusters */
 //		void ComputeSuperpixels(const slimage::Image1f& edges);
 
-		std::vector<int> ComputePixelLabels();
+		std::vector<int> ComputePixelLabels() const;
 
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
@@ -275,7 +275,7 @@ namespace dasp
 		SuperpixelGraph CreateNeighborhoodGraph();
 
 		template<typename F>
-		void ForPixelClusters(F f) {
+		void ForPixelClusters(F f) const {
 			for(unsigned int i=0; i<cluster.size(); i++) {
 				const Cluster& c = cluster[i];
 				for(unsigned int p : c.pixel_ids) {
@@ -298,6 +298,13 @@ namespace dasp
 				data[i] = f(cluster[i]);
 			}
 			return data;
+		}
+
+		template<typename F>
+		void ForClusterCentersNoReturn(F f) {
+			for(unsigned int i=0; i<cluster.size(); i++) {
+				f(cluster[i].center);
+			}
 		}
 
 		template<typename F>

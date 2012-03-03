@@ -113,6 +113,14 @@ struct ClusterSelection
 		return selection[i];
 	}
 
+	unsigned int countEnabled() const {
+		return std::accumulate(selection.begin(), selection.end(), 0u, [](unsigned int sum, bool v) { return sum + (v ? 1 : 0); });
+	}
+
+	unsigned int countDisabled() const {
+		return selection.size() - countEnabled();
+	}
+
 	static ClusterSelection All() {
 		return ClusterSelection{ {} };
 	}
