@@ -9,6 +9,7 @@
 #define SUPERPIXELHISTOGRAM_HPP_
 //----------------------------------------------------------------------------//
 #include "Histogram.hpp"
+#include "SuperpixelGraph.hpp"
 #include <Danvil/LinAlg/Eigen.hpp>
 #include <Danvil/Statistics/KMeans.hpp>
 #include <eigen3/Eigen/Dense>
@@ -17,59 +18,6 @@
 #include <cmath>
 //----------------------------------------------------------------------------//
 namespace dasp {
-//----------------------------------------------------------------------------//
-
-struct SuperpixelState
-{
-	unsigned int x, y;
-	Eigen::Vector3f position;
-	Eigen::Vector3f color;
-	Eigen::Vector3f normal;
-	float scala;
-};
-
-struct SuperpixelNeighbourhoodGraph
-{
-	SuperpixelState center_;
-	std::vector<SuperpixelState> neighbours_;
-};
-
-struct SuperpixelGraph
-{
-	std::vector<SuperpixelState> nodes_;
-
-	std::vector<std::vector<std::size_t>> node_connections_;
-
-	std::size_t size() const {
-		return nodes_.size();
-	}
-
-	void createConnections(float threshold) {
-		std::size_t n = size();
-		node_connections_.resize(n);
-		for(std::size_t i=0; i<n; i++) {
-			for(std::size_t j=i+1; j<n; j++) {
-				float d = (nodes_[i].position - nodes_[j].position).norm();
-				// only connect if distance is smaller than threshold
-				if(d < threshold) {
-					node_connections_[i].push_back(j);
-					node_connections_[j].push_back(i);
-				}
-			}
-		}
-	}
-
-	SuperpixelNeighbourhoodGraph createNeighbourhoodGraph(unsigned int i) const {
-		SuperpixelNeighbourhoodGraph ng;
-		ng.center_ = nodes_[i];
-		for(std::size_t j : node_connections_[i]) {
-			ng.neighbours_.push_back(nodes_[j]);
-		}
-		return ng;
-	}
-
-};
-
 //----------------------------------------------------------------------------//
 
 class ISuperpixelModel

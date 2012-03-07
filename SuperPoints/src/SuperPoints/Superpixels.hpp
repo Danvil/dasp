@@ -274,6 +274,12 @@ namespace dasp
 
 		SuperpixelGraph CreateNeighborhoodGraph();
 
+		std::vector<unsigned int> CreateSegments(const SuperpixelGraph& neighbourhood, unsigned int* cnt_label);
+
+		/**
+		 * Signature of F :
+		 * void F(unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p)
+		 */
 		template<typename F>
 		void ForPixelClusters(F f) {
 			for(unsigned int i=0; i<cluster.size(); i++) {
@@ -324,7 +330,7 @@ namespace dasp
 			return 1.0f - x.dot(y);
 		}
 
-		template<bool cUseSqrt=false>
+		template<bool cUseSqrt=false, bool WeightNormalsByDepth=true>
 		inline float Distance(const Point& u, const Point& v)
 		{
 			float d_color;
@@ -351,6 +357,9 @@ namespace dasp
 			}
 
 			float d_normal = DistanceForNormals(u.normal, v.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+			}
 
 			return
 				opt.weight_color * d_color
@@ -358,7 +367,7 @@ namespace dasp
 				+ opt.weight_normal * d_normal;
 		}
 
-		template<bool cUseSqrt=false, bool cDisparity=true>
+		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=true>
 		inline float DistancePlanar(const Point& u, const Point& v)
 		{
 			float d_color;
@@ -404,6 +413,9 @@ namespace dasp
 			}
 
 			float d_normal = DistanceForNormals(u.normal, v.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+			}
 
 			return
 				opt.weight_color * d_color
@@ -436,18 +448,42 @@ namespace dasp
 			return DistanceSpatial(x.center, y.center);
 		}
 
+		template<bool WeightNormalsByDepth=true>
 		inline float DistanceWorld(const Cluster& x, const Cluster& y) {
-			// TODO compute distance between:
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
 			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
 			// world position of cluster centers.
 			float d_world = (x.center.world - y.center.world).norm();
-			return d_color
-				+ opt.weight_spatial*d_world // FIXME constant
+			return opt.weight_color*d_color
+				+ opt.weight_spatial*d_world
 				+ opt.weight_normal*d_normal;
-	//		return DistanceSpatial(x.center, y.center);
+		}
+
+		template<bool WeightNormalsByDepth=true>
+		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) {
+			// mean cluster colors,
+			float d_color = (x.center.color - y.center.color).norm();
+			// mean cluster normals and
+			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
+			return opt.weight_color*d_color + opt.weight_normal*d_normal;
+		}
+
+		template<bool WeightNormalsByDepth=true>
+		inline float DistanceNormal(const Cluster& x, const Cluster& y) {
+			// mean cluster normals and
+			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
+			return opt.weight_normal*d_normal;
 		}
 
 	};

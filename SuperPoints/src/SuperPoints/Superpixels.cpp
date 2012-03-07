@@ -9,6 +9,7 @@
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
 #include "PointsAndNormals.hpp"
+#include "TreeReduction.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
@@ -774,8 +775,40 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 		s.scala = c.center.image_super_radius;
 		G.nodes_.push_back(s);
 	}
-	G.createConnections(5.0f * opt.base_radius);
+	G.createConnections(3.0f * opt.base_radius);
 	return G;
+}
+
+std::vector<unsigned int> Clustering::CreateSegments(const SuperpixelGraph& Gn, unsigned int* cnt_label)
+{
+	// create graph
+	Romeo::TreeReduction::Graph graph;
+	graph.nodes_ = cluster.size();
+	for(unsigned int i=0; i<Gn.node_connections_.size(); i++) {
+		for(unsigned int j : Gn.node_connections_[i]) {
+			float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
+			graph.edges.push_back(Romeo::TreeReduction::Edge{i,j,cost});
+		}
+	}
+	// graph segmentation
+	std::vector<unsigned int> labels;
+	Romeo::TreeReduction::MinimalSpanningCutting(graph, 10.f, &labels);
+	// remap labels
+	std::set<unsigned int> unique_labels_set(labels.begin(), labels.end());
+	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
+	*cnt_label = unique_labels.size();
+	for(unsigned int& x : labels) {
+		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
+		x = it - unique_labels.begin();
+	}
+	return labels;
+
+//	std::vector<unsigned int> labels(nodes_.size());
+//	for(unsigned int i=0; i<labels.size(); i++) {
+//		labels[i] = i;
+//	}
+//	*max_label = nodes_.size() - 1;
+//	return labels;
 }
 
 ClusterGroupInfo Clustering::ComputeClusterGroupInfo()

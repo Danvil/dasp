@@ -15,6 +15,7 @@ public:
 	~WdgtSuperpixelParameters();
 
 public Q_SLOTS:
+	void ChangeSmoothDepth(int state);
 	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelRadius(double val);
@@ -34,6 +35,7 @@ public Q_SLOTS:
 	void ChangePlotBorders(int state);
 	void ChangePlotGraph(int state);
 	void ChangePlotDensity(int state);
+	void ChangePlotSegments(int state);
 
 private:
 	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;

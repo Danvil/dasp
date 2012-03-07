@@ -1,8 +1,9 @@
 #include "WdgtKinectSuperPoints.h"
 #include <Danvil/Images/ImageIO.h>
 #include <Danvil/Images/ImageOps.h>
-#include <Slimage/Qt.hpp>
-#include <Slimage/impl/io.hpp>
+#include <Slimage/detail/Qt.hpp>
+#define SLIMAGE_IO_QT
+#include <Slimage/IO.hpp>
 #include <Slimage/Parallel.h>
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
@@ -199,7 +200,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 			continue;
 		}
 
-		QImage* qimg = slimage::ConvertToQt(ref_img);
+		QImage* qimg = slimage::qt::ConvertToQt(ref_img);
 		if(qimg == 0) {
 			continue;
 		}

@@ -16,6 +16,7 @@
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
+#include <Danvil/Color/HSV.h>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
@@ -44,6 +45,8 @@ DaspTracker::DaspTracker()
 	thread_pool_index_ = 100;
 	has_hand_gmm_model_ = false;
 
+	enable_smooth_depth_ = false;
+
 	show_points_ = false;
 	show_clusters_ = true;
 	show_cluster_borders_ = true;
@@ -52,6 +55,7 @@ DaspTracker::DaspTracker()
 	cluster_mode_ = plots::ClusterPoints;
 	show_graph_ = false;
 	plot_density_ = false;
+	plot_segments_ = false;
 
 }
 
@@ -85,7 +89,43 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 {
 	DANVIL_BENCHMARK_START(step)
 
-	kinect_depth = raw_kinect_depth;
+	if(enable_smooth_depth_) {
+		kinect_depth.resize(raw_kinect_depth.width(), raw_kinect_depth.height());
+		slimage::ParallelProcess(raw_kinect_depth, kinect_depth, [&raw_kinect_depth](const uint16_t* raw, uint16_t* smth) {
+			int i = raw - raw_kinect_depth.begin();
+			int w = raw_kinect_depth.width();
+			int h = raw_kinect_depth.height();
+			int x = i % w;
+			int y = i / w;
+			if(x == 0 || x+1 == w || y == 0 || y+1 == h) {
+				*smth = 0;
+			}
+			else {
+				uint16_t values[3][3] = {
+						{*(raw -1-w), *(raw -w), *(raw +1-w)},
+						{*(raw -1  ), *(raw   ), *(raw +1  )},
+						{*(raw -1+w), *(raw +w), *(raw +1+w)}
+				};
+				if(
+						values[0][0] == 0 || values[0][1] == 0 || values[0][2] == 0 ||
+						values[1][0] == 0 || values[1][1] == 0 || values[1][2] == 0 ||
+						values[2][0] == 0 || values[2][1] == 0 || values[2][2] == 0)
+				{
+					*smth = 0;
+				}
+				else {
+					*smth = (
+							  (unsigned int)(values[0][0]) + 2*(unsigned int)(values[0][1]) +   (unsigned int)(values[0][2]) +
+							2*(unsigned int)(values[1][0]) + 4*(unsigned int)(values[1][1]) + 2*(unsigned int)(values[1][2]) +
+							  (unsigned int)(values[2][0]) + 2*(unsigned int)(values[2][1]) +   (unsigned int)(values[2][2])
+					) / 16;
+				}
+			}
+		}, slimage::ThreadingOptions::Single());
+	}
+	else {
+		kinect_depth = raw_kinect_depth;
+	}
 
 	kinect_color_rgb = raw_kinect_color;
 
@@ -157,6 +197,22 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 		}, slimage::ThreadingOptions::UsePool(pool_id));
 	}
 	return col;
+}
+
+std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt)
+{
+	cnt = (cnt / 3 + 1) * 3;
+	std::vector<slimage::Pixel3ub> colors(cnt);
+	for(unsigned int i=0; i<cnt; i+=3) {
+		slimage::Pixel3ub& c1 = colors[i];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 255, c1[0], c1[1], c1[2]);
+		slimage::Pixel3ub& c2 = colors[i+1];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 171, c2[0], c2[1], c2[2]);
+		slimage::Pixel3ub& c3 = colors[i+2];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 85, c3[0], c3[1], c3[2]);
+	}
+	std::random_shuffle(colors.begin(), colors.end());
+	return colors;
 }
 
 typedef boost::accumulators::accumulator_set<
@@ -339,12 +395,28 @@ void DaspTracker::performSegmentationStep()
 			plots::PlotEdges(vis_img, clustering_.ComputePixelLabels(), slimage::Pixel3ub{{0,0,0}}, 2);
 		}
 
-		// create and plot neighbourhood graph
-		if(show_graph_) {
+		if(show_graph_ || plot_segments_) {
+			// create neighbourhood graph
 			SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
-			for(unsigned int i=0; i<G.nodes_.size(); i++) {
-				for(unsigned int k : G.node_connections_[i]) {
-					slimage::PaintLine(vis_img, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
+
+			if(plot_segments_) {
+				// create segmentation graph
+				unsigned int cnt_label;
+				std::vector<unsigned int> segments = clustering_.CreateSegments(G, &cnt_label);
+				std::cout << "Nodes: " << segments.size() << ", Labels=" << cnt_label << std::endl;
+
+				// plot segmentation graph
+				std::vector<slimage::Pixel3ub> colors = CreateRandomColors(cnt_label);
+				clustering_.ForPixelClusters([&segments,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+					vis_img(pid) = colors[segments[cid]];
+				});
+			}
+			if(show_graph_) {
+				// plot neighbourhood graph
+				for(unsigned int i=0; i<G.nodes_.size(); i++) {
+					for(unsigned int k : G.node_connections_[i]) {
+						slimage::PaintLine(vis_img, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
+					}
 				}
 			}
 		}
