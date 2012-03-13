@@ -18,6 +18,8 @@
 
 namespace dasp
 {
+	extern std::map<std::string,slimage::ImagePtr> sDebugImages;
+
 	struct Seed
 	{
 		int x, y;

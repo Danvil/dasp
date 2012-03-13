@@ -262,6 +262,7 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_START(clusters)
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 		clustering_.ComputeSuperpixels(seeds);
+		std::cout << "Cluster count=" << clustering_.cluster.size() << std::endl;
 		if(show_clusters_ && (cluster_color_mode_ == plots::Eccentricity || cluster_color_mode_ == plots::Circularity || cluster_color_mode_ == plots::Thickness)) {
 			clustering_.ComputeClusterInfo();
 		}
@@ -310,7 +311,7 @@ void DaspTracker::performSegmentationStep()
 
 		// paint cluster probabilities
 		probability.resize(clustering_.width(), clustering_.height());
-		probability.fill(0.0f);
+		probability.fill({0.0f});
 		clustering_.ForPixelClusters([&probability,&cluster_probability](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
 			probability(p.spatial_x(), p.spatial_y()) = cluster_probability[cid];
 		});
@@ -346,7 +347,7 @@ void DaspTracker::performSegmentationStep()
 		result_ = slimage::Convert_f_2_ub(probability);
 	}
 	else {
-		result_.fill(0);
+		result_.fill({0});
 	}
 
 	DANVIL_BENCHMARK_STOP(segmentation)
@@ -386,13 +387,13 @@ void DaspTracker::performSegmentationStep()
 		}
 		else {
 			vis_img.resize(clustering_.width(), clustering_.height());
-			vis_img.fill(0);
+			vis_img.fill({{0,0,0}});
 		}
 		if(show_clusters_) {
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
 		}
 		if(show_cluster_borders_) {
-			plots::PlotEdges(vis_img, clustering_.ComputePixelLabels(), slimage::Pixel3ub{{0,0,0}}, 2);
+			plots::PlotEdges(vis_img, clustering_.ComputePixelLabels(), slimage::Pixel3ub{{255,255,255}}, 2);
 		}
 
 		if(show_graph_ || plot_segments_) {
@@ -478,6 +479,10 @@ void DaspTracker::performSegmentationStep()
 			images_["prob"] = slimage::Ptr(probability_color);
 			images_["prob2"] = slimage::Ptr(probability_2_color);
 			images_["labels"] = slimage::Ptr(plot_labels);
+
+			for(auto p : sDebugImages) {
+				images_[p.first] = p.second;
+			}
 		}
 
 	}
@@ -503,7 +508,7 @@ void DaspTracker::trainInitialColorModel()
 	LOG_NOTICE << "Initializing Appearance model --- STARTED";
 
 	slimage::Image3ub initial_(cWidth, cHeight);
-	initial_.fill(128);
+	initial_.fill({{128,128,128}});
 
 	DANVIL_BENCHMARK_START(Hand_V3_Init)
 

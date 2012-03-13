@@ -15,12 +15,16 @@
 #include <Danvil/Tools/MoreMath.h>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
+#include <boost/math/constants/constants.hpp>
 
-#define CLUSTER_UPDATE_MULTITHREADING
+//#define CLUSTER_UPDATE_MULTITHREADING
+#define CREATE_DEBUG_IMAGES
 
 //------------------------------------------------------------------------------
 namespace dasp {
 //------------------------------------------------------------------------------
+
+std::map<std::string,slimage::ImagePtr> sDebugImages;
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 {
@@ -357,6 +361,8 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 			float lambda = 1.0f;
 			if(opt.gradient_adaptive_density) {
 				lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
+				// max angle = 80 deg
+				lambda = std::min(lambda, 5.75f);
 			}
 //			lambda = std::min(20.0f, lambda); // limit
 			num(j,i) = lambda * cnt;
@@ -370,18 +376,18 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, co
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
 	slimage::Image1f density(target.width(), target.height());
-	density.fill(0);
+	density.fill(slimage::Pixel1f{0.0f});
 	for(const Seed& s : seeds) {
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
 		float rho = target(s.x, s.y);
-		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
-			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
-			rho *= 0.25f;
-		}
+//		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
+//			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
+//			rho *= 0.25f;
+//		}
 		// dimension is 2!
 		float norm = rho;
 		float sigma = 1.0f / std::sqrt(norm);
-		float sigma_inv_2 = rho;
+		float sigma_inv_2 = norm;
 		// kernel influence range
 		int R = static_cast<int>(std::ceil(cRange * sigma));
 		int xmin = std::max<int>(s.x - R, 0);
@@ -469,17 +475,18 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Parameter
 	return seeds;
 }
 
-void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image1f>& mipmaps, int level, unsigned int x, unsigned int y)
+void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
 {
 	static boost::mt19937 rng;
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
 	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
 
-	const slimage::Image1f& mm = mipmaps[level];
+	const slimage::Image2f& mm = mipmaps[level];
 
-	float v = mm(x, y);
+	float v_sum = mm(x, y)[0];
+	float v_abs = std::abs(v_sum);// mm(x, y)[1];
 
-	if(std::abs(v) > 1.0f && level > 1) { // do not access mipmap 0!
+	if(v_abs > 1.0f && level > 1) { // do not access mipmap 0!
 		// go down
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
@@ -487,7 +494,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
 	}
 	else {
-		if(die() < std::abs(v))
+		if(die() < v_abs)
 		{
 			unsigned int half = (1 << (level - 1));
 			// create seed in the middle
@@ -499,7 +506,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 			sx += delta();
 			sy += delta();
 
-			if(v > 0.0f) {
+			if(v_sum > 0.0f) {
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
 					float scala = points(sx, sy).image_super_radius;
@@ -507,6 +514,10 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					if(s.scala >= 2.0f) {
 						seeds.push_back(s);
+#ifdef CREATE_DEBUG_IMAGES
+						slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+						debug(sx, sy) = slimage::Pixel3ub{{255,0,0}};
+#endif
 					}
 				}
 			}
@@ -527,6 +538,10 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 //				});
 				// delete nearest seed
 //				seeds.erase(it);
+#ifdef CREATE_DEBUG_IMAGES
+				slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+				debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
+#endif
 				seeds.erase(seeds.begin() + best_index);
 			}
 		}
@@ -535,6 +550,12 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 
 std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Parameters& opt)
 {
+#ifdef CREATE_DEBUG_IMAGES
+	slimage::Image3ub debug(points.width(), points.height());
+	debug.fill(slimage::Pixel3ub::Black());
+	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
+#endif
+
 	// compute desired density
 	slimage::Image1f density_new = ComputeDepthDensity(points, opt);
 	// compute old density
@@ -542,11 +563,11 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	// difference
 	slimage::Image1f density_delta = density_new - density_old;
 	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density_delta, 1);
+	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
 	// we need to add and delete points!
 	std::vector<Seed> seeds = old_seeds;
 	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
-	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
+//	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
 	// give all seed points the correct scala
 	for(Seed& s : seeds) {
 		s.scala = points(s.x, s.y).image_super_radius;

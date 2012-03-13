@@ -13,12 +13,14 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 {
 	ui.setupUi(this);
 
+	save_debug_next_ = false;
 	capture_next_ = false;
 
 	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
 	QObject::connect(ui.pushButtonLoadOni, SIGNAL(clicked()), this, SLOT(OnLoadOni()));
 	QObject::connect(ui.pushButtonLive, SIGNAL(clicked()), this, SLOT(OnLive()));
+	QObject::connect(ui.pushButtonSaveDebug, SIGNAL(clicked()), this, SLOT(OnSaveDebugImages()));
 
 	dasp_tracker_.reset(new dasp::DaspTracker());
 
@@ -100,8 +102,11 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	kinect_thread_.join();
 	kinect_grabber_.reset();
 
-	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn.toStdString() + "_color.png"));
-	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn.toStdString() + "_depth.gz", false));
+	std::string fn_color = fn.toStdString() + "_color.png";
+	std::string fn_depth = fn.toStdString() + "_depth.gz";
+	std::cout << fn_color << " " << fn_depth << std::endl;
+	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
+	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
 	interrupt_loaded_thread_ = false;
 	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
 		while(!interrupt_loaded_thread_) {
@@ -151,6 +156,11 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
+void WdgtKinectSuperPoints::OnSaveDebugImages()
+{
+	save_debug_next_ = true;
+}
+
 void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
 	if(capture_next_) {
@@ -177,6 +187,12 @@ void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_de
 
 
 	dasp_tracker_->step(kinect_depth, kinect_color_rgb);
+
+	if(save_debug_next_) {
+		for(auto p : dasp_tracker_->getImages()) {
+			slimage::Save(p.second, p.first + ".png");
+		}
+	}
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()

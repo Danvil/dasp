@@ -31,6 +31,7 @@ public Q_SLOTS:
 	void OnLoadOne();
 	void OnLoadOni();
 	void OnLive();
+	void OnSaveDebugImages();
 
 private:
  	PTR(Danvil::SimpleEngine::View) view_;
@@ -52,6 +53,7 @@ private:
 	bool capture_next_;
 	std::string capture_filename_;
 	bool interrupt_loaded_thread_;
+	bool save_debug_next_;
 
 private:
     Ui::WdgtKinectSuperPointsClass ui;

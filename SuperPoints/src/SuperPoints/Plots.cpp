@@ -253,7 +253,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMo
 slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
 {
 	slimage::Image3ub img(c.width(), c.height());
-	img.fill(0);
+	img.fill({{0,0,0}});
 	switch(cm) {
 	PlotPoints_HELPER(UniBlack)
 	PlotPoints_HELPER(UniWhite)
@@ -319,7 +319,7 @@ void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode,
 slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	slimage::Image3ub img(c.width(), c.height());
-	img.fill(0);
+	img.fill({{0,0,0}});
 	PlotClusters(img, c, mode, cm, selection);
 	return img;
 }
