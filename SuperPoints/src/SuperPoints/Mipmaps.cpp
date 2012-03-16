@@ -19,7 +19,7 @@ slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
 	// the computed mipmap will have 2^i size
 	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
 	slimage::Image1f img_small(size / 2, size / 2);
-	img_small.fill(0.0f);
+	img_small.fill({0.0f});
 	// only the part where at least one of the four pixels lies in the big image is iterated
 	// the rest was set to 0 with the fill op
 	size_t w_small = w_big / 2 + ((w_big % 2 == 0) ? 0 : 1);

@@ -10,6 +10,8 @@
 #include <Danvil/SimpleEngine/Primitives.h>
 #include <Danvil/SimpleEngine/GlHelpers.h>
 #include <Slimage/Paint.hpp>
+#include <Eigen/Geometry>
+#include <cmath>
 //----------------------------------------------------------------------------//
 namespace dasp {
 namespace plots {
@@ -173,18 +175,29 @@ namespace detail
 	}
 
 	template<>
+	slimage::Pixel3ub ComputeClusterColor<Thickness>(const Cluster& c) {
+		return IntensityColor(c.thickness, 0.0f, 0.05f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<Circularity>(const Cluster& c) {
+		return IntensityColor(c.circularity, 0.0f, 1.0f);
+	}
+
+	template<>
 	slimage::Pixel3ub ComputeClusterColor<Eccentricity>(const Cluster& c) {
 		return IntensityColor(c.eccentricity, 0.0f, 1.0f);
 	}
 
 	template<>
-	slimage::Pixel3ub ComputeClusterColor<Circularity>(const Cluster& c) {
-		return IntensityColor(c.coverage, 0.0f, 1.0f);
+	slimage::Pixel3ub ComputeClusterColor<AreaQuotient>(const Cluster& c) {
+		float q = std::abs(c.area_quotient - 1.0f);
+		return IntensityColor(q, 0.0f, 1.0f);
 	}
 
 	template<>
-	slimage::Pixel3ub ComputeClusterColor<Thickness>(const Cluster& c) {
-		return IntensityColor(c.t, 0.0f, 0.01f);
+	slimage::Pixel3ub ComputeClusterColor<CoverageError>(const Cluster& c) {
+		return IntensityColor(c.coverage_error, 0.0f, 1.0f);
 	}
 
 	template<int M>
@@ -241,9 +254,11 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMo
 	ComputeClusterColors_HELPER(Color)
 	ComputeClusterColors_HELPER(Depth)
 	ComputeClusterColors_HELPER(Gradient)
-	ComputeClusterColors_HELPER(Eccentricity)
-	ComputeClusterColors_HELPER(Circularity)
 	ComputeClusterColors_HELPER(Thickness)
+	ComputeClusterColors_HELPER(Circularity)
+	ComputeClusterColors_HELPER(Eccentricity)
+	ComputeClusterColors_HELPER(AreaQuotient)
+	ComputeClusterColors_HELPER(CoverageError)
 	default: return detail::ComputeClusterColorsImpl<-1>(c.cluster, selection);
 	}
 }
@@ -324,7 +339,7 @@ slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode 
 	return img;
 }
 
-void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& color)
+void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub& color)
 {
 	glDisable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT, GL_FILL);
@@ -341,13 +356,74 @@ void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& col
 	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(cluster.center.normal));
 }
 
+void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float r, const slimage::Pixel3ub& color)
+{
+	glDisable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT, GL_LINE);
+	glPolygonMode(GL_BACK, GL_LINE);
+	// render circle
+	glColor3ub(color[0], color[1], color[2]);
+	float le1 = std::sqrt(cluster.ew(0));
+	float le2 = std::sqrt(cluster.ew(1));
+	float le3 = std::sqrt(cluster.ew(2));
+//	Eigen::Vector3f ec = Eigen::Vector3f::Zero();
+//	Eigen::Vector3f ea = cluster.cSigmaScale * le3) * Eigen::Vector3f::Unit(0);
+//	Eigen::Vector3f eb = cluster.cSigmaScale * le2) * Eigen::Vector3f::Unit(1);
+//	Danvil::SimpleEngine::Primitives::RenderCircle(r);
+//	Danvil::SimpleEngine::Primitives::RenderEllipse(
+//			Danvil::ctLinAlg::Convert(ec), Danvil::ctLinAlg::Convert(ea), Danvil::ctLinAlg::Convert(eb));
+	Danvil::SimpleEngine::Primitives::RenderEllipsoid(le3, le2, le1);
+	// construct local transformation
+//	Eigen::Vector3f n = cluster.center.normal.normalized();
+//	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
+//	Eigen::Vector3f u = v.cross(n);
+//	Eigen::Matrix3f R; R << n, v, u;
+	auto t =
+			Eigen::Translation3f(cluster.center.world)
+			* cluster.ev * Eigen::AngleAxisf(M_PI*0.5f, Eigen::Vector3f{0,1,0}).inverse();
+	t = t.inverse();
+	// render points
+	glBegin(GL_LINES);
+	for(unsigned int id : cluster.pixel_ids) {
+		Eigen::Vector3f p = t * points[id].world;
+		glVertex3f(p[0], p[1], p[2]);
+		glVertex3f(p[0], p[1], 0);
+	}
+	glEnd();
+	glPointSize(3.0f);
+	glBegin(GL_POINTS);
+	for(unsigned int id : cluster.pixel_ids) {
+		Eigen::Vector3f p = t * points[id].world;
+		glVertex3f(p[0], p[1], p[2]);
+	}
+	glEnd();
+}
+
 void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
 		if(selection[i]) {
-			RenderCluster(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
+			RenderClusterDisc(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
 		}
+	}
+}
+
+void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
+{
+	const float cSpacing = 4.0f * clustering.opt.base_radius;
+	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
+	unsigned int grid_size = std::ceil(std::sqrt(clustering.cluster.size()));
+	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
+		if(!selection[i]) {
+			continue;
+		}
+		float x = cSpacing * static_cast<float>(i % grid_size);
+		float y = cSpacing * static_cast<float>(i / grid_size);
+		glPushMatrix();
+		glTranslatef(x, y, 0.0f);
+		RenderClusterNorm(clustering.cluster[i], clustering.points, clustering.opt.base_radius, colors[i]);
+		glPopMatrix();
 	}
 }
 

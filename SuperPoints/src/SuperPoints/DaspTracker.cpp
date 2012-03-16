@@ -262,9 +262,9 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_START(clusters)
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 		clustering_.ComputeSuperpixels(seeds);
-		std::cout << "Cluster count=" << clustering_.cluster.size() << std::endl;
-		if(show_clusters_ && (cluster_color_mode_ == plots::Eccentricity || cluster_color_mode_ == plots::Circularity || cluster_color_mode_ == plots::Thickness)) {
-			clustering_.ComputeClusterInfo();
+		std::cout << "Cluster count=" << clustering_.cluster.size() << ", cluster radius=" << clustering_.opt.base_radius << std::endl;
+		if(show_clusters_ && (cluster_color_mode_ == plots::CoverageError)) {
+			clustering_.ComputeExt();
 		}
 	}
 	DANVIL_BENCHMARK_STOP(clusters)
@@ -633,6 +633,13 @@ void DaspTracker::Render() const
 {
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 		plots::RenderClusters(clustering_, cluster_color_mode_, selection_);
+	}
+}
+
+void DaspTracker::RenderClusterMap() const
+{
+	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+		plots::RenderClusterMap(clustering_, cluster_color_mode_, selection_);
 	}
 }
 

@@ -300,6 +300,7 @@ Eigen::Matrix3f PointCovariance(const std::vector<T>& points, F f)
 		zz += z*z;
 	};
 	Eigen::Matrix3f A; A << xx, xy, xz, xy, yy, yz, xz, yz, zz;
+	A /= static_cast<float>(points.size());
 	return A;
 }
 

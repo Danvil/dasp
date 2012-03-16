@@ -38,6 +38,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SimpleEngine/src}&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/local/include/eigen3"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1599794331" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -110,6 +111,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CT/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/slimage/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SimpleEngine/src}&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/local/include/eigen3"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1234323194" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1558872892" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>

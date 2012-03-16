@@ -38,6 +38,8 @@ public:
 
 	void Render() const;
 
+	void RenderClusterMap() const;
+
 private:
 	void performSegmentationStep();
 
