@@ -19,6 +19,7 @@ public Q_SLOTS:
 	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelRadius(double val);
+	void ChangeSuperpixelCount(int val);
 	void ChangeSuperpixelIterations(int val);
 	void ChangeSuperpixelWeightColor(double val);
 	void ChangeSuperpixelWeightSpatial(double val);

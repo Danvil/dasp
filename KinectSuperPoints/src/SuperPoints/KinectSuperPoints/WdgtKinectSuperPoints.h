@@ -21,7 +21,9 @@ public:
     ~WdgtKinectSuperPoints();
 
 private:
-	void OnImages(Danvil::Images::Image1ui16Ptr kinect_depth, Danvil::Images::Image3ubPtr kinect_color);
+	void OnImagesOld(Danvil::Images::Image1ui16Ptr kinect_depth, Danvil::Images::Image3ubPtr kinect_color);
+
+	void OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color);
 
 	void ComputeBlueNoiseImpl();
 

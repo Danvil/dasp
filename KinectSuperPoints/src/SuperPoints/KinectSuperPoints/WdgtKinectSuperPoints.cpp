@@ -1,7 +1,4 @@
 #include "WdgtKinectSuperPoints.h"
-#include <Danvil/Images/ImageIO.h>
-#include <Danvil/Images/ImageOps.h>
-#include <Slimage/detail/Qt.hpp>
 #define SLIMAGE_IO_QT
 #include <Slimage/IO.hpp>
 #include <Slimage/Parallel.h>
@@ -46,7 +43,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.tabs->addTab(gl_wdgt_, "3D");
 
 	boost::shared_ptr<Danvil::SimpleEngine::IRenderable> dasp_renderling(
-			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->Render(); }));
+			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->RenderClusterMap(); }));
 	scene_->addItem(dasp_renderling);
 
 	LOG_NOTICE << "Starting Kinect ...";
@@ -103,16 +100,18 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	kinect_grabber_.reset();
 
 	std::string fn_color = fn.toStdString() + "_color.png";
-	std::string fn_depth = fn.toStdString() + "_depth.gz";
+	std::string fn_depth = fn.toStdString() + "_depth.pgm";
 	std::cout << fn_color << " " << fn_depth << std::endl;
-	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
-	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
+	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
+	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
+//	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
+//	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
 	interrupt_loaded_thread_ = false;
-	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
-		while(!interrupt_loaded_thread_) {
+//	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
+//		while(!interrupt_loaded_thread_) {
 			this->OnImages(loaded_kinect_depth, loaded_kinect_color);
-		}
-	});
+//		}
+//	});
 
 }
 
@@ -134,7 +133,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenFile(fn.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImagesOld, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
@@ -152,7 +151,7 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenConfig(config.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImagesOld, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
@@ -161,37 +160,47 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 	save_debug_next_ = true;
 }
 
-void WdgtKinectSuperPoints::OnImages(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
+void WdgtKinectSuperPoints::OnImagesOld(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
 {
-	if(capture_next_) {
-		Danvil::Images::ImageIO::Save(raw_kinect_color, capture_filename_ + "_color.png");
-		Danvil::Images::ImageIO::Save(raw_kinect_depth, capture_filename_ + "_depth.gz");
-		capture_next_ = false;
-	}
-
 	// kinect 16-bit depth image
 	slimage::Image1ui16 kinect_depth;
 	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
-	for(unsigned int i=0; i<kinect_depth.size(); i++) {
-		uint16_t d = (*raw_kinect_depth)[i];
-		if(d > 3000) {
-			d = 0;
-		}
-		kinect_depth[i] = d;
-	}
+	kinect_depth.copyFrom(raw_kinect_depth->begin());
 
 	// kinect RGB color image
-	slimage::Image3ub kinect_color_rgb;
-	kinect_color_rgb.resize(raw_kinect_color->width(), raw_kinect_color->height());
-	kinect_color_rgb.copyFrom(raw_kinect_color->begin());
+	slimage::Image3ub kinect_color;
+	kinect_color.resize(raw_kinect_color->width(), raw_kinect_color->height());
+	kinect_color.copyFrom(raw_kinect_color->begin());
 
+	OnImages(kinect_depth, kinect_color);
 
-	dasp_tracker_->step(kinect_depth, kinect_color_rgb);
+}
+
+void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
+{
+	if(capture_next_) {
+//		Danvil::Images::ImageIO::Save(raw_kinect_color, capture_filename_ + "_color.png");
+//		Danvil::Images::ImageIO::Save(raw_kinect_depth, capture_filename_ + "_depth.gz");
+		slimage::Save(kinect_color, capture_filename_ + "_color.png");
+		slimage::Save(kinect_depth, capture_filename_ + "_depth.pgm");
+		capture_next_ = false;
+	}
+
+//	for(unsigned int i=0; i<kinect_depth.size(); i++) {
+//		uint16_t d = (*raw_kinect_depth)[i];
+//		if(d > 3000) {
+//			d = 0;
+//		}
+//		kinect_depth[i] = d;
+//	}
+
+	dasp_tracker_->step(kinect_depth, kinect_color);
 
 	if(save_debug_next_) {
 		for(auto p : dasp_tracker_->getImages()) {
 			slimage::Save(p.second, p.first + ".png");
 		}
+		save_debug_next_ = false;
 	}
 }
 
