@@ -9,19 +9,24 @@
 #include "Mipmaps.hpp"
 #include "BlueNoise.hpp"
 #include "PointsAndNormals.hpp"
+#include "TreeReduction.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
+#include <boost/math/constants/constants.hpp>
 
-#define CLUSTER_UPDATE_MULTITHREADING
+//#define CLUSTER_UPDATE_MULTITHREADING
+#define CREATE_DEBUG_IMAGES
 
 //------------------------------------------------------------------------------
 namespace dasp {
 //------------------------------------------------------------------------------
 
-void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
+std::map<std::string,slimage::ImagePtr> sDebugImages;
+
+void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 {
 	assert(hasPoints());
 
@@ -38,10 +43,16 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 
 	center.color = mean_color / float(pixel_ids.size());
 	center.world = mean_world / float(pixel_ids.size());
-	center.pos = cam.project(center.world);
-	center.depth_i16 = cam.depth(center.world);
+	center.pos = opt.camera.project(center.world);
+	center.depth_i16 = opt.camera.depth(center.world);
 
-	center.normal = FitNormal(pixel_ids, [&points,&center](unsigned int i) { return points[i].world - center.world; });
+	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
+	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
+	solver.computeDirect(cov);
+	ew = solver.eigenvalues();
+	ev = solver.eigenvectors();
+
+	center.normal = ev.col(0).normalized();
 	if(center.normal[2] == 0.0f) {
 		center.normal[2] = -0.01f;
 	}
@@ -55,24 +66,35 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Camera& cam)
 //	center.gradient = points(center.pos).gradient;
 
 	// scala is not changed!
+
+	// eigenvalues are the square of the standard deviation!
+
+	thickness = cSigmaScale * std::sqrt(ew(0)) * 2.0f;
+
+	circularity = std::sqrt(ew(1) / ew(2));
+
+	eccentricity = std::sqrt(1.0f - ew(1) / ew(2));
+
+	area_quotient = cSigmaScale * cSigmaScale * std::sqrt(ew(1) * ew(2)) / (opt.base_radius * opt.base_radius);
+
 }
 
-void Cluster::ComputeClusterInfo(const ImagePoints& points, const Parameters& opt)
+void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 {
-	Eigen::Matrix3f A = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
-	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
-	solver.computeDirect(A);
-	t = std::abs(solver.eigenvalues()[0]);
-	b = std::abs(solver.eigenvalues()[1]);
-	a = std::abs(solver.eigenvalues()[2]);
-	area = M_PI * a * b;
-	float u = b/a;
-	eccentricity = std::sqrt(1.0f - u*u);
-	radius = std::sqrt(a * b);
+	std::vector<float> dist;
+	dist.reserve(pixel_ids.size());
+	for(unsigned int id : pixel_ids) {
+		Eigen::Vector3f p = points[id].world - center.world;
+		float d = p.dot(center.normal);
+		dist.push_back(d);
+	}
+	unsigned int nth = static_cast<unsigned int>(cPercentage * static_cast<float>(dist.size()));
+	std::nth_element(dist.begin(), dist.begin() + nth, dist.end());
+	thickness_plane = 2.0f * (*(dist.begin() + nth));
 
 	{
 		float error_area = 0;
-		float expected_area = 0;
+//		float expected_area = 0;
 		int cx = center.spatial_x();
 		int cy = center.spatial_y();
 		int R = int(2.0f * center.image_super_radius);
@@ -84,23 +106,26 @@ void Cluster::ComputeClusterInfo(const ImagePoints& points, const Parameters& op
 			for(unsigned int x=xmin; x<xmax; x++) {
 				unsigned int i = points.index(x,y);
 				const Point& p = points[i];
-				bool expected = (center.world - p.world).squaredNorm() < opt.base_radius*opt.base_radius;
+				Eigen::Vector3f t = p.world - center.world;
+				float lam = t.dot(center.normal);
+				float d2 = t.squaredNorm() - lam*lam;
+				bool expected = d2 < opt.base_radius*opt.base_radius;
 				bool actual = std::find(pixel_ids.begin(), pixel_ids.end(), i) != pixel_ids.end();
 				float size_of_a_px = p.depth() / opt.camera.focal;
 				float area_of_a_px = size_of_a_px*size_of_a_px*std::sqrt(p.gradient.squaredNorm() + 1.0f);
 				if(expected != actual) {
 					error_area += area_of_a_px;
 				}
-				if(expected) {
-					expected_area += area_of_a_px;
-				}
+//				if(expected) {
+//					expected_area += area_of_a_px;
+//				}
 			}
 		}
 		float real_expected_area = M_PI * opt.base_radius * opt.base_radius;
 //		std::cout << 10000.0f*error_area << " - " << 10000.0f*expected_area << " - " << 10000.0f*real_expected_area << std::endl;
 		//float expected_area = opt.base_radius*opt.base_radius*M_PI;
 //		infos.coverage = error_area / expected_area;
-		coverage = error_area / real_expected_area;
+		coverage_error = error_area / real_expected_area;
 	}
 
 }
@@ -135,6 +160,11 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 
 void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
+	// compute base radius from desired super pixel count
+	if(opt.count > 0) {
+		opt.base_radius = 0.02f;
+	}
+
 	unsigned int width = image.width();
 	unsigned int height = image.height();
 	assert(width == depth.width() && height == depth.height());
@@ -164,26 +194,48 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 			}
 			else {
 				float scala = opt.camera.scala(p.depth_i16);
+				p.image_super_radius = opt.base_radius * scala;
 	//			p.world = opt.camera.unproject(x, y, p.depth_i16);
 	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
 				p.world = opt.camera.unprojectUsingScala(x, y, scala);
-				p.image_super_radius = opt.base_radius * scala;
-				p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
-	//			if(p_normals != 0) {
-	//				p.normal[0] = p_normals[0];
-	//				p.normal[1] = p_normals[1];
-	//				p.normal[2] = p_normals[2];
-	//				p_normals += 3;
-	//			}
-	//			else {
-					p.normal[0] = p.gradient[0];
-					p.normal[1] = p.gradient[1];
-					p.normal[2] = -1.0f;
-					p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
-					//p.normal.normalize();
-	//			}
 			}
+		}
+	}
+
+	// compute desired density
+	density = ComputeDepthDensity(points, opt);
+
+	if(opt.count > 0) {
+		// sum density image
+		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
+		float p = static_cast<float>(opt.count) / density_sum;
+		std::for_each(density.begin(), density.end(), [p](float& v) { v *= p; });
+		opt.base_radius = opt.base_radius / std::sqrt(p);
+	}
+
+	for(unsigned int y=0; y<height; y++) {
+		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
+			Point& p = points(x, y);
+			if(p.depth_i16 == 0) {
+				continue;
+			}
+			float scala = opt.camera.scala(p.depth_i16);
+			p.image_super_radius = opt.base_radius * scala;
+			p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
+//			if(p_normals != 0) {
+//				p.normal[0] = p_normals[0];
+//				p.normal[1] = p_normals[1];
+//				p.normal[2] = p_normals[2];
+//				p_normals += 3;
+//			}
+//			else {
+				p.normal[0] = p.gradient[0];
+				p.normal[1] = p.gradient[1];
+				p.normal[2] = -1.0f;
+				p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
+				//p.normal.normalize();
+//			}
 		}
 	}
 }
@@ -255,7 +307,7 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
 	assert(false && "FindSeedsRandom: Not implemented!");
 //	static boost::mt19937 rng;
@@ -340,7 +392,7 @@ void FindSeedsDepthMipmap_Walk(
 
 slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt)
 {
-	slimage::Image1f num(points.width(), points.height());
+	slimage::Image1f density(points.width(), points.height());
 	for(unsigned int i=0; i<points.height(); i++) {
 		for(unsigned int j=0; j<points.width(); j++) {
 			const Point& p = points(j,i);
@@ -356,12 +408,14 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 			float lambda = 1.0f;
 			if(opt.gradient_adaptive_density) {
 				lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
+				// max angle = 80 deg
+				lambda = std::min(lambda, 5.75f);
 			}
 //			lambda = std::min(20.0f, lambda); // limit
-			num(j,i) = lambda * cnt;
+			density(j,i) = lambda * cnt;
 		}
 	}
-	return num;
+	return density;
 }
 
 slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt)
@@ -369,18 +423,18 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, co
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
 	slimage::Image1f density(target.width(), target.height());
-	density.fill(0);
+	density.fill(slimage::Pixel1f{0.0f});
 	for(const Seed& s : seeds) {
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
 		float rho = target(s.x, s.y);
-		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
-			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
-			rho *= 0.25f;
-		}
+//		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
+//			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
+//			rho *= 0.25f;
+//		}
 		// dimension is 2!
 		float norm = rho;
 		float sigma = 1.0f / std::sqrt(norm);
-		float sigma_inv_2 = rho;
+		float sigma_inv_2 = norm;
 		// kernel influence range
 		int R = static_cast<int>(std::ceil(cRange * sigma));
 		int xmin = std::max<int>(s.x - R, 0);
@@ -407,24 +461,20 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, co
 //	return num;
 //}
 
-std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
-	// compute estimated number of seeds per pixel
-	slimage::Image1f num = ComputeDepthDensity(points, opt);
 	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(num, 1);
+	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
 	// now create pixel seeds
 	std::vector<Seed> seeds;
 	FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
-	// compute estimated number of seeds per pixel
-	slimage::Image1f num = ComputeDepthDensity(points, opt);
 	// compute blue noise points
-	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(num);
+	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(density);
 	// convert to seeds
 	std::vector<Seed> seeds;
 	seeds.reserve(pnts.size());
@@ -440,10 +490,8 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Parameters
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
-	// compute estimated number of seeds per pixel
-	slimage::Image1f density = ComputeDepthDensity(points, opt);
 	std::vector<Seed> seeds;
 	for(unsigned int y=0; y<density.height() - 1; y++) {
 		density(1,y) += density(0,y);
@@ -468,17 +516,18 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Parameter
 	return seeds;
 }
 
-void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image1f>& mipmaps, int level, unsigned int x, unsigned int y)
+void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
 {
 	static boost::mt19937 rng;
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
 	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
 
-	const slimage::Image1f& mm = mipmaps[level];
+	const slimage::Image2f& mm = mipmaps[level];
 
-	float v = mm(x, y);
+	float v_sum = mm(x, y)[0];
+	float v_abs = std::abs(v_sum);// mm(x, y)[1];
 
-	if(std::abs(v) > 1.0f && level > 1) { // do not access mipmap 0!
+	if(v_abs > 1.0f && level > 1) { // do not access mipmap 0!
 		// go down
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
@@ -486,7 +535,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
 	}
 	else {
-		if(die() < std::abs(v))
+		if(die() < v_abs)
 		{
 			unsigned int half = (1 << (level - 1));
 			// create seed in the middle
@@ -498,7 +547,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 			sx += delta();
 			sy += delta();
 
-			if(v > 0.0f) {
+			if(v_sum > 0.0f) {
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
 					float scala = points(sx, sy).image_super_radius;
@@ -506,6 +555,10 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					if(s.scala >= 2.0f) {
 						seeds.push_back(s);
+#ifdef CREATE_DEBUG_IMAGES
+						slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+						debug(sx, sy) = slimage::Pixel3ub{{255,0,0}};
+#endif
 					}
 				}
 			}
@@ -526,26 +579,34 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 //				});
 				// delete nearest seed
 //				seeds.erase(it);
+#ifdef CREATE_DEBUG_IMAGES
+				slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+				debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
+#endif
 				seeds.erase(seeds.begin() + best_index);
 			}
 		}
 	}
 }
 
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Parameters& opt)
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
 {
-	// compute desired density
-	slimage::Image1f density_new = ComputeDepthDensity(points, opt);
+#ifdef CREATE_DEBUG_IMAGES
+	slimage::Image3ub debug(points.width(), points.height());
+	debug.fill(slimage::Pixel3ub::Black());
+	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
+#endif
+
 	// compute old density
 	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
 	// difference
 	slimage::Image1f density_delta = density_new - density_old;
 	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density_delta, 1);
+	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
 	// we need to add and delete points!
 	std::vector<Seed> seeds = old_seeds;
 	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
-	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
+//	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
 	// give all seed points the correct scala
 	for(Seed& s : seeds) {
 		s.scala = points(s.x, s.y).image_super_radius;
@@ -567,13 +628,13 @@ std::vector<Seed> Clustering::FindSeeds()
 	case SeedModes::EquiDistant:
 		return FindSeedsGrid(points, opt);
 	case SeedModes::DepthShooting:
-		return FindSeedsDepthRandom(points, opt);
+		return FindSeedsDepthRandom(points, density, opt);
 	case SeedModes::DepthMipmap:
-		return FindSeedsDepthMipmap(points, opt);
+		return FindSeedsDepthMipmap(points, density, opt);
 	case SeedModes::DepthBlueNoise:
-		return FindSeedsDepthBlue(points, opt);
+		return FindSeedsDepthBlue(points, density, opt);
 	case SeedModes::DepthFloyd:
-		return FindSeedsDepthFloyd(points, opt);
+		return FindSeedsDepthFloyd(points, density, opt);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
@@ -582,7 +643,7 @@ std::vector<Seed> Clustering::FindSeeds()
 std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
 {
 	if(opt.seed_mode == SeedModes::Delta) {
-		return FindSeedsDelta(points, old_seeds, old_points, opt);
+		return FindSeedsDelta(points, old_seeds, old_points, density, opt);
 	}
 	else {
 		return FindSeeds();
@@ -620,7 +681,7 @@ void Clustering::CreateClusters(const std::vector<Seed>& seeds)
 		}
 		// update center
 		if(c.hasPoints()) {
-			c.UpdateCenter(points, opt.camera);
+			c.UpdateCenter(points, opt);
 			cluster.push_back(c);
 		}
 	}
@@ -756,7 +817,7 @@ void Clustering::MoveClusters()
 //	}
 //#else
 	for(Cluster& c : cluster) {
-		c.UpdateCenter(points, opt.camera);
+		c.UpdateCenter(points, opt);
 	}
 //#endif
 }
@@ -778,16 +839,50 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 	return G;
 }
 
-ClusterGroupInfo Clustering::ComputeClusterGroupInfo()
+std::vector<unsigned int> Clustering::CreateSegments(const SuperpixelGraph& Gn, unsigned int* cnt_label)
+{
+	// create graph
+	Romeo::TreeReduction::Graph graph;
+	graph.nodes_ = cluster.size();
+	for(unsigned int i=0; i<Gn.node_connections_.size(); i++) {
+		for(unsigned int j : Gn.node_connections_[i]) {
+			float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
+			graph.edges.push_back(Romeo::TreeReduction::Edge{i,j,cost});
+		}
+	}
+	// graph segmentation
+	std::vector<unsigned int> labels;
+	Romeo::TreeReduction::MinimalSpanningCutting(graph, 10.f, &labels);
+	// remap labels
+	std::set<unsigned int> unique_labels_set(labels.begin(), labels.end());
+	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
+	*cnt_label = unique_labels.size();
+	for(unsigned int& x : labels) {
+		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
+		x = it - unique_labels.begin();
+	}
+	return labels;
+
+//	std::vector<unsigned int> labels(nodes_.size());
+//	for(unsigned int i=0; i<labels.size(); i++) {
+//		labels[i] = i;
+//	}
+//	*max_label = nodes_.size() - 1;
+//	return labels;
+}
+
+ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_thick)
 {
 	ClusterGroupInfo cgi;
-	cgi.hist_eccentricity = Histogram<float>(50, 0, 1);
-	cgi.hist_radius = Histogram<float>(50, 0, 0.10f);
-	cgi.hist_thickness = Histogram<float>(50, 0, 0.01f);
+	cgi.hist_thickness = Histogram<float>(n, 0, max_thick);
+	cgi.hist_circularity = Histogram<float>(n, 0, 1);
+	cgi.hist_area_quotient = Histogram<float>(n, 0.5f, 2.0f);
+	cgi.hist_coverage_error = Histogram<float>(n, 0, 0.10f);
 	for(const Cluster& c : cluster) {
-		cgi.hist_eccentricity.add(c.eccentricity);
-		cgi.hist_radius.add(c.radius);
-		cgi.hist_thickness.add(c.t);
+		cgi.hist_thickness.add(c.thickness);
+		cgi.hist_circularity.add(c.circularity);
+		cgi.hist_area_quotient.add(c.area_quotient);
+		cgi.hist_coverage_error.add(c.coverage_error);
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
 	}
 	return cgi;

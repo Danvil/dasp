@@ -18,6 +18,8 @@
 
 namespace dasp
 {
+	extern std::map<std::string,slimage::ImagePtr> sDebugImages;
+
 	struct Seed
 	{
 		int x, y;
@@ -151,6 +153,7 @@ namespace dasp
 			iterations = 3;
 			coverage = 1.7f;
 			base_radius = 0.02f;
+			count = 0;
 			seed_mode = SeedModes::DepthMipmap;
 			gradient_adaptive_density = true;
 		}
@@ -172,6 +175,9 @@ namespace dasp
 		/** Desired radius of a surface element */
 		float base_radius;
 
+		/** Desired number of superpixels */
+		unsigned int count;
+
 		/** Method used to compute seed points */
 		SeedMode seed_mode;
 
@@ -188,6 +194,9 @@ namespace dasp
 
 	struct Cluster
 	{
+		static constexpr float cPercentage = 0.95f; //0.99f;
+		static constexpr float cSigmaScale = 1.959964f; //2.575829f;
+
 		Point center;
 
 		std::vector<unsigned int> pixel_ids;
@@ -196,28 +205,44 @@ namespace dasp
 			return pixel_ids.size() > 3;
 		}
 
-		/** Eigenvalues of the covariance matrix */
-		float t, b, a;
+		// point covariance matrix
+		Eigen::Matrix3f cov;
+		// eigenvalues of the covariance matrix
+		Eigen::Vector3f ew;
+		// eigenvectors of the covariance matrix
+		Eigen::Matrix3f ev;
+
+		/** Thickness of the cluster computed using smalles eigenvalue */
+		float thickness;
+		/** Ratio of plane eigenvalues */
+		float circularity;
 		/** eccentricity of the ellipse described by a and b */
 		float eccentricity;
-		/** pi*a*b */
-		float area;
-		/** sqrt(a*b) */
-		float radius;
-		/** number of pixel which are within superpixel radius but are not part of the superpixel */
-		float coverage;
+		/** actual area / expeted area defined by base radius*/
+		float area_quotient;
 
-		void UpdateCenter(const ImagePoints& points, const Camera& cam);
+		/** Thickness of cluster computed using orthogonal distance from plane
+		 * WARNING: only computed if ComputeExt is called!
+		 */
+		float thickness_plane;
 
-		void ComputeClusterInfo(const ImagePoints& points, const Parameters& opt);
+		/** number of pixel which are within superpixel radius but are not part of the superpixel
+		 * WARNING: only computed if ComputeExt is called!
+		 */
+		float coverage_error;
+
+		void UpdateCenter(const ImagePoints& points, const Parameters& opt);
+
+		void ComputeExt(const ImagePoints& points, const Parameters& opt);
 
 	};
 
 	struct ClusterGroupInfo
 	{
-		Histogram<float> hist_eccentricity;
-		Histogram<float> hist_radius;
 		Histogram<float> hist_thickness;
+		Histogram<float> hist_circularity;
+		Histogram<float> hist_area_quotient;
+		Histogram<float> hist_coverage_error;
 	};
 
 	class Clustering
@@ -228,6 +253,8 @@ namespace dasp
 		Parameters opt;
 
 		ImagePoints points;
+
+		slimage::Image1f density;
 
 		std::vector<Cluster> cluster;
 
@@ -258,8 +285,6 @@ namespace dasp
 
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
-		slimage::Image1f ComputeDepthDensity();
-
 		std::vector<Seed> FindSeeds();
 
 		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);
@@ -274,6 +299,12 @@ namespace dasp
 
 		SuperpixelGraph CreateNeighborhoodGraph();
 
+		std::vector<unsigned int> CreateSegments(const SuperpixelGraph& neighbourhood, unsigned int* cnt_label);
+
+		/**
+		 * Signature of F :
+		 * void F(unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p)
+		 */
 		template<typename F>
 		void ForPixelClusters(F f) const {
 			for(unsigned int i=0; i<cluster.size(); i++) {
@@ -316,11 +347,11 @@ namespace dasp
 			return data;
 		}
 
-		void ComputeClusterInfo() {
-			return ForClustersNoReturn([this](Cluster& c) { c.ComputeClusterInfo(points, opt); });
+		void ComputeExt() {
+			return ForClustersNoReturn([this](Cluster& c) { c.ComputeExt(points, opt); });
 		}
 
-		ClusterGroupInfo ComputeClusterGroupInfo();
+		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
 		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y)
 		{
@@ -331,7 +362,7 @@ namespace dasp
 			return 1.0f - x.dot(y);
 		}
 
-		template<bool cUseSqrt=false>
+		template<bool cUseSqrt=false, bool WeightNormalsByDepth=true>
 		inline float Distance(const Point& u, const Point& v)
 		{
 			float d_color;
@@ -358,6 +389,9 @@ namespace dasp
 			}
 
 			float d_normal = DistanceForNormals(u.normal, v.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+			}
 
 			return
 				opt.weight_color * d_color
@@ -365,7 +399,7 @@ namespace dasp
 				+ opt.weight_normal * d_normal;
 		}
 
-		template<bool cUseSqrt=false, bool cDisparity=true>
+		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=true>
 		inline float DistancePlanar(const Point& u, const Point& v)
 		{
 			float d_color;
@@ -411,6 +445,9 @@ namespace dasp
 			}
 
 			float d_normal = DistanceForNormals(u.normal, v.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+			}
 
 			return
 				opt.weight_color * d_color
@@ -443,18 +480,42 @@ namespace dasp
 			return DistanceSpatial(x.center, y.center);
 		}
 
+		template<bool WeightNormalsByDepth=true>
 		inline float DistanceWorld(const Cluster& x, const Cluster& y) {
-			// TODO compute distance between:
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
 			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
 			// world position of cluster centers.
 			float d_world = (x.center.world - y.center.world).norm();
-			return d_color
-				+ opt.weight_spatial*d_world // FIXME constant
+			return opt.weight_color*d_color
+				+ opt.weight_spatial*d_world
 				+ opt.weight_normal*d_normal;
-	//		return DistanceSpatial(x.center, y.center);
+		}
+
+		template<bool WeightNormalsByDepth=true>
+		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) {
+			// mean cluster colors,
+			float d_color = (x.center.color - y.center.color).norm();
+			// mean cluster normals and
+			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
+			return opt.weight_color*d_color + opt.weight_normal*d_normal;
+		}
+
+		template<bool WeightNormalsByDepth=true>
+		inline float DistanceNormal(const Cluster& x, const Cluster& y) {
+			// mean cluster normals and
+			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			if(WeightNormalsByDepth) {
+				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+			}
+			return opt.weight_normal*d_normal;
 		}
 
 	};

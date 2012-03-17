@@ -25,9 +25,11 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotClusterColor->addItem("Gradient", dasp::plots::Gradient);
 	ui.comboBoxPlotClusterColor->addItem("Color", dasp::plots::Color);
-	ui.comboBoxPlotClusterColor->addItem("Eccentricity", dasp::plots::Eccentricity);
-	ui.comboBoxPlotClusterColor->addItem("Circularity", dasp::plots::Circularity);
 	ui.comboBoxPlotClusterColor->addItem("Thickness", dasp::plots::Thickness);
+	ui.comboBoxPlotClusterColor->addItem("Circularity", dasp::plots::Circularity);
+	ui.comboBoxPlotClusterColor->addItem("Eccentricity", dasp::plots::Eccentricity);
+	ui.comboBoxPlotClusterColor->addItem("AreaQuotient", dasp::plots::AreaQuotient);
+	ui.comboBoxPlotClusterColor->addItem("CoverageError", dasp::plots::CoverageError);
 	ui.comboBoxPlotClusterColor->setCurrentIndex(2);
 
 	ui.comboBoxPlotClusterMode->addItem("ClusterCenter", dasp::plots::ClusterCenter);
@@ -36,9 +38,12 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterMode->addItem("ClusterEllipsesFilled", dasp::plots::ClusterEllipsesFilled);
 	ui.comboBoxPlotClusterMode->setCurrentIndex(1);
 
+	QObject::connect(ui.checkBoxSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeSmoothDepth(int)));
+
 	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSuperSeedType(int)));
 	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
+	QObject::connect(ui.spinBoxSuperCount, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelCount(int)));
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
 	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
 	QObject::connect(ui.doubleSpinBoxWeightSpatial, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightSpatial(double)));
@@ -56,9 +61,13 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.checkBoxPlotBorders, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotBorders(int)));
 	QObject::connect(ui.checkBoxPlotGraph, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraph(int)));
 	QObject::connect(ui.checkBoxPlotDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotDensity(int)));
+	QObject::connect(ui.checkBoxPlotSegments, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotSegments(int)));
+
+	dasp_tracker_->enable_smooth_depth_ = ui.checkBoxSmoothDepth->isChecked();
 
 	dasp_tracker_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_tracker_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
+	dasp_tracker_->dasp_params->count = ui.spinBoxSuperCount->value();
 	dasp_tracker_->dasp_params->iterations = ui.spinBoxIterations->value();
 	dasp_tracker_->dasp_params->weight_color = ui.doubleSpinBoxWeightColor->value();
 	dasp_tracker_->dasp_params->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
@@ -66,7 +75,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	dasp_tracker_->dasp_params->weight_normal = ui.doubleSpinBoxWeightNormal->value();
 	dasp_tracker_->dasp_params->coverage = ui.doubleSpinBoxCoverage->value();
 
-	dasp_tracker_->show_points_ = ui.checkBoxPlotPoints->isChecked();;
+	dasp_tracker_->show_points_ = ui.checkBoxPlotPoints->isChecked();
 	dasp_tracker_->point_color_mode_ = (dasp::plots::ColorMode)(ui.comboBoxPlotPointsColor->itemData(ui.comboBoxPlotPointsColor->currentIndex()).toInt());
 	dasp_tracker_->show_clusters_ = ui.checkBoxPlotClusters->isChecked();;
 	dasp_tracker_->cluster_mode_ = (dasp::plots::ClusterMode)(ui.comboBoxPlotClusterMode->itemData(ui.comboBoxPlotClusterMode->currentIndex()).toInt());
@@ -74,12 +83,18 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	dasp_tracker_->show_cluster_borders_ = ui.checkBoxPlotBorders->isChecked();
 	dasp_tracker_->show_graph_ = ui.checkBoxPlotGraph->isChecked();
 	dasp_tracker_->plot_density_ = ui.checkBoxPlotDensity->isChecked();
+	dasp_tracker_->plot_segments_ = ui.checkBoxPlotSegments->isChecked();
 
 }
 
 WdgtSuperpixelParameters::~WdgtSuperpixelParameters()
 {
 
+}
+
+void WdgtSuperpixelParameters::ChangeSmoothDepth(int state)
+{
+	dasp_tracker_->enable_smooth_depth_ = state;
 }
 
 void WdgtSuperpixelParameters::OnSuperSeedType(int selection)
@@ -95,6 +110,12 @@ void WdgtSuperpixelParameters::ChangeSuperUseGradientDensity(int state)
 void WdgtSuperpixelParameters::ChangeSuperpixelRadius(double val)
 {
 	dasp_tracker_->dasp_params->base_radius = 0.001f * val;
+	dasp_tracker_->dasp_params->count = 0;
+}
+
+void WdgtSuperpixelParameters::ChangeSuperpixelCount(int val)
+{
+	dasp_tracker_->dasp_params->count = val;
 }
 
 void WdgtSuperpixelParameters::ChangeSuperpixelIterations(int val)
@@ -175,4 +196,9 @@ void WdgtSuperpixelParameters::ChangePlotGraph(int state)
 void WdgtSuperpixelParameters::ChangePlotDensity(int state)
 {
 	dasp_tracker_->plot_density_ = state;
+}
+
+void WdgtSuperpixelParameters::ChangePlotSegments(int state)
+{
+	dasp_tracker_->plot_segments_ = state;
 }

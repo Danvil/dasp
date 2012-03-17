@@ -66,7 +66,7 @@ inline slimage::Pixel3ub IntensityColor(float x, float min=0.0f, float max=1.0f)
 /** Color visualization of intensity */
 inline slimage::Pixel3ub PlusMinusColor(float x, float range=1.0f)
 {
-	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Black_Red();
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_LightBlue_Black_Red();
 	cm.setRange(-range, +range);
 	Danvil::Colorub color = cm(x);
 	return slimage::Pixel3ub{{color.r,color.g,color.b}};
@@ -84,7 +84,9 @@ void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, uns
 
 void PlotSeeds(const slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, int size=1);
 
-void RenderCluster(const Cluster& cluster, float r, const slimage::Pixel3ub& color);
+void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub& color);
+
+void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float r, const slimage::Pixel3ub& color);
 
 enum ColorMode {
 	UniBlack,
@@ -92,9 +94,11 @@ enum ColorMode {
 	Color,
 	Depth,
 	Gradient,
-	Eccentricity,
+	Thickness,
 	Circularity,
-	Thickness
+	Eccentricity,
+	AreaQuotient,
+	CoverageError
 };
 
 std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm);
@@ -153,6 +157,8 @@ void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode cm, C
 slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode cm, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
 void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
+
+void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
 //----------------------------------------------------------------------------//
 }}

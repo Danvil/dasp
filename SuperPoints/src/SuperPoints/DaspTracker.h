@@ -38,6 +38,8 @@ public:
 
 	void Render() const;
 
+	void RenderClusterMap() const;
+
 private:
 	void performSegmentationStep();
 
@@ -48,6 +50,8 @@ private:
 public:
 	bool training_;
 
+	bool enable_smooth_depth_;
+
 	bool show_points_;
 	bool show_clusters_;
 	bool show_cluster_borders_;
@@ -56,6 +60,7 @@ public:
 	plots::ClusterMode cluster_mode_;
 	bool show_graph_;
 	bool plot_density_;
+	bool plot_segments_;
 
     boost::shared_ptr<dasp::Parameters> dasp_params;
 
