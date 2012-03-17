@@ -324,7 +324,7 @@ void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c
 void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	switch(mode) {
-	case ClusterCenter: PlotClusterCenters(img, c, cm, 2, selection); break;
+	case ClusterCenter: PlotClusterCenters(img, c, cm, 1, selection); break;
 	default: case ClusterPoints: PlotClusterPoints(img, c, cm, selection); break;
 	case ClusterEllipses: PlotClusterEllipses(img, c, cm, selection); break;
 	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm, selection); break;
