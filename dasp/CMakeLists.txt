@@ -8,15 +8,13 @@ include_directories(
 
 find_package(OpenCV REQUIRED)
 
-file(GLOB my_sources main.cpp)
-add_executable(rundasp ${my_sources})
+add_executable(rundasp main.cpp)
 
 set_target_properties(rundasp PROPERTIES OUTPUT_NAME dasp)
 
 target_link_libraries(rundasp
 	libdasp
 	${OpenCV_LIBS}
-	boost_thread
 	boost_program_options
 )
 

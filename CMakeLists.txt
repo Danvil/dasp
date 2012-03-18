@@ -17,4 +17,6 @@ include_directories(
 project(dasp)
 add_subdirectory(libdasp)
 add_subdirectory(dasp)
+add_subdirectory(boundary_recall)
+add_subdirectory(redcarpet)
 

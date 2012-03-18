@@ -10,5 +10,6 @@ set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 
 target_link_libraries(libdasp
 	DanvilSimpleEngine
+	boost_thread
 )
 
