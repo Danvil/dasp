@@ -3,8 +3,8 @@
 
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
+#include "KinectGrabber.h"
 #include <dasp/DaspTracker.h>
-#include <Romeo/Kinect/KinectGrabber.h>
 #include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
 #include <Danvil/SimpleEngine.h>
 #include <QtGui/QMainWindow>
@@ -21,8 +21,6 @@ public:
     ~WdgtKinectSuperPoints();
 
 private:
-	void OnImagesOld(Danvil::Images::Image1ui16Ptr kinect_depth, Danvil::Images::Image3ubPtr kinect_color);
-
 	void OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color);
 
 	void ComputeBlueNoiseImpl();

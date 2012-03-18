@@ -132,7 +132,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenFile(fn.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImagesOld, this, _1, _2));
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
@@ -150,29 +150,13 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenConfig(config.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImagesOld, this, _1, _2));
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
 void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
 	save_debug_next_ = true;
-}
-
-void WdgtKinectSuperPoints::OnImagesOld(Danvil::Images::Image1ui16Ptr raw_kinect_depth, Danvil::Images::Image3ubPtr raw_kinect_color)
-{
-	// kinect 16-bit depth image
-	slimage::Image1ui16 kinect_depth;
-	kinect_depth.resize(raw_kinect_depth->width(), raw_kinect_depth->height());
-	kinect_depth.copyFrom(raw_kinect_depth->begin());
-
-	// kinect RGB color image
-	slimage::Image3ub kinect_color;
-	kinect_color.resize(raw_kinect_color->width(), raw_kinect_color->height());
-	kinect_color.copyFrom(raw_kinect_color->begin());
-
-	OnImages(kinect_depth, kinect_color);
-
 }
 
 void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
