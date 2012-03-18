@@ -1,25 +1,20 @@
-cmake_minimum_required(VERSION 2.6)
-link_directories(/home/david/Danvil/lib "$ENV{DANVIL_PATH}"/lib ../libdasp)
+add_definitions(-DSLIMAGE_IO_OPENCV)
 
-project(dasp)
+include_directories(
+	src
+	${dasp_SOURCE_DIR}/libdasp/src
+	${OpenCV_INCLUDE_DIRS}
+)
 
 find_package(OpenCV REQUIRED)
 
 file(GLOB my_sources main.cpp)
 add_executable(rundasp ${my_sources})
+
 set_target_properties(rundasp PROPERTIES OUTPUT_NAME dasp)
 
-set(CMAKE_CXX_FLAGS "-std=c++0x")
-
-include_directories(
-	src
-	../../DanvilTools/CT/src
-	../../slimage/src
-	../libdasp/src
-)
-
 target_link_libraries(rundasp
-	dasp
+	libdasp
 	${OpenCV_LIBS}
 	boost_thread
 	boost_program_options

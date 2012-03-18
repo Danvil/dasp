@@ -1,7 +1,6 @@
 #include <boost/lexical_cast.hpp>
 #include <SuperPoints/Superpixels.hpp>
 #include <SuperPoints/Plots.hpp>
-#define SLIMAGE_IO_OPENCV
 #include <Slimage/IO.hpp>
 #include <Slimage/Slimage.hpp>
 #include <boost/format.hpp>
