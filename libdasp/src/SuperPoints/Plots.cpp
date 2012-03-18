@@ -7,8 +7,10 @@
 
 #include "Superpixels.hpp"
 #include "Plots.hpp"
+#if defined DASP_HAS_SIMPLEENGINE
 #include <Danvil/SimpleEngine/Primitives.h>
 #include <Danvil/SimpleEngine/GlHelpers.h>
+#endif
 #include <Slimage/Paint.hpp>
 #include <Eigen/Geometry>
 #include <cmath>
@@ -339,6 +341,8 @@ slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode 
 	return img;
 }
 
+#if defined DASP_HAS_SIMPLEENGINE
+
 void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub& color)
 {
 	glDisable(GL_CULL_FACE);
@@ -399,18 +403,25 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 	glEnd();
 }
 
+#endif
+
 void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
+#if defined DASP_HAS_SIMPLEENGINE
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
 		if(selection[i]) {
 			RenderClusterDisc(clustering.cluster[i], clustering.opt.base_radius, colors[i]);
 		}
 	}
+#else
+	std::cerr << "RenderClusters requires DanvilSimpleEngine" << std::endl;
+#endif
 }
 
 void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
+#if defined DASP_HAS_SIMPLEENGINE
 	const float cSpacing = 4.0f * clustering.opt.base_radius;
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	unsigned int grid_size = std::ceil(std::sqrt(clustering.cluster.size()));
@@ -425,6 +436,9 @@ void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const Cluster
 		RenderClusterNorm(clustering.cluster[i], clustering.points, clustering.opt.base_radius, colors[i]);
 		glPopMatrix();
 	}
+#else
+	std::cerr << "RenderClusters requires DanvilSimpleEngine" << std::endl;
+#endif
 }
 
 //----------------------------------------------------------------------------//

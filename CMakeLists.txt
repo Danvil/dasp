@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 
 link_directories(/home/david/Danvil/lib "$ENV{DANVIL_PATH}"/lib)
 
+option(DASP_HAS_SIMPLEENGINE "Use DanvilSimpleEngine to enable 3D rendering" ON) 
+
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/david/git/SuperPoints/cmake/Modules/)
 #find_package(Eigen3 REQUIRED)
 
