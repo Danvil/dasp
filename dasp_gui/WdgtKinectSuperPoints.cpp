@@ -1,5 +1,4 @@
 #include "WdgtKinectSuperPoints.h"
-#define SLIMAGE_IO_QT
 #include <Slimage/IO.hpp>
 #include <Slimage/Parallel.h>
 #include <QtGui/QMessageBox>
