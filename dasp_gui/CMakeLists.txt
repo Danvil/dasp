@@ -3,7 +3,7 @@ find_package(Qt4 REQUIRED)
 add_definitions(-DSLIMAGE_IO_QT)
 
 include_directories(
-	${dasp_SOURCE_DIR}/libdasp/src
+	${dasp_SOURCE_DIR}/libdasp
 )
 
 SET(QT_USE_QTOPENGL TRUE)

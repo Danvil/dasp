@@ -3,7 +3,7 @@
 
 #include <QtGui/QWidget>
 #include "ui_WdgtSuperpixelParameters.h"
-#include <SuperPoints/DaspTracker.h>
+#include <dasp/DaspTracker.h>
 #include <functional>
 
 class WdgtSuperpixelParameters : public QWidget

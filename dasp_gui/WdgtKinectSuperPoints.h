@@ -3,7 +3,7 @@
 
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
-#include <SuperPoints/DaspTracker.h>
+#include <dasp/DaspTracker.h>
 #include <Romeo/Kinect/KinectGrabber.h>
 #include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
 #include <Danvil/SimpleEngine.h>

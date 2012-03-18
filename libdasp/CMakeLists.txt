@@ -1,8 +1,4 @@
-include_directories(
-	src
-)
-
-file(GLOB my_sources src/**/*.cpp)
+file(GLOB my_sources dasp/*.cpp)
 add_library(libdasp SHARED ${my_sources})
 
 set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
