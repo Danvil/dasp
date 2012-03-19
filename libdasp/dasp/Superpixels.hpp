@@ -285,6 +285,8 @@ namespace dasp
 
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
+		void ConquerEnclaves();
+
 		std::vector<Seed> FindSeeds();
 
 		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);

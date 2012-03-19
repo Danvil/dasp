@@ -15,6 +15,7 @@
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
 #include <boost/math/constants/constants.hpp>
+#include <queue>
 
 //#define CLUSTER_UPDATE_MULTITHREADING
 #define CREATE_DEBUG_IMAGES
@@ -254,6 +255,103 @@ void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 	for(unsigned int i=0; i<opt.iterations; i++) {
 		MoveClusters();
 	}
+	ConquerEnclaves();
+}
+
+namespace SegmentExtraction
+{
+	struct Point {
+		int x, y;
+	};
+
+	struct Result {
+		std::vector<unsigned int> points_indices;
+		std::vector<int> border_labels;
+		bool has_nan_neighbor;
+	};
+
+	Result ExtractSegment(const slimage::Image1i& labels, const slimage::Image1i& visited, const Point& start) {
+		Result result;
+		result.has_nan_neighbor = false;
+		std::queue<Point> open;
+		open.push(start);
+		int base_label = labels(start.x, start.y);
+//		std::cout << "Base Label=" << base_label << std::endl;
+		while(!open.empty()) {
+//			std::cout << open.size() << std::endl;
+			Point p = open.front();
+			open.pop();
+			if(!labels.isValidIndex(p.x, p.y)) {
+				continue;
+			}
+			// do not visit pixels twice
+			if(visited(p.x, p.y) == base_label) {
+				continue;
+			}
+			// mark as visited in this run (visited is re-used in later runs!)
+			visited(p.x, p.y) = base_label;
+			// check label of current point
+			int current_label = labels(p.x, p.y);
+//			std::cout << "Current Label=" << current_label << std::endl;
+			if(current_label == base_label) {
+				unsigned int index = static_cast<unsigned int>(p.x) + static_cast<unsigned int>(p.y) * labels.width();
+				result.points_indices.push_back(index);
+				// add neighbors
+				open.push(Point{p.x-1, p.y});
+				open.push(Point{p.x+1, p.y});
+				open.push(Point{p.x, p.y-1});
+				open.push(Point{p.x, p.y+1});
+			}
+			else {
+				if(current_label == -1) {
+					result.has_nan_neighbor = true;
+				}
+				else {
+					result.border_labels.push_back(current_label);
+				}
+			}
+		}
+		return result;
+	}
+}
+
+void Clustering::ConquerEnclaves()
+{
+	std::vector<int> labels_v = ComputePixelLabels();
+	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
+	slimage::Image1i visited(width(), height(), slimage::Pixel1i{-1});
+	for(unsigned int y=0; y<labels.height(); y++) {
+		for(unsigned int x=0; x<labels.width(); x++) {
+			// skip already visited pixel
+			if(visited(x,y) != -1) {
+				continue;
+			}
+			// skip if pixel is invalid
+			int old_label = labels(x,y);
+			if(old_label == -1) {
+				continue;
+			}
+			// find segment
+			SegmentExtraction::Result result = SegmentExtraction::ExtractSegment(labels, visited, SegmentExtraction::Point{x, y});
+			// if it is an enclave -> delete enclave
+			if(result.border_labels.size() == 1 && !result.has_nan_neighbor) { // FIXME is this what we want?
+				std::cout << "Conquering enclave at (" << x << "," << y << ") with " << result.points_indices.size() << " points" << std::endl;
+				// enclaves have only one label at the borders
+				// remove pixels from old
+				std::vector<unsigned int>& original_pixel_ids = cluster[old_label].pixel_ids;
+				std::sort(original_pixel_ids.begin(), original_pixel_ids.end());
+				std::sort(result.points_indices.begin(), result.points_indices.end());
+				std::vector<unsigned int> new_pixel_ids(original_pixel_ids.size());
+				auto it = std::set_difference(original_pixel_ids.begin(), original_pixel_ids.end(),
+						result.points_indices.begin(), result.points_indices.end(),
+						new_pixel_ids.begin());
+				original_pixel_ids = std::vector<unsigned int>(new_pixel_ids.begin(), it);
+				// add pixels to new
+				int new_label = result.border_labels[0];
+				cluster[new_label].pixel_ids.insert(cluster[new_label].pixel_ids.begin(), result.points_indices.begin(), result.points_indices.end());
+			}
+		}
+	}
 }
 
 std::vector<int> Clustering::ComputePixelLabels() const
@@ -261,7 +359,7 @@ std::vector<int> Clustering::ComputePixelLabels() const
 	std::vector<int> labels(points.size(), -1);
 	for(unsigned int j=0; j<cluster.size(); j++) {
 		for(unsigned int i : cluster[j].pixel_ids) {
-			labels[i] = int(j);
+			labels[i] = static_cast<int>(j);
 		}
 	}
 	return labels;
