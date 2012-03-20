@@ -415,22 +415,54 @@ void Clustering::ConquerEnclaves()
 
 void Clustering::ConquerMiniEnclaves()
 {
+	// edge neighbors are checked later
+	int offset[4] = {
+			-1, +1, -static_cast<int>(width()), +static_cast<int>(width())
+	};
+	// compute pixel labels
 	std::vector<int> labels_v = ComputePixelLabels();
 	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
+	// iterate over all pixels
 	for(unsigned int y=1; y+1<labels.height(); y++) {
 		for(unsigned int x=1; x+1<labels.width(); x++) {
+			// compute pixel index and get label
+			unsigned int index = x + y * labels.width();
 			int lab = labels(x,y);
-			int neighbors[4] = {
-					labels(x+1,y), labels(x-1,y), labels(x,y+1), labels(x,y-1)
+			// skip invalid pixels
+			if(lab == -1) {
+				continue;
+			}
+			// check neighbors
+			int neighbors[4]; // will contain the labels of neighbor pixels
+			bool are_all_different = true; // will be true if all neighbors have a different label
+			bool are_all_nan = true; // will be true if all neighbors are invalid
+			for(unsigned int i=0; i<4; i++) {
+				int x = labels[index + offset[i]];
+				neighbors[i] = x;
+				are_all_different = are_all_different && (x != lab);
+				are_all_nan = are_all_nan && (x == -1);
 			};
-			if(lab != neighbors[0] && lab != neighbors[1] && lab != neighbors[2] && lab != neighbors[3]) {
-				unsigned int index = x + y * labels.width();
+			// relabel pixel if isolated and at least one neighbors is valid
+			if(are_all_different && !are_all_nan) {
+				// remove from old cluster
 				cluster[lab].removePixel(index);
-				int new_lab = neighbors[0];
-				if(new_lab != -1) {
-					cluster[new_lab].addPixel(index);
+				// find best new cluster (valid and nearest in world coordinates)
+				int best_lab = 0;
+				float best_dist = 1e9;
+				for(unsigned int i=0; i<4; i++) {
+					if(neighbors[i] == -1) {
+						continue;
+					}
+					float d2 = (points[index].world - points[index + offset[i]].world).squaredNorm();
+					if(d2 < best_dist) {
+						best_lab = neighbors[i];
+						best_dist = d2;
+					}
 				}
-				labels(x,y) = new_lab;
+				// add to new cluster
+				assert(best_lab != -1);
+				cluster[best_lab].addPixel(index);
+				labels(x,y) = best_lab;
 			}
 		}
 	}
