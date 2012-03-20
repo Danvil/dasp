@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------//
 #include "Superpixels.hpp"
 #include <Danvil/Color.h>
+#include <vector>
 //----------------------------------------------------------------------------//
 namespace dasp {
 namespace plots {
@@ -72,13 +73,15 @@ inline slimage::Pixel3ub PlusMinusColor(float x, float range=1.0f)
 	return slimage::Pixel3ub{{color.r,color.g,color.b}};
 }
 
+std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt);
+
 void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color);
 
 void PlotClusters(const slimage::Image3ub& img, const Clustering& clustering, const std::vector<slimage::Pixel3ub>& colors);
 
 void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled);
 
-void PlotEdges(const slimage::Image3ub& img, const std::vector<int>& point_labels, const slimage::Pixel3ub& color, unsigned int size=1);
+void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size=1, bool internal=false);
 
 void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey=0, int size=1);
 

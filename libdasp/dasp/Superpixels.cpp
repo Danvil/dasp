@@ -479,6 +479,17 @@ std::vector<int> Clustering::ComputePixelLabels() const
 	return labels;
 }
 
+slimage::Image1i Clustering::ComputeLabels() const
+{
+	slimage::Image1i img(width(), height(), slimage::Pixel1i{-1});
+	for(unsigned int j=0; j<cluster.size(); j++) {
+		for(unsigned int i : cluster[j].pixel_ids) {
+			img[i] = static_cast<int>(j);
+		}
+	}
+	return img;
+}
+
 std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
 {
 //	const float d = std::sqrt(float(opt.width*opt.height) / float(opt.cluster_count));
@@ -1030,7 +1041,7 @@ void Clustering::MoveClusters()
 //#endif
 }
 
-SuperpixelGraph Clustering::CreateNeighborhoodGraph()
+SuperpixelGraph Clustering::CreateNeighborhoodGraph() const
 {
 	SuperpixelGraph G;
 	for(const dasp::Cluster& c : cluster) {
@@ -1047,7 +1058,7 @@ SuperpixelGraph Clustering::CreateNeighborhoodGraph()
 	return G;
 }
 
-std::vector<unsigned int> Clustering::CreateSegments(const SuperpixelGraph& Gn, unsigned int* cnt_label)
+std::vector<unsigned int> Clustering::CreateSegments(const SuperpixelGraph& Gn, unsigned int* cnt_label) const
 {
 	// create graph
 	Romeo::TreeReduction::Graph graph;

@@ -10,6 +10,7 @@
 
 #include "Tools.hpp"
 #include "SuperpixelHistogram.hpp"
+#include "SuperpixelGraph.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
@@ -156,7 +157,7 @@ namespace dasp
 			count = 0;
 			seed_mode = SeedModes::DepthMipmap;
 			gradient_adaptive_density = true;
-			is_conquer_enclaves = false;
+			is_conquer_enclaves = true;
 		}
 
 		/** camera parameters */
@@ -303,6 +304,8 @@ namespace dasp
 
 		std::vector<int> ComputePixelLabels() const;
 
+		slimage::Image1i ComputeLabels() const;
+
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
 		void ConquerEnclaves();
@@ -321,9 +324,10 @@ namespace dasp
 
 		void MoveClusters();
 
-		SuperpixelGraph CreateNeighborhoodGraph();
+		SuperpixelGraph CreateNeighborhoodGraph() const;
 
-		std::vector<unsigned int> CreateSegments(const SuperpixelGraph& neighbourhood, unsigned int* cnt_label);
+		/** Create clusters of superpixels (= segments) */
+		std::vector<unsigned int> CreateSegments(const SuperpixelGraph& neighbourhood, unsigned int* cnt_label) const;
 
 		/**
 		 * Signature of F :
@@ -377,7 +381,7 @@ namespace dasp
 
 		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
-		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y)
+		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y) const
 		{
 			// x and y are assumed to be normalized
 			// dot(x,y) yields the cos of the angle
@@ -387,7 +391,7 @@ namespace dasp
 		}
 
 		template<bool cUseSqrt=false, bool WeightNormalsByDepth=true>
-		inline float Distance(const Point& u, const Point& v)
+		inline float Distance(const Point& u, const Point& v) const
 		{
 			float d_color;
 			if(cUseSqrt) {
@@ -424,7 +428,7 @@ namespace dasp
 		}
 
 		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=true>
-		inline float DistancePlanar(const Point& u, const Point& v)
+		inline float DistancePlanar(const Point& u, const Point& v) const
 		{
 			float d_color;
 			if(cUseSqrt) {
@@ -480,16 +484,16 @@ namespace dasp
 				+ opt.weight_normal * d_normal;
 		}
 
-		inline float Distance(const Point& u, const Cluster& c) {
+		inline float Distance(const Point& u, const Cluster& c) const {
 			return Distance(u, c.center);
 		}
 
-		inline float Distance(const Cluster& x, const Cluster& y) {
+		inline float Distance(const Cluster& x, const Cluster& y) const {
 			return Distance(x.center, y.center);
 		}
 
 		template<bool cUseSqrt=true>
-		inline float DistanceSpatial(const Point& x, const Point& y) {
+		inline float DistanceSpatial(const Point& x, const Point& y) const {
 			float d_point;
 			if(cUseSqrt) {
 				d_point = (x.pos - y.pos).norm();
@@ -500,12 +504,12 @@ namespace dasp
 			return d_point;
 		}
 
-		inline float DistanceSpatial(const Cluster& x, const Cluster& y) {
+		inline float DistanceSpatial(const Cluster& x, const Cluster& y) const {
 			return DistanceSpatial(x.center, y.center);
 		}
 
 		template<bool WeightNormalsByDepth=true>
-		inline float DistanceWorld(const Cluster& x, const Cluster& y) {
+		inline float DistanceWorld(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
@@ -521,7 +525,7 @@ namespace dasp
 		}
 
 		template<bool WeightNormalsByDepth=true>
-		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) {
+		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
@@ -533,7 +537,7 @@ namespace dasp
 		}
 
 		template<bool WeightNormalsByDepth=true>
-		inline float DistanceNormal(const Cluster& x, const Cluster& y) {
+		inline float DistanceNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster normals and
 			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
 			if(WeightNormalsByDepth) {

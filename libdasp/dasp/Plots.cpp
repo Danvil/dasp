@@ -19,6 +19,22 @@ namespace dasp {
 namespace plots {
 //----------------------------------------------------------------------------//
 
+std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt)
+{
+	cnt = (cnt / 3 + 1) * 3;
+	std::vector<slimage::Pixel3ub> colors(cnt);
+	for(unsigned int i=0; i<cnt; i+=3) {
+		slimage::Pixel3ub& c1 = colors[i];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 255, c1[0], c1[1], c1[2]);
+		slimage::Pixel3ub& c2 = colors[i+1];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 171, c2[0], c2[1], c2[2]);
+		slimage::Pixel3ub& c3 = colors[i+2];
+		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 85, c3[0], c3[1], c3[2]);
+	}
+	std::random_shuffle(colors.begin(), colors.end());
+	return colors;
+}
+
 void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color)
 {
 	assert(cluster.hasPoints());
@@ -82,35 +98,38 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
 }
 
-void PlotEdges(const slimage::Image3ub& img, const std::vector<int>& labels, const slimage::Pixel3ub& color, unsigned int size)
+void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
 {
+	assert(img.width() == labels.width() && img.height() == labels.height());
+
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 
-	unsigned int width = img.width();
-	unsigned int height = img.height();
+	int width = static_cast<int>(img.width());
+	int height = static_cast<int>(img.height());
 
 	std::vector<bool> istaken(width*height, false);
 
-	unsigned int i = 0;
-	for(unsigned int y=0; y<height; y++) {
-		for(unsigned int x=0; x<width; x++, i++) {
+	for(int y=0; y<height; y++) {
+		for(int x=0; x<width; x++) {
+			int i = x + y * width;
+			int base_label = labels[i];
 			unsigned int np = 0;
 			for(unsigned int k=0; k<8; k++) {
-				int sx = int(x) + dx8[k];
-				int sy = int(y) + dy8[k];
-				if(sx >= 0 && sx < int(width) && sy >= 0 && sy < int(height)) {
-					int si = sy*width + sx;
-					//if( false == istaken[si] )//comment this to obtain internal contours
+				int sx = x + dx8[k];
+				int sy = y + dy8[k];
+				if(sx >= 0 && sx < width && sy >= 0 && sy < height) {
+					int si = sx + sy*width;
+					if(internal || istaken[si] == false ) //comment this to obtain internal contours
 					{
-						if(labels[i] != labels[si]) {
+						if(base_label != labels(si)) {
 							np++;
 						}
 					}
 				}
 			}
 			if(np > size) {
-				img(x,y) = color;
+				img(i) = color;
 				istaken[i] = true;
 			}
 		}

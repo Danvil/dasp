@@ -198,22 +198,6 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 	return col;
 }
 
-std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt)
-{
-	cnt = (cnt / 3 + 1) * 3;
-	std::vector<slimage::Pixel3ub> colors(cnt);
-	for(unsigned int i=0; i<cnt; i+=3) {
-		slimage::Pixel3ub& c1 = colors[i];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 255, c1[0], c1[1], c1[2]);
-		slimage::Pixel3ub& c2 = colors[i+1];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 171, c2[0], c2[1], c2[2]);
-		slimage::Pixel3ub& c3 = colors[i+2];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 85, c3[0], c3[1], c3[2]);
-	}
-	std::random_shuffle(colors.begin(), colors.end());
-	return colors;
-}
-
 typedef boost::accumulators::accumulator_set<
 	unsigned int,
 	boost::accumulators::stats<boost::accumulators::tag::variance>
@@ -392,7 +376,7 @@ void DaspTracker::performSegmentationStep()
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
 		}
 		if(show_cluster_borders_) {
-			plots::PlotEdges(vis_img, clustering_.ComputePixelLabels(), slimage::Pixel3ub{{255,255,255}}, 2);
+			plots::PlotEdges(vis_img, clustering_.ComputeLabels(), slimage::Pixel3ub{{255,255,255}}, 2);
 		}
 
 		if(show_graph_ || plot_segments_) {
@@ -406,7 +390,7 @@ void DaspTracker::performSegmentationStep()
 				std::cout << "Nodes: " << segments.size() << ", Labels=" << cnt_label << std::endl;
 
 				// plot segmentation graph
-				std::vector<slimage::Pixel3ub> colors = CreateRandomColors(cnt_label);
+				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(cnt_label);
 				clustering_.ForPixelClusters([&segments,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
 					vis_img(pid) = colors[segments[cid]];
 				});
