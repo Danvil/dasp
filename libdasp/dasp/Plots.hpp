@@ -91,6 +91,7 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 enum ColorMode {
 	UniBlack,
 	UniWhite,
+	Valid,
 	Color,
 	Depth,
 	Gradient,

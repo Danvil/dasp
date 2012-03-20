@@ -154,6 +154,11 @@ namespace detail
 	}
 
 	template<>
+	slimage::Pixel3ub ComputePointColor<Valid>(const Point& p) {
+		return p.isValid() ? slimage::Pixel3ub{{0,128,0}} : slimage::Pixel3ub{{255,128,128}};
+	}
+
+	template<>
 	slimage::Pixel3ub ComputePointColor<Color>(const Point& p) {
 		return RgbColor(p);
 	}
@@ -274,6 +279,7 @@ slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
 	switch(cm) {
 	PlotPoints_HELPER(UniBlack)
 	PlotPoints_HELPER(UniWhite)
+	PlotPoints_HELPER(Valid)
 	PlotPoints_HELPER(Color)
 	PlotPoints_HELPER(Depth)
 	PlotPoints_HELPER(Gradient)

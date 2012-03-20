@@ -15,8 +15,8 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 
 	ui.comboBoxPlotPointsColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotPointsColor->addItem("Depth", dasp::plots::Depth);
+	ui.comboBoxPlotPointsColor->addItem("Valid", dasp::plots::Valid);
 	ui.comboBoxPlotPointsColor->addItem("Gradient", dasp::plots::Gradient);
-	ui.comboBoxPlotPointsColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotPointsColor->setCurrentIndex(0);
 
 	ui.comboBoxPlotClusterColor->addItem("UniBlack", dasp::plots::UniBlack);
@@ -24,7 +24,6 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotClusterColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotClusterColor->addItem("Gradient", dasp::plots::Gradient);
-	ui.comboBoxPlotClusterColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotClusterColor->addItem("Thickness", dasp::plots::Thickness);
 	ui.comboBoxPlotClusterColor->addItem("Circularity", dasp::plots::Circularity);
 	ui.comboBoxPlotClusterColor->addItem("Eccentricity", dasp::plots::Eccentricity);
