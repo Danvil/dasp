@@ -267,6 +267,8 @@ void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 		//ConquerEnclaves();
 		ConquerMiniEnclaves();
 	}
+	// delete empty superpixels
+	PurgeInvalidClusters();
 }
 
 namespace SegmentExtraction
@@ -969,6 +971,19 @@ void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& 
 	}
 }
 
+void Clustering::PurgeInvalidClusters()
+{
+	std::vector<Cluster> clusters_valid;
+	clusters_valid.reserve(cluster.size());
+	for(unsigned int i=0; i<cluster.size(); i++) {
+		const Cluster& c = cluster[i];
+		if(c.hasPoints()) {
+			clusters_valid.push_back(c);
+		}
+	}
+	cluster = clusters_valid;
+}
+
 void Clustering::MoveClusters()
 {
 	std::vector<float> v_dist(points.size(), 1e9);
@@ -1016,15 +1031,7 @@ void Clustering::MoveClusters()
 		}
 	}
 	// remove invalid clusters
-	std::vector<Cluster> clusters_valid;
-	clusters_valid.reserve(cluster.size());
-	for(unsigned int i=0; i<cluster.size(); i++) {
-		const Cluster& c = cluster[i];
-		if(c.hasPoints()) {
-			clusters_valid.push_back(c);
-		}
-	}
-	cluster = clusters_valid;
+	PurgeInvalidClusters();
 	// update remaining (valid) clusters
 //#ifdef CLUSTER_UPDATE_MULTITHREADING
 //	{

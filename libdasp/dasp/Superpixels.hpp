@@ -322,6 +322,8 @@ namespace dasp
 
 		void CreateClusters(const std::vector<Seed>& seeds);
 
+		void PurgeInvalidClusters();
+
 		void MoveClusters();
 
 		SuperpixelGraph CreateNeighborhoodGraph() const;
