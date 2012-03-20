@@ -101,11 +101,15 @@ void WdgtKinectSuperPoints::OnLoadOne()
 
 	std::string fn_color = fn.toStdString() + "_color.png";
 	std::string fn_depth = fn.toStdString() + "_depth.pgm";
-	std::cout << fn_color << " " << fn_depth << std::endl;
+	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
 	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
 	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
 //	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
 //	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
+	if(loaded_kinect_color.width() != loaded_kinect_depth.width() || loaded_kinect_color.height() != loaded_kinect_depth.height()) {
+		std::cerr << "Size of color and depth image must match!" << std::endl;
+		return;
+	}
 	interrupt_loaded_thread_ = false;
 	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
 		while(!interrupt_loaded_thread_) {
