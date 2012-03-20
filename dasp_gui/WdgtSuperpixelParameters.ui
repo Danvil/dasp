@@ -246,7 +246,10 @@
       <item row="16" column="0">
        <widget class="QCheckBox" name="checkBoxDaspConquerEnclaves">
         <property name="text">
-         <string>Clean Enclaves</string>
+         <string>Clean Mini Enclaves</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
