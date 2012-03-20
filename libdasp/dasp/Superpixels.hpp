@@ -156,6 +156,7 @@ namespace dasp
 			count = 0;
 			seed_mode = SeedModes::DepthMipmap;
 			gradient_adaptive_density = true;
+			is_conquer_enclaves = false;
 		}
 
 		/** camera parameters */
@@ -182,6 +183,8 @@ namespace dasp
 		SeedMode seed_mode;
 
 		bool gradient_adaptive_density;
+
+		bool is_conquer_enclaves;
 
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and

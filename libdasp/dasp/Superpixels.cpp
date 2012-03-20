@@ -255,7 +255,9 @@ void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 	for(unsigned int i=0; i<opt.iterations; i++) {
 		MoveClusters();
 	}
-	ConquerEnclaves();
+	if(opt.is_conquer_enclaves) {
+		ConquerEnclaves();
+	}
 }
 
 namespace SegmentExtraction
