@@ -208,6 +208,21 @@ namespace dasp
 			return pixel_ids.size() > 3;
 		}
 
+		void addPixel(unsigned int index) {
+			pixel_ids.push_back(index);
+		}
+
+		void removePixel(unsigned int index) {
+			auto it = std::find(pixel_ids.begin(), pixel_ids.end(), index);
+			if(it != pixel_ids.end()) {
+				pixel_ids.erase(it);
+			}
+		}
+
+//		void addPixels(const std::vector<unsigned int>& v) {
+//			pixel_ids.insert(pixel_ids.begin(), v.begin(), v.end());
+//		}
+
 		// point covariance matrix
 		Eigen::Matrix3f cov;
 		// eigenvalues of the covariance matrix
@@ -291,6 +306,8 @@ namespace dasp
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 
 		void ConquerEnclaves();
+
+		void ConquerMiniEnclaves();
 
 		std::vector<Seed> FindSeeds();
 

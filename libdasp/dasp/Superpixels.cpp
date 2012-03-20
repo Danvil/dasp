@@ -16,6 +16,7 @@
 #include <boost/random.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <queue>
+#include <set>
 
 //#define CLUSTER_UPDATE_MULTITHREADING
 #define CREATE_DEBUG_IMAGES
@@ -263,7 +264,8 @@ void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 		MoveClusters();
 	}
 	if(opt.is_conquer_enclaves) {
-		ConquerEnclaves();
+		//ConquerEnclaves();
+		ConquerMiniEnclaves();
 	}
 }
 
@@ -276,35 +278,37 @@ namespace SegmentExtraction
 	struct Segment {
 		int label;
 		std::vector<unsigned int> points_indices;
-		std::vector<int> border_labels;
+		std::set<int> border_labels;
 		bool has_nan_neighbor;
 	};
 
 	Segment ExtractSegment(const slimage::Image1i& labels, const slimage::Image1i& visited, const Point& start) {
+		// we need to temporarily store if border pixels have been visited
+		slimage::Image1i border_visited(visited.width(), visited.height(), slimage::Pixel1i{0});
+		// init segment
 		Segment result;
-		result.has_nan_neighbor = false;
-		std::queue<Point> open;
-		open.push(start);
 		int base_label = labels(start.x, start.y);
 		result.label = base_label;
-//		std::cout << "Base Label=" << base_label << std::endl;
+		result.has_nan_neighbor = false;
+		// do a flood fill by managing a list of "open" pixels which need investigation
+		std::queue<Point> open;
+		open.push(start);
 		while(!open.empty()) {
-//			std::cout << open.size() << std::endl;
+			// get the next pixel which needs investigation
 			Point p = open.front();
 			open.pop();
+			// skip pixels which are out of bounds
 			if(!labels.isValidIndex(p.x, p.y)) {
 				continue;
 			}
-			// do not visit pixels twice
-			if(visited(p.x, p.y) == base_label) {
+			// do not visit pixels twice in this run
+			if(visited(p.x, p.y) == base_label || border_visited(p.x, p.y) == 1) {
 				continue;
 			}
-			// mark as visited in this run (visited is re-used in later runs!)
-			visited(p.x, p.y) = base_label;
 			// check label of current point
 			int current_label = labels(p.x, p.y);
-//			std::cout << "Current Label=" << current_label << std::endl;
 			if(current_label == base_label) {
+				// point belongs to label -> investigate neighbors
 				unsigned int index = static_cast<unsigned int>(p.x) + static_cast<unsigned int>(p.y) * labels.width();
 				result.points_indices.push_back(index);
 				// add neighbors
@@ -312,14 +316,19 @@ namespace SegmentExtraction
 				open.push(Point{p.x+1, p.y});
 				open.push(Point{p.x, p.y-1});
 				open.push(Point{p.x, p.y+1});
+				// mark pixel as visited in this run (visited is re-used in later runs!)
+				visited(p.x, p.y) = base_label;
 			}
 			else {
+				// point does not belong to label -> add to neighbors
 				if(current_label == -1) {
 					result.has_nan_neighbor = true;
 				}
 				else {
-					result.border_labels.push_back(current_label);
+					result.border_labels.insert(current_label);
 				}
+				// mark pixel temporarily as border-visited
+				border_visited(p.x, p.y) = 1;
 			}
 		}
 		return result;
@@ -330,13 +339,12 @@ namespace SegmentExtraction
 		slimage::Image1i visited(labels.width(), labels.height(), slimage::Pixel1i{-1});
 		for(unsigned int y=0; y<labels.height(); y++) {
 			for(unsigned int x=0; x<labels.width(); x++) {
-				// skip already visited pixel
-				if(visited(x,y) != -1) {
+				// skip invalid pixels
+				if(labels(x,y) == -1) {
 					continue;
 				}
-				// skip if pixel is invalid
-				int old_label = labels(x,y);
-				if(old_label == -1) {
+				// skip pixels which are already visited in their run
+				if(visited(x,y) != -1) {
 					continue;
 				}
 				// find segment
@@ -379,6 +387,7 @@ void Clustering::ConquerEnclaves()
 			continue;
 		}
 		// find neighbor with largest segment
+		// FIXME possibly use a big enough neighbor which matches color and normal best
 		unsigned int neighbor_best_size = 0;
 		unsigned int neighbor_best_label = 0;
 		for(int nlab : x.border_labels) {
@@ -401,6 +410,29 @@ void Clustering::ConquerEnclaves()
 		original_pixel_ids = std::vector<unsigned int>(new_pixel_ids.begin(), it);
 		// add pixels to new cluster
 		cluster[neighbor_best_label].pixel_ids.insert(cluster[neighbor_best_label].pixel_ids.begin(), x.points_indices.begin(), x.points_indices.end());
+	}
+}
+
+void Clustering::ConquerMiniEnclaves()
+{
+	std::vector<int> labels_v = ComputePixelLabels();
+	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
+	for(unsigned int y=1; y+1<labels.height(); y++) {
+		for(unsigned int x=1; x+1<labels.width(); x++) {
+			int lab = labels(x,y);
+			int neighbors[4] = {
+					labels(x+1,y), labels(x-1,y), labels(x,y+1), labels(x,y-1)
+			};
+			if(lab != neighbors[0] && lab != neighbors[1] && lab != neighbors[2] && lab != neighbors[3]) {
+				unsigned int index = x + y * labels.width();
+				cluster[lab].removePixel(index);
+				int new_lab = neighbors[0];
+				if(new_lab != -1) {
+					cluster[new_lab].addPixel(index);
+				}
+				labels(x,y) = new_lab;
+			}
+		}
 	}
 }
 
