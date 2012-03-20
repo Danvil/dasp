@@ -54,6 +54,7 @@ private:
 	std::string capture_filename_;
 	bool interrupt_loaded_thread_;
 	bool save_debug_next_;
+	bool reload;
 
 private:
     Ui::WdgtKinectSuperPointsClass ui;

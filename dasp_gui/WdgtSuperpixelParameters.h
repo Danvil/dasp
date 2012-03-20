@@ -14,6 +14,8 @@ public:
 	WdgtSuperpixelParameters(const boost::shared_ptr<dasp::DaspTracker>& dasp_tracker, QWidget *parent = 0);
 	~WdgtSuperpixelParameters();
 
+	bool* reload;
+
 public Q_SLOTS:
 	void ChangeSmoothDepth(int state);
 	void OnSuperSeedType(int selection);
@@ -25,6 +27,7 @@ public Q_SLOTS:
 	void ChangeSuperpixelWeightSpatial(double val);
 	void ChangeSuperpixelWeightDepth(double val);
 	void ChangeSuperpixelWeightNormal(double val);
+	void ChangeSuperConquerEnclaves(int val);
 	void ChangeSuperpixelCoverage(double val);
 	void ChangeColorModelSigmaScale(double val);
 	void OnColorModelTrain();

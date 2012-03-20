@@ -206,7 +206,7 @@
         </property>
        </widget>
       </item>
-      <item row="16" column="0">
+      <item row="17" column="0">
        <spacer name="verticalSpacer_2">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -240,6 +240,13 @@
         </property>
         <property name="singleStep">
          <number>100</number>
+        </property>
+       </widget>
+      </item>
+      <item row="16" column="0">
+       <widget class="QCheckBox" name="checkBoxDaspConquerEnclaves">
+        <property name="text">
+         <string>Clean Enclaves</string>
         </property>
        </widget>
       </item>

@@ -21,6 +21,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	dasp_tracker_.reset(new dasp::DaspTracker());
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_));
+	gui_params_->reload = &reload;
 	gui_params_->show();
 
 	LOG_NOTICE << "Creating OpenGL Widget ...";
@@ -106,11 +107,15 @@ void WdgtKinectSuperPoints::OnLoadOne()
 //	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
 //	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
 	interrupt_loaded_thread_ = false;
-//	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
-//		while(!interrupt_loaded_thread_) {
+	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
+		while(!interrupt_loaded_thread_) {
 			this->OnImages(loaded_kinect_depth, loaded_kinect_color);
-//		}
-//	});
+			while(!reload && !interrupt_loaded_thread_) {
+				usleep(1000);
+			}
+			reload = false;
+		}
+	});
 
 }
 
