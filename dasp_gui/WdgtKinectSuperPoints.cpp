@@ -182,6 +182,7 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 //		kinect_depth[i] = d;
 //	}
 
+	dasp::SetRandomNumberSeed(0);
 	dasp_tracker_->step(kinect_depth, kinect_color);
 
 	if(save_debug_next_) {

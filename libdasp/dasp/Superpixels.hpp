@@ -248,6 +248,8 @@ namespace dasp
 		Histogram<float> hist_coverage_error;
 	};
 
+	void SetRandomNumberSeed(unsigned int seed);
+
 	class Clustering
 	{
 	public:

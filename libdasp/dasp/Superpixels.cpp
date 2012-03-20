@@ -24,6 +24,13 @@
 namespace dasp {
 //------------------------------------------------------------------------------
 
+boost::mt19937 cGlobalRndRng;
+
+void SetRandomNumberSeed(unsigned int x)
+{
+	cGlobalRndRng.seed(x);
+}
+
 std::map<std::string,slimage::ImagePtr> sDebugImages;
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
@@ -266,18 +273,20 @@ namespace SegmentExtraction
 		int x, y;
 	};
 
-	struct Result {
+	struct Segment {
+		int label;
 		std::vector<unsigned int> points_indices;
 		std::vector<int> border_labels;
 		bool has_nan_neighbor;
 	};
 
-	Result ExtractSegment(const slimage::Image1i& labels, const slimage::Image1i& visited, const Point& start) {
-		Result result;
+	Segment ExtractSegment(const slimage::Image1i& labels, const slimage::Image1i& visited, const Point& start) {
+		Segment result;
 		result.has_nan_neighbor = false;
 		std::queue<Point> open;
 		open.push(start);
 		int base_label = labels(start.x, start.y);
+		result.label = base_label;
 //		std::cout << "Base Label=" << base_label << std::endl;
 		while(!open.empty()) {
 //			std::cout << open.size() << std::endl;
@@ -315,44 +324,83 @@ namespace SegmentExtraction
 		}
 		return result;
 	}
+
+	std::vector<Segment> FindAllSegments(const slimage::Image1i& labels) {
+		std::vector<Segment> segments;
+		slimage::Image1i visited(labels.width(), labels.height(), slimage::Pixel1i{-1});
+		for(unsigned int y=0; y<labels.height(); y++) {
+			for(unsigned int x=0; x<labels.width(); x++) {
+				// skip already visited pixel
+				if(visited(x,y) != -1) {
+					continue;
+				}
+				// skip if pixel is invalid
+				int old_label = labels(x,y);
+				if(old_label == -1) {
+					continue;
+				}
+				// find segment
+				Segment result = ExtractSegment(labels, visited, Point{x, y});
+				segments.push_back(result);
+			}
+		}
+		return segments;
+	}
 }
 
 void Clustering::ConquerEnclaves()
 {
+	// compute labels for every pixel
 	std::vector<int> labels_v = ComputePixelLabels();
 	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
-	slimage::Image1i visited(width(), height(), slimage::Pixel1i{-1});
-	for(unsigned int y=0; y<labels.height(); y++) {
-		for(unsigned int x=0; x<labels.width(); x++) {
-			// skip already visited pixel
-			if(visited(x,y) != -1) {
-				continue;
-			}
-			// skip if pixel is invalid
-			int old_label = labels(x,y);
-			if(old_label == -1) {
-				continue;
-			}
-			// find segment
-			SegmentExtraction::Result result = SegmentExtraction::ExtractSegment(labels, visited, SegmentExtraction::Point{x, y});
-			// if it is an enclave -> delete enclave
-			if(result.border_labels.size() == 1 && !result.has_nan_neighbor) { // FIXME is this what we want?
-				std::cout << "Conquering enclave at (" << x << "," << y << ") with " << result.points_indices.size() << " points" << std::endl;
-				// enclaves have only one label at the borders
-				// remove pixels from old
-				std::vector<unsigned int>& original_pixel_ids = cluster[old_label].pixel_ids;
-				std::sort(original_pixel_ids.begin(), original_pixel_ids.end());
-				std::sort(result.points_indices.begin(), result.points_indices.end());
-				std::vector<unsigned int> new_pixel_ids(original_pixel_ids.size());
-				auto it = std::set_difference(original_pixel_ids.begin(), original_pixel_ids.end(),
-						result.points_indices.begin(), result.points_indices.end(),
-						new_pixel_ids.begin());
-				original_pixel_ids = std::vector<unsigned int>(new_pixel_ids.begin(), it);
-				// add pixels to new
-				int new_label = result.border_labels[0];
-				cluster[new_label].pixel_ids.insert(cluster[new_label].pixel_ids.begin(), result.points_indices.begin(), result.points_indices.end());
+	// find all segments (i.e. connected regions with the same label)
+	std::vector<SegmentExtraction::Segment> segments = SegmentExtraction::FindAllSegments(labels);
+	// count number of segments per label
+	std::vector<unsigned int> label_segment_count(cluster.size(), 0);
+	for(const SegmentExtraction::Segment& x : segments) {
+		assert(x.label < cluster.size());
+		assert(x.label != -1);
+		label_segment_count[x.label] ++;
+	}
+	// sort segments by size
+	std::sort(segments.begin(), segments.end(),
+			[](const SegmentExtraction::Segment& a, const SegmentExtraction::Segment& b) {
+					return a.points_indices.size() < b.points_indices.size();
+			});
+	// remove enclaves and exclaves
+	for(SegmentExtraction::Segment& x : segments) {
+		// do not delete last segment of a label
+		if(label_segment_count[x.label] == 1) {
+			continue;
+		}
+		label_segment_count[x.label] --;
+		// can not delete if no neighbor (i.e. only nan neighbors)
+		if(x.border_labels.size() == 0) {
+			continue;
+		}
+		// find neighbor with largest segment
+		unsigned int neighbor_best_size = 0;
+		unsigned int neighbor_best_label = 0;
+		for(int nlab : x.border_labels) {
+			unsigned int nsize = cluster[nlab].pixel_ids.size();
+			if(nsize > neighbor_best_size) {
+				neighbor_best_size = nsize;
+				neighbor_best_label = nlab;
 			}
 		}
+		// assign segment to one of the neighbors
+		std::cout << "Conquering enclave with " << x.points_indices.size() << " points" << std::endl;
+		// remove pixels from old cluster
+		std::vector<unsigned int>& original_pixel_ids = cluster[x.label].pixel_ids;
+		std::sort(original_pixel_ids.begin(), original_pixel_ids.end());
+		std::sort(x.points_indices.begin(), x.points_indices.end());
+		std::vector<unsigned int> new_pixel_ids(original_pixel_ids.size());
+		auto it = std::set_difference(original_pixel_ids.begin(), original_pixel_ids.end(),
+				x.points_indices.begin(), x.points_indices.end(),
+				new_pixel_ids.begin());
+		original_pixel_ids = std::vector<unsigned int>(new_pixel_ids.begin(), it);
+		// add pixels to new cluster
+		cluster[neighbor_best_label].pixel_ids.insert(cluster[neighbor_best_label].pixel_ids.begin(), x.points_indices.begin(), x.points_indices.end());
 	}
 }
 
@@ -409,7 +457,6 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
 	assert(false && "FindSeedsRandom: Not implemented!");
-//	static boost::mt19937 rng;
 //	constexpr float cCameraFocal = 25.0f;
 //	// for each pixel compute number of expected clusters
 //	std::vector<float> cdf(points.size());
@@ -421,7 +468,7 @@ std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage:
 //	}
 //	float sum = cdf[cdf.size() - 1];
 //	boost::uniform_real<float> rnd(0.0f, sum);
-//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
+//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
 //	// randomly pick clusters based on probability
 //	std::vector<Seed> seeds;
 //	seeds.reserve(opt.cluster_count);
@@ -449,9 +496,8 @@ void FindSeedsDepthMipmap_Walk(
 		const std::vector<slimage::Image1f>& mipmaps,
 		int level, unsigned int x, unsigned int y)
 {
-	static boost::mt19937 rng;
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
-	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
+	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
 
 	const slimage::Image1f& mm = mipmaps[level];
 
@@ -475,7 +521,7 @@ void FindSeedsDepthMipmap_Walk(
 			// add random offset to add noise
 
 			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
-					rng, boost::uniform_int<>(-int(half/2), +int(half/2)));
+					cGlobalRndRng, boost::uniform_int<>(-int(half/2), +int(half/2)));
 			s.x += delta();
 			s.y += delta();
 			if(s.x < int(points.width()) && s.y < int(points.height())) {
@@ -617,9 +663,8 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::
 
 void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
 {
-	static boost::mt19937 rng;
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
-	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(rng, rnd);
+	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
 
 	const slimage::Image2f& mm = mipmaps[level];
 
@@ -642,7 +687,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 			int sy = (y << level) + half;
 			// add random offset to add noise
 			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
-					rng, boost::uniform_int<>(-int(half/2), +int(half/2)));
+					cGlobalRndRng, boost::uniform_int<>(-int(half/2), +int(half/2)));
 			sx += delta();
 			sy += delta();
 
