@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>395</width>
-    <height>943</height>
+    <height>971</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -113,7 +113,7 @@
       <item row="7" column="1">
        <widget class="QSpinBox" name="spinBoxIterations">
         <property name="maximum">
-         <number>10</number>
+         <number>1000</number>
         </property>
         <property name="value">
          <number>3</number>
