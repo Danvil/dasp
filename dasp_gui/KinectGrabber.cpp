@@ -143,13 +143,13 @@ bool KinectGrabber::Grab()
 	image_.GetMetaData(imageMD_);
 	const XnUInt8* pImage = imageMD_.Data();
 	last_color_.resize(imageMD_.FullXRes(), imageMD_.FullYRes());
-	memcpy(last_color_.begin(), pImage, last_color_.getByteCount());
+	memcpy(last_color_.begin().pointer(), pImage, last_color_.size() * sizeof(unsigned char));
 
 	// convert depth image to Danvil image
 	depth_.GetMetaData(depthMD_);
 	const XnDepthPixel* pDepth = depthMD_.Data();
 	last_depth_.resize(depthMD_.FullXRes(), depthMD_.FullYRes());
-	memcpy(last_depth_.begin(), pDepth, last_depth_.getByteCount());
+	memcpy(last_depth_.begin().pointer(), pDepth, last_depth_.size() * sizeof(uint16_t));
 
 //	if(!save_color_fn_.empty()) {
 //		Danvil::Images::ImageIO::Save(last_color_, save_color_fn_);

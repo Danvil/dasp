@@ -100,7 +100,7 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 
 void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
 {
-	assert(img.width() == labels.width() && img.height() == labels.height());
+	assert(img.dimensions() == labels.dimensions());
 
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
@@ -122,14 +122,14 @@ void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, con
 					int si = sx + sy*width;
 					if(internal || istaken[si] == false ) //comment this to obtain internal contours
 					{
-						if(base_label != labels(si)) {
+						if(base_label != labels[si]) {
 							np++;
 						}
 					}
 				}
 			}
 			if(np > size) {
-				img(i) = color;
+				img[i] = color;
 				istaken[i] = true;
 			}
 		}
@@ -249,8 +249,8 @@ namespace detail
 	template<int M>
 	void PlotPointsImpl(const slimage::Image3ub& img, const Clustering& c)
 	{
-		for(size_t i=0; i<img.getPixelCount(); i++) {
-			img(i) = ComputePointColor<M>(c.points[i]);
+		for(size_t i=0; i<img.size(); i++) {
+			img[i] = ComputePointColor<M>(c.points[i]);
 		}
 	}
 
@@ -413,7 +413,8 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 	t = t.inverse();
 	// render points
 	glBegin(GL_LINES);
-	for(unsigned int id : cluster.pixel_ids) {
+//	for(unsigned int id : cluster.pixel_ids)
+	{	unsigned int id = cluster.pixel_ids[0];
 		Eigen::Vector3f p = t * points[id].world;
 		glVertex3f(p[0], p[1], p[2]);
 		glVertex3f(p[0], p[1], 0);
@@ -421,7 +422,8 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 	glEnd();
 	glPointSize(3.0f);
 	glBegin(GL_POINTS);
-	for(unsigned int id : cluster.pixel_ids) {
+//	for(unsigned int id : cluster.pixel_ids) {
+	{	unsigned int id = cluster.pixel_ids[0];
 		Eigen::Vector3f p = t * points[id].world;
 		glVertex3f(p[0], p[1], p[2]);
 	}

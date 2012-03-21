@@ -90,8 +90,9 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	if(enable_smooth_depth_) {
 		kinect_depth.resize(raw_kinect_depth.width(), raw_kinect_depth.height());
-		slimage::ParallelProcess(raw_kinect_depth, kinect_depth, [&raw_kinect_depth](const uint16_t* raw, uint16_t* smth) {
-			int i = raw - raw_kinect_depth.begin();
+		slimage::ParallelProcess(raw_kinect_depth, kinect_depth, [&raw_kinect_depth](const slimage::It1ui16& src, const slimage::It1ui16& smth) {
+			const uint16_t* raw = src.pointer();
+			int i = raw - raw_kinect_depth.buffer().begin();
 			int w = raw_kinect_depth.width();
 			int h = raw_kinect_depth.height();
 			int x = i % w;
@@ -130,7 +131,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	// convert rgb to lab
 	kinect_color.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
-	slimage::ParallelProcess(kinect_color_rgb, kinect_color, [](const unsigned char* rgb, float* lab) {
+	slimage::ParallelProcess(kinect_color_rgb, kinect_color, [](const slimage::It3ub& rgb, const slimage::It3f& lab) {
 		float r = float(rgb[0]) / 255.0f;
 		float g = float(rgb[1]) / 255.0f;
 		float b = float(rgb[2]) / 255.0f;
@@ -180,7 +181,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	performTrackingStep();
 
-//	DANVIL_BENCHMARK_PRINTALL_COUT
+	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
 slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)
@@ -191,8 +192,8 @@ slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float 
 				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor(pal);
 		cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
 		cm.setRange(min, max);
-		slimage::ParallelProcess(I, col, [&cm](const float* src, unsigned char* dst) {
-			cm(*src).writeRgb(dst);
+		slimage::ParallelProcess(I, col, [&cm](const slimage::It1f& src, const slimage::It3ub& dst) {
+			cm(*src).writeRgb(dst.pointer());
 		}, slimage::ThreadingOptions::UsePool(pool_id));
 	}
 	return col;
@@ -392,7 +393,7 @@ void DaspTracker::performSegmentationStep()
 				// plot segmentation graph
 				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(cnt_label);
 				clustering_.ForPixelClusters([&segments,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-					vis_img(pid) = colors[segments[cid]];
+					vis_img[pid] = colors[segments[cid]];
 				});
 			}
 			if(show_graph_) {
@@ -445,8 +446,8 @@ void DaspTracker::performSegmentationStep()
 			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
 			vis_seed_density = slimage::Convert_f_2_ub(seed_density, 20.0f);
 			vis_density_delta.resize(density.width(), density.height());
-			for(unsigned int i=0; i<density.getPixelCount(); i++) {
-				vis_density_delta(i) = plots::PlusMinusColor(density(i) - seed_density(i), 0.025f);
+			for(unsigned int i=0; i<density.size(); i++) {
+				vis_density_delta[i] = plots::PlusMinusColor(density[i] - seed_density[i], 0.025f);
 			}
 		}
 

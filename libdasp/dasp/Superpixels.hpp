@@ -75,8 +75,8 @@ namespace dasp
 			return world[2];
 		}
 
-	public:
-		 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+//	public:
+//		 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	};
 

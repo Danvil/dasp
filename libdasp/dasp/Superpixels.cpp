@@ -158,7 +158,7 @@ std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
 void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	slimage::Image3f colf(image.width(), image.height());
-	slimage::ParallelProcess(image, colf, [](const unsigned char* cub, float* cf) {
+	slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
 		cf[0] = float(cub[0]) / 255.0f;
 		cf[1] = float(cub[1]) / 255.0f;
 		cf[2] = float(cub[2]) / 255.0f;
@@ -183,12 +183,12 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 
 	points = ImagePoints(width, height);
 
-	const float* p_col = image.begin();
-	const uint16_t* p_depth = depth.begin();
+	slimage::It3f p_col = image.begin();
+	slimage::It1ui16 p_depth = depth.begin();
 //	const float* p_normals = normals.isNull() ? 0 : normals.begin();
 
 	for(unsigned int y=0; y<height; y++) {
-		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
+		for(unsigned int x=0; x<width; x++, ++p_col, ++p_depth) {
 			Point& p = points(x, y);
 			p.color[0] = p_col[0];
 			p.color[1] = p_col[1];
@@ -211,19 +211,22 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 		}
 	}
 
+	DANVIL_BENCHMARK_START(density)
+
 	// compute desired density
 	density = ComputeDepthDensity(points, opt);
+	DANVIL_BENCHMARK_STOP(density)
 
 	if(opt.count > 0) {
 		// sum density image
 		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
 		float p = static_cast<float>(opt.count) / density_sum;
-		std::for_each(density.begin(), density.end(), [p](float& v) { v *= p; });
+		std::for_each(density.begin(), density.end(), [p](const slimage::PixelAccess1f& v) { v *= p; });
 		opt.base_radius = opt.base_radius / std::sqrt(p);
 	}
 
 	for(unsigned int y=0; y<height; y++) {
-		for(unsigned int x=0; x<width; x++, p_col+=3, p_depth++) {
+		for(unsigned int x=0; x<width; x++) {
 			Point& p = points(x, y);
 			if(p.depth_i16 == 0) {
 				continue;
@@ -246,6 +249,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 //			}
 		}
 	}
+
 }
 
 //void Clustering::ComputeSuperpixels(const slimage::Image1f& edges)
@@ -615,27 +619,25 @@ void FindSeedsDepthMipmap_Walk(
 slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt)
 {
 	slimage::Image1f density(points.width(), points.height());
-	for(unsigned int i=0; i<points.height(); i++) {
-		for(unsigned int j=0; j<points.width(); j++) {
-			const Point& p = points(j,i);
-			/** Estimated number of super pixels at this point
-			 * We assume circular superpixels. So the area A of a superpixel at
-			 * point location is R*R*pi and the superpixel density is 1/A.
-			 * If the depth information is invalid, the density is 0.
-			 */
-			float cnt = p.isInvalid() ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
-			// Additionally the local gradient has to be considered.
-			// We assume local affine projection and compute the distortion
-			// factor.
-			float lambda = 1.0f;
-			if(opt.gradient_adaptive_density) {
-				lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
-				// max angle = 80 deg
-				lambda = std::min(lambda, 5.75f);
-			}
-//			lambda = std::min(20.0f, lambda); // limit
-			density(j,i) = lambda * cnt;
+	for(unsigned int i=0; i<points.size(); i++) {
+		const Point& p = points[i];
+		/** Estimated number of super pixels at this point
+		 * We assume circular superpixels. So the area A of a superpixel at
+		 * point location is R*R*pi and the superpixel density is 1/A.
+		 * If the depth information is invalid, the density is 0.
+		 */
+		float cnt = p.isInvalid() ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
+		// Additionally the local gradient has to be considered.
+		// We assume local affine projection and compute the distortion
+		// factor.
+		float lambda = 1.0f;
+		if(opt.gradient_adaptive_density) {
+			lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
+			// max angle = 80 deg
+			lambda = std::min(lambda, 5.75f);
 		}
+//		lambda = std::min(20.0f, lambda); // limit
+		density[i] = lambda * cnt;
 	}
 	return density;
 }
@@ -915,8 +917,8 @@ void Clustering::ComputeEdges(slimage::Image1f& edges)
 
 	// compute edges strength
 	edges.resize(width, height);
-	float* p_edge_begin = edges.begin();
-	slimage::ParallelProcess(edges, [this,p_edge_begin,width,height,&opt](float* p_edge) {
+	slimage::It1f p_edge_begin = edges.begin();
+	slimage::ParallelProcess(edges, [this,p_edge_begin,width,height,&opt](const slimage::It1f& p_edge) {
 		int i = p_edge - p_edge_begin;
 		int x = i % width;
 		int y = i / width;
@@ -950,8 +952,6 @@ void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& 
 	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 
-	const float* p_edges = edges.begin();
-
 	for(Seed& seed : seeds) {
 		int sx = seed.x;
 		int sy = seed.y;
@@ -961,7 +961,7 @@ void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& 
 			int ny = sy + dy8[i];
 			if(nx >= 0 && nx < int(width) && ny >= 0 && ny < int(height)) {
 				int nind = ny*width + nx;
-				if(p_edges[nind] < p_edges[bestid]) {
+				if(edges[nind] < edges[bestid]) {
 					bestid = nind;
 				}
 			}
