@@ -14,8 +14,6 @@
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
-#include <Danvil/Color/LAB.h>
-#include <Danvil/Color/HSV.h>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
@@ -129,47 +127,6 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	kinect_color_rgb = raw_kinect_color;
 
-	// convert rgb to lab
-	kinect_color.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
-	slimage::ParallelProcess(kinect_color_rgb, kinect_color, [](const slimage::It3ub& rgb, const slimage::It3f& lab) {
-		float r = float(rgb[0]) / 255.0f;
-		float g = float(rgb[1]) / 255.0f;
-		float b = float(rgb[2]) / 255.0f;
-
-//		Danvil::color_rgb_to_lab(r, g, b, r, g, b);
-//		r /= 1000.0f;
-//		g /= 100.0f;
-//		b /= 100.0f;
-
-//		float a = r + g + b;
-//		if(a > 0.05f) {
-//			r /= a;
-//			g /= a;
-//			b /= a;
-//		}
-//		else {
-//			r = 0;
-//			g = 0;
-//			b = 0;
-//		}
-
-//		float a = r + g + b;
-//		if(a > 0.05f) {
-//			r /= a;
-//			g /= a;
-//			b = a * 0.1;
-//		}
-//		else {
-//			r = 0;
-//			g = 0;
-//			b = 0;
-//		}
-
-		lab[0] = r;
-		lab[1] = g;
-		lab[2] = b;
-	}, slimage::ThreadingOptions::Single());
-
 	DANVIL_BENCHMARK_STOP(step)
 
 	performSegmentationStep();
@@ -223,7 +180,7 @@ void DaspTracker::performSegmentationStep()
 	// prepare super pixel points
 	DANVIL_BENCHMARK_START(points)
 	ImagePoints old_points = clustering_.points;
-	clustering_.CreatePoints(kinect_color, kinect_depth, kinect_normals);
+	clustering_.CreatePoints(kinect_color_rgb, kinect_depth, kinect_normals);
 	DANVIL_BENCHMARK_STOP(points)
 
 	// compute super pixel seeds
@@ -326,7 +283,7 @@ void DaspTracker::performSegmentationStep()
 
 	}
 
-	result_.resize(kinect_color.width(), kinect_color.height());
+	result_.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
 	if(has_hand_gmm_model_) {
 		result_ = slimage::Convert_f_2_ub(probability);
 	}

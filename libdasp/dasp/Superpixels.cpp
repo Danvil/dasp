@@ -12,6 +12,9 @@
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
+#include <Danvil/Color.h>
+#include <Danvil/Color/LAB.h>
+#include <Danvil/Color/HSV.h>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/random.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -158,11 +161,55 @@ std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
 void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	slimage::Image3f colf(image.width(), image.height());
-	slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
-		cf[0] = float(cub[0]) / 255.0f;
-		cf[1] = float(cub[1]) / 255.0f;
-		cf[2] = float(cub[2]) / 255.0f;
-	}, slimage::ThreadingOptions::Single());
+	// convert to desired color space
+	switch(opt.color_space) {
+	case ColorSpaces::RGB: {
+		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
+			float r = float(cub[0]) / 255.0f;
+			float g = float(cub[1]) / 255.0f;
+			float b = float(cub[2]) / 255.0f;
+			cf[0] = r;
+			cf[1] = g;
+			cf[2] = b;
+		}, slimage::ThreadingOptions::Single());
+	} break;
+	case ColorSpaces::HSV: {
+		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
+			float r = float(cub[0]) / 255.0f;
+			float g = float(cub[1]) / 255.0f;
+			float b = float(cub[2]) / 255.0f;
+			Danvil::color_rgb_to_lab(r, g, b, r, g, b);
+			r /= 1000.0f;
+			g /= 100.0f;
+			b /= 100.0f;
+			cf[0] = r;
+			cf[1] = g;
+			cf[2] = b;
+		}, slimage::ThreadingOptions::Single());
+	} break;
+	case ColorSpaces::HN: {
+		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
+			float r = float(cub[0]) / 255.0f;
+			float g = float(cub[1]) / 255.0f;
+			float b = float(cub[2]) / 255.0f;
+			float a = r + g + b;
+			if(a > 0.05f) {
+				r /= a;
+				g /= a;
+				b = a * 0.1;
+			}
+			else {
+				r = 0;
+				g = 0;
+				b = 0;
+			}
+			cf[0] = r;
+			cf[1] = g;
+			cf[2] = b;
+		}, slimage::ThreadingOptions::Single());
+	} break;
+	};
+	// compute points
 	CreatePoints(colf, depth, normals);
 }
 

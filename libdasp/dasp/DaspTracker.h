@@ -72,8 +72,6 @@ private:
 	slimage::Image1ui16 kinect_depth;
 	slimage::Image3ub kinect_color_rgb;
 
-	slimage::Image3f kinect_color;
-
 	slimage::Image1ub result_;
 
 	std::vector<dasp::Seed> seeds;

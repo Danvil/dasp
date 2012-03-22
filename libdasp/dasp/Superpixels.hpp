@@ -144,9 +144,17 @@ namespace dasp
 	}
 	typedef SeedModes::Type SeedMode;
 
+	namespace ColorSpaces {
+		enum Type {
+			RGB, HSV, HN
+		};
+	}
+	typedef ColorSpaces::Type ColorSpace;
+
 	struct Parameters
 	{
 		Parameters() {
+			color_space = ColorSpaces::HN;
 			weight_color = 1.0f;
 			weight_spatial = 1.0f;
 			weight_normal = 1.0f;
@@ -162,6 +170,8 @@ namespace dasp
 
 		/** camera parameters */
 		Camera camera;
+
+		ColorSpace color_space;
 
 		float weight_color;
 		float weight_spatial;
