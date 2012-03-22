@@ -136,8 +136,8 @@ void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, con
 	}
 }
 
-template<typename K, unsigned int CC>
-void PlotSeedsImpl(const slimage::Image<K,CC>& img, const std::vector<Seed>& seeds, const slimage::Pixel<K,CC>& color, int size)
+template<typename T>
+void PlotSeedsImpl(const slimage::Image<T>& img, const std::vector<Seed>& seeds, const slimage::Pixel<T>& color, int size)
 {
 	for(Seed s : seeds) {
 		// round position

@@ -221,7 +221,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 		// sum density image
 		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
 		float p = static_cast<float>(opt.count) / density_sum;
-		std::for_each(density.begin(), density.end(), [p](const slimage::PixelAccess1f& v) { v *= p; });
+		std::for_each(density.begin(), density.end(), [p](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v *= p; });
 		opt.base_radius = opt.base_radius / std::sqrt(p);
 	}
 
@@ -815,8 +815,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
 {
 #ifdef CREATE_DEBUG_IMAGES
-	slimage::Image3ub debug(points.width(), points.height());
-	debug.fill(slimage::Pixel3ub::Black());
+	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
 	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
 #endif
 
