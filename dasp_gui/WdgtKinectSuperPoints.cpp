@@ -24,6 +24,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	gui_params_->reload = &reload;
 	gui_params_->show();
 
+#if defined DASP_HAS_SIMPLEENGINE
 	LOG_NOTICE << "Creating OpenGL Widget ...";
 
 	view_ = Danvil::SimpleEngine::View::FactorDefaultPerspectiveView();
@@ -43,8 +44,9 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.tabs->addTab(gl_wdgt_, "3D");
 
 	boost::shared_ptr<Danvil::SimpleEngine::IRenderable> dasp_renderling(
-			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->RenderClusterMap(); }));
+			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->Render(); }));
 	scene_->addItem(dasp_renderling);
+#endif
 
 	LOG_NOTICE << "Starting Kinect ...";
 

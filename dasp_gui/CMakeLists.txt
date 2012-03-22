@@ -17,11 +17,19 @@ SET(dasp_gui_SOURCES
 	WdgtSuperpixelParameters.cpp
 	WdgtKinectSuperPoints.cpp
 )
+if (DASP_HAS_SIMPLEENGINE)
 SET(dasp_gui_HEADERS
 	WdgtKinectSuperPoints.h
 	WdgtSuperpixelParameters.h
 	../../DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GLSystemQtWindow.h
 )
+else (DASP_HAS_SIMPLEENGINE)
+SET(dasp_gui_HEADERS
+	WdgtKinectSuperPoints.h
+	WdgtSuperpixelParameters.h
+)
+endif (DASP_HAS_SIMPLEENGINE)
+
 SET(dasp_gui_FORMS
 	WdgtSuperpixelParameters.ui
 	WdgtKinectSuperPoints.ui

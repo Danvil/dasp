@@ -5,8 +5,10 @@
 #include "WdgtSuperpixelParameters.h"
 #include "KinectGrabber.h"
 #include <dasp/DaspTracker.h>
+#if defined DASP_HAS_SIMPLEENGINE
 #include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
 #include <Danvil/SimpleEngine.h>
+#endif
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
 #include <QtCore/QMutex>
@@ -34,10 +36,12 @@ public Q_SLOTS:
 	void OnSaveDebugImages();
 
 private:
+#if defined DASP_HAS_SIMPLEENGINE
  	PTR(Danvil::SimpleEngine::View) view_;
 	PTR(Danvil::SimpleEngine::Scene) scene_;
 	PTR(Danvil::SimpleEngine::Engine) engine_;
 	Danvil::SimpleEngine::GLSystemQtWindow* gl_wdgt_;
+#endif
 
 	QTimer timer_;
 
