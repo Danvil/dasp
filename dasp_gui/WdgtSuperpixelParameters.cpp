@@ -50,6 +50,8 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.doubleSpinBoxWeightNormal, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightNormal(double)));
 	QObject::connect(ui.doubleSpinBoxCoverage, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelCoverage(double)));
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
+	QObject::connect(ui.doubleSpinBoxDaspSegmentThreshold, SIGNAL(valueChanged(double)), this, SLOT(ChangeDaspSegmentThreshold(double)));
+
 
 	QObject::connect(ui.pushButtonColorModelTrain, SIGNAL(clicked()), this, SLOT(OnColorModelTrain()));
 	QObject::connect(ui.doubleSpinBoxColorSoftness, SIGNAL(valueChanged(double)), this, SLOT(ChangeColorModelSigmaScale(double)));
@@ -76,6 +78,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	dasp_tracker_->dasp_params->weight_normal = ui.doubleSpinBoxWeightNormal->value();
 	dasp_tracker_->dasp_params->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_tracker_->dasp_params->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
+	dasp_tracker_->dasp_params->segment_threshold = ui.doubleSpinBoxDaspSegmentThreshold->value();
 
 	dasp_tracker_->show_points_ = ui.checkBoxPlotPoints->isChecked();
 	dasp_tracker_->point_color_mode_ = (dasp::plots::ColorMode)(ui.comboBoxPlotPointsColor->itemData(ui.comboBoxPlotPointsColor->currentIndex()).toInt());
@@ -164,6 +167,12 @@ void WdgtSuperpixelParameters::ChangeSuperConquerEnclaves(int val)
 void WdgtSuperpixelParameters::ChangeSuperpixelCoverage(double val)
 {
 	dasp_tracker_->dasp_params->coverage = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeDaspSegmentThreshold(double val)
+{
+	dasp_tracker_->dasp_params->segment_threshold = val;
 	*reload = true;
 }
 

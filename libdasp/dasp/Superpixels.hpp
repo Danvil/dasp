@@ -184,6 +184,8 @@ namespace dasp
 
 		bool is_conquer_enclaves;
 
+		float segment_threshold;
+
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and
 		 * at given depth [kinect] on the image sensor

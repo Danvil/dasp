@@ -29,6 +29,7 @@ public Q_SLOTS:
 	void ChangeSuperpixelWeightNormal(double val);
 	void ChangeSuperConquerEnclaves(int val);
 	void ChangeSuperpixelCoverage(double val);
+	void ChangeDaspSegmentThreshold(double val);
 	void ChangeColorModelSigmaScale(double val);
 	void OnColorModelTrain();
 	void ChangePlotPoints(int state);
