@@ -1156,8 +1156,8 @@ graph::Graph Clustering::CreateNeighborhoodGraph() const
 			}
 			// test if superpixels have a common border
 			unsigned int cnt_j_in_i = std::count(borders[i].begin(), borders[i].end(), j);
-			unsigned int cnt_i_in_j = std::count(borders[j].begin(), borders[j].end(), i);
-			assert(cnt_j_in_i == cnt_i_in_j);
+//			unsigned int cnt_i_in_j = std::count(borders[j].begin(), borders[j].end(), i);
+//			assert(cnt_j_in_i == cnt_i_in_j);
 			float p = static_cast<float>(cnt_j_in_i) / static_cast<float>(std::min(borders[i].size(),borders[j].size()));
 			if(p < cMinCommonBorderPercentage) {
 				continue;
