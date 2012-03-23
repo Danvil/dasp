@@ -1110,20 +1110,61 @@ void Clustering::MoveClusters()
 //#endif
 }
 
+std::vector<int> ComputeBorder(unsigned int cid, const Clustering& spc, const slimage::Image1i& labels) {
+	const int w = static_cast<int>(spc.width());
+	const int h = static_cast<int>(spc.height());
+	const int d[4] = { -1, +1, -w, +w };
+	std::vector<int> border;
+	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
+		int x = pid % w;
+		int y = pid / w;
+		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
+			for(int i=0; i<4; i++) {
+				int label = labels[pid + d[i]];
+				if(label != cid && label != -1) {
+					border.push_back(label);
+				}
+			}
+		}
+	}
+	return border;
+}
+
+std::vector<std::vector<int> > ComputeBorders(const Clustering& spc) {
+	slimage::Image1i labels = spc.ComputeLabels();
+	std::vector<std::vector<int> > border_pixels(spc.cluster.size());
+	for(unsigned int cid=0; cid<spc.cluster.size(); cid++) {
+		border_pixels[cid] = ComputeBorder(cid, spc, labels);
+	}
+	return border_pixels;
+}
+
 graph::Graph Clustering::CreateNeighborhoodGraph() const
 {
+	const float cSpatialDistanceThreshold = 5.0f;
+	const float cMinCommonBorderPercentage = 0.05f;
+	std::vector<std::vector<int> > borders = ComputeBorders(*this);
 	graph::Graph G;
 	G.nodes_ = cluster.size();
-	const float node_distance_threshold = 3.0f * opt.base_radius;
+	const float node_distance_threshold = cSpatialDistanceThreshold * opt.base_radius;
 	for(unsigned int i=0; i<G.nodes_; i++) {
 		for(unsigned int j=i+1; j<G.nodes_; j++) {
 			float d = (cluster[i].center.world - cluster[j].center.world).norm();
-			// only connect if distance is smaller than threshold
-			if(d < node_distance_threshold) {
-				// compute cost using color and normal
-				float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
-				G.edges.push_back({i,j,cost});
+			// only test if distance is smaller than threshold
+			if(d > node_distance_threshold) {
+				continue;
 			}
+			// test if superpixels have a common border
+			unsigned int cnt_j_in_i = std::count(borders[i].begin(), borders[i].end(), j);
+			unsigned int cnt_i_in_j = std::count(borders[j].begin(), borders[j].end(), i);
+			assert(cnt_j_in_i == cnt_i_in_j);
+			float p = static_cast<float>(cnt_j_in_i) / static_cast<float>(std::min(borders[i].size(),borders[j].size()));
+			if(p < cMinCommonBorderPercentage) {
+				continue;
+			}
+			// compute cost using color and normal
+			float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
+			G.edges.push_back({i,j,cost});
 		}
 	}
 	return G;

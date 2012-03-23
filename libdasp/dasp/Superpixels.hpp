@@ -323,6 +323,7 @@ namespace dasp
 
 		void MoveClusters();
 
+		/** Creates the superpixel neighborhood graph. Superpixels are neighbors if they share border pixels. */
 		graph::Graph CreateNeighborhoodGraph() const;
 
 		struct Segmentation

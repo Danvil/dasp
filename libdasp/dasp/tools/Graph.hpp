@@ -27,6 +27,35 @@ namespace graph {
 		unsigned int nodes_;
 
 		std::vector<Edge> edges;
+
+		void mergeInto(unsigned int i_keep, unsigned int i_del) {
+			for(unsigned int i=0; i<edges.size(); i++) {
+				if(edges[i].a == i_del) {
+					edges[i].a = i_keep;
+				}
+				if(edges[i].b == i_del) {
+					edges[i].b = i_keep;
+				}
+			}
+			removeDuplicatedEdges();
+		}
+
+		void removeDuplicatedEdges() {
+			std::vector<Edge> neu;
+			for(unsigned int i=0; i<edges.size(); i++) {
+				bool keep = true;
+				for(unsigned int j=i+1; j<edges.size(); j++) {
+					if((edges[i].a == edges[j].a && edges[i].b == edges[j].b) || (edges[i].a == edges[j].b && edges[i].b == edges[j].a)) {
+						keep = false;
+						break;
+					}
+				}
+				if(keep) {
+					neu.push_back(edges[i]);
+				}
+			}
+			edges = neu;
+		}
 	};
 
 	Graph MinimalCostEdges(const Graph& input);
