@@ -153,20 +153,7 @@ namespace dasp
 
 	struct Parameters
 	{
-		Parameters() {
-			color_space = ColorSpaces::HN;
-			weight_color = 1.0f;
-			weight_spatial = 1.0f;
-			weight_normal = 1.0f;
-			weight_depth = 1.0f;
-			iterations = 3;
-			coverage = 1.7f;
-			base_radius = 0.02f;
-			count = 0;
-			seed_mode = SeedModes::DepthMipmap;
-			gradient_adaptive_density = true;
-			is_conquer_enclaves = true;
-		}
+		Parameters();
 
 		/** camera parameters */
 		Camera camera;

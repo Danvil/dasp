@@ -37,6 +37,22 @@ void SetRandomNumberSeed(unsigned int x)
 
 std::map<std::string,slimage::ImagePtr> sDebugImages;
 
+Parameters::Parameters()
+{
+	color_space = ColorSpaces::RGB;
+	weight_color = 1.0f;
+	weight_spatial = 1.0f;
+	weight_normal = 1.0f;
+	weight_depth = 1.0f;
+	iterations = 3;
+	coverage = 1.7f;
+	base_radius = 0.02f;
+	count = 0;
+	seed_mode = SeedModes::DepthMipmap;
+	gradient_adaptive_density = true;
+	is_conquer_enclaves = true;
+}
+
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 {
 	assert(hasPoints());
