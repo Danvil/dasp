@@ -6,9 +6,9 @@
  */
 
 #include "DaspTracker.h"
-#include "Mipmaps.hpp"
-#include "BlueNoise.hpp"
-#include "AutoDepth.hpp"
+#include "tools/Mipmaps.hpp"
+#include "tools/BlueNoise.hpp"
+#include "tools/AutoDepth.hpp"
 #include "Plots.hpp"
 #include <Slimage/Paint.hpp>
 #define DANVIL_ENABLE_BENCHMARK
@@ -339,26 +339,28 @@ void DaspTracker::performSegmentationStep()
 
 		if(show_graph_ || plot_segments_) {
 			// create neighbourhood graph
-			SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+			graph::Graph Gn = clustering_.CreateNeighborhoodGraph();
 
+			Clustering::Segmentation segments;
 			if(plot_segments_) {
 				// create segmentation graph
-				unsigned int cnt_label;
-				std::vector<unsigned int> segments = clustering_.CreateSegments(G, &cnt_label);
-				std::cout << "Nodes: " << segments.size() << ", Labels=" << cnt_label << std::endl;
+				segments = clustering_.CreateSegmentation(Gn);
+				std::cout << "Cluster Count: " << segments.countClusters() << ", Segment Count: " << segments.countSegments() << std::endl;
 
 				// plot segmentation graph
-				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(cnt_label);
+				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(segments.countSegments());
 				clustering_.ForPixelClusters([&segments,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-					vis_img[pid] = colors[segments[cid]];
+					vis_img[pid] = colors[segments.cluster_labels[cid]];
 				});
 			}
+
 			if(show_graph_) {
+				graph::Graph Gp = plot_segments_ ? segments.segmentation_graph : Gn;
 				// plot neighbourhood graph
-				for(unsigned int i=0; i<G.nodes_.size(); i++) {
-					for(unsigned int k : G.node_connections_[i]) {
-						slimage::PaintLine(vis_img, G.nodes_[i].x, G.nodes_[i].y, G.nodes_[k].x, G.nodes_[k].y, slimage::Pixel3ub{{255,255,255}});
-					}
+				for(graph::Edge& e : Gp.edges) {
+					const Point& a = clustering_.cluster[e.a].center;
+					const Point& b = clustering_.cluster[e.b].center;
+					slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});
 				}
 			}
 		}
@@ -536,10 +538,10 @@ void DaspTracker::trainInitialColorModel()
 		std::cout << std::sqrt(std::abs(Danvil::ctLinAlg::Det(hand_gmm_model_.gaussians_[0].sigma()))) << std::endl;
 		has_hand_gmm_model_ = true;
 
-		// collect histograms for superpixels
-		model_.reset(new SuperpixelHistogramModel());
-		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
-		model_->train(G, clusters_selected_id);
+//		// collect histograms for superpixels
+//		model_.reset(new SuperpixelHistogramModel());
+//		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+//		model_->train(G, clusters_selected_id);
 	}
 
 	DANVIL_BENCHMARK_STOP(Hand_V3_Init)

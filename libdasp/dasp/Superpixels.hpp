@@ -9,8 +9,8 @@
 #define SUPERPIXELS_HPP_
 
 #include "Tools.hpp"
-#include "SuperpixelHistogram.hpp"
-#include "SuperpixelGraph.hpp"
+//#include "SuperpixelHistogram.hpp"
+#include "tools/Graph.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
@@ -336,10 +336,26 @@ namespace dasp
 
 		void MoveClusters();
 
-		SuperpixelGraph CreateNeighborhoodGraph() const;
+		graph::Graph CreateNeighborhoodGraph() const;
+
+		struct Segmentation
+		{
+			std::vector<unsigned int> cluster_labels;
+			unsigned int segment_count;
+			graph::Graph cluster_graph;
+			graph::Graph segmentation_graph;
+
+			unsigned int countSegments() const {
+				return segment_count;
+			}
+
+			unsigned int countClusters() const {
+				return cluster_graph.nodes_;
+			}
+		};
 
 		/** Create clusters of superpixels (= segments) */
-		std::vector<unsigned int> CreateSegments(const SuperpixelGraph& neighbourhood, unsigned int* cnt_label) const;
+		Segmentation CreateSegmentation(const graph::Graph& neighbourhood) const;
 
 		/**
 		 * Signature of F :

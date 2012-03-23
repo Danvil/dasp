@@ -1,5 +1,6 @@
-file(GLOB my_sources dasp/*.cpp)
-add_library(libdasp SHARED ${my_sources})
+file(GLOB my_sources1 dasp/*.cpp)
+file(GLOB my_sources2 dasp/tools/*.cpp)
+add_library(libdasp SHARED ${my_sources1} ${my_sources2})
 
 set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 

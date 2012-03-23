@@ -6,15 +6,13 @@
  */
 
 
-#include "TreeReduction.hpp"
+#include "Graph.hpp"
 #include <algorithm>
 #include <map>
 #include <cmath>
 
-namespace Romeo {
-
-namespace TreeReduction
-{
+namespace dasp {
+namespace graph {
 
 	Graph MinimalCostEdges(const Graph& input)
 	{
@@ -91,6 +89,4 @@ namespace TreeReduction
 		return graph;
 	}
 
-};
-
-}
+}}

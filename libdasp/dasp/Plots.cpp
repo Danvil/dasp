@@ -12,6 +12,7 @@
 #include <Danvil/SimpleEngine/GlHelpers.h>
 #endif
 #include <Slimage/Paint.hpp>
+#include <Danvil/LinAlg/Eigen.hpp>
 #include <Eigen/Geometry>
 #include <cmath>
 //----------------------------------------------------------------------------//

@@ -6,9 +6,9 @@
  */
 
 #include "Superpixels.hpp"
-#include "Mipmaps.hpp"
-#include "BlueNoise.hpp"
-#include "TreeReduction.hpp"
+#include "tools/Mipmaps.hpp"
+#include "tools/BlueNoise.hpp"
+#include "tools/Graph.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
@@ -1094,53 +1094,40 @@ void Clustering::MoveClusters()
 //#endif
 }
 
-SuperpixelGraph Clustering::CreateNeighborhoodGraph() const
+graph::Graph Clustering::CreateNeighborhoodGraph() const
 {
-	SuperpixelGraph G;
-	for(const dasp::Cluster& c : cluster) {
-		SuperpixelState s;
-		s.x = c.center.spatial_x();
-		s.y = c.center.spatial_y();
-		s.color = c.center.color;
-		s.normal = c.center.normal;
-		s.position = c.center.world;
-		s.scala = c.center.image_super_radius;
-		G.nodes_.push_back(s);
+	graph::Graph G;
+	G.nodes_ = cluster.size();
+	const float node_distance_threshold = 3.0f * opt.base_radius;
+	for(unsigned int i=0; i<G.nodes_; i++) {
+		for(unsigned int j=i+1; j<G.nodes_; j++) {
+			float d = (cluster[i].center.world - cluster[j].center.world).norm();
+			// only connect if distance is smaller than threshold
+			if(d < node_distance_threshold) {
+				// compute cost using color and normal
+				float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
+				G.edges.push_back({i,j,cost});
+			}
+		}
 	}
-	G.createConnections(3.0f * opt.base_radius);
 	return G;
 }
 
-std::vector<unsigned int> Clustering::CreateSegments(const SuperpixelGraph& Gn, unsigned int* cnt_label) const
+Clustering::Segmentation Clustering::CreateSegmentation(const graph::Graph& Gn) const
 {
-	// create graph
-	Romeo::TreeReduction::Graph graph;
-	graph.nodes_ = cluster.size();
-	for(unsigned int i=0; i<Gn.node_connections_.size(); i++) {
-		for(unsigned int j : Gn.node_connections_[i]) {
-			float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
-			graph.edges.push_back(Romeo::TreeReduction::Edge{i,j,cost});
-		}
-	}
+	Segmentation seg;
+	seg.cluster_graph = Gn;
 	// graph segmentation
-	std::vector<unsigned int> labels;
-	Romeo::TreeReduction::MinimalSpanningCutting(graph, 10.f, &labels);
-	// remap labels
-	std::set<unsigned int> unique_labels_set(labels.begin(), labels.end());
+	seg.segmentation_graph = graph::MinimalSpanningCutting(seg.cluster_graph, 10.f, &seg.cluster_labels);
+	// remap labels to get a continuous interval of labels
+	std::set<unsigned int> unique_labels_set(seg.cluster_labels.begin(), seg.cluster_labels.end());
 	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
-	*cnt_label = unique_labels.size();
-	for(unsigned int& x : labels) {
+	seg.segment_count = unique_labels.size();
+	for(unsigned int& x : seg.cluster_labels) {
 		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
 		x = it - unique_labels.begin();
 	}
-	return labels;
-
-//	std::vector<unsigned int> labels(nodes_.size());
-//	for(unsigned int i=0; i<labels.size(); i++) {
-//		labels[i] = i;
-//	}
-//	*max_label = nodes_.size() - 1;
-//	return labels;
+	return seg;
 }
 
 ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_thick)

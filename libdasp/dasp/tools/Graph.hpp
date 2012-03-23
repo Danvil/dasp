@@ -5,25 +5,27 @@
  *      Author: david
  */
 
-#ifndef TREEREDUCTION_HPP_
-#define TREEREDUCTION_HPP_
+#ifndef DASP_GRAPH_HPP_
+#define DASP_GRAPH_HPP_
 
 #include <vector>
 
-namespace Romeo {
+namespace dasp {
+namespace graph {
 
-namespace TreeReduction
-{
-
-	struct Edge {
+	struct Edge
+	{
 		unsigned int a, b;
 		float cost;
 	};
 
 	struct Graph {
 		Graph() : nodes_(0) {}
+
 		Graph(unsigned int n) : nodes_(n) {}
+
 		unsigned int nodes_;
+
 		std::vector<Edge> edges;
 	};
 
@@ -31,8 +33,6 @@ namespace TreeReduction
 
 	Graph MinimalSpanningCutting(const Graph& input, const float cut_param, std::vector<unsigned int>* labels=0);
 
-};
+}}
 
-}
-
-#endif /* TREEREDUCTION_HPP_ */
+#endif

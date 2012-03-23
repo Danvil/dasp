@@ -9,7 +9,6 @@
 #define DASPTRACKER_H_
 //----------------------------------------------------------------------------//
 #include "Superpixels.hpp"
-#include "SuperpixelHistogram.hpp"
 #include "Plots.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Danvil/Statistics/GMM.h>
@@ -79,7 +78,6 @@ private:
 	Clustering clustering_;
 
 	bool has_hand_gmm_model_;
-	boost::shared_ptr<SuperpixelHistogramModel> model_;
 	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;
 
     plots::ClusterSelection selection_;
