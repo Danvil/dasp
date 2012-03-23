@@ -15,6 +15,7 @@
 #include <Danvil/LinAlg/Eigen.hpp>
 #include <Eigen/Geometry>
 #include <cmath>
+#include <iostream>
 //----------------------------------------------------------------------------//
 namespace dasp {
 namespace plots {
