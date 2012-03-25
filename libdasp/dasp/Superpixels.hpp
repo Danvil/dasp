@@ -249,6 +249,8 @@ namespace dasp
 		 */
 		float coverage_error;
 
+		float area_error;
+
 		void UpdateCenter(const ImagePoints& points, const Parameters& opt);
 
 		void ComputeExt(const ImagePoints& points, const Parameters& opt);

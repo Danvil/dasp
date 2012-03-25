@@ -97,13 +97,13 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 
 	// eigenvalues are the square of the standard deviation!
 
-	thickness = cSigmaScale * std::sqrt(ew(0)) * 2.0f;
+	thickness = cSigmaScale * std::sqrt(std::abs(ew(0))) * 2.0f;
 
-	circularity = std::sqrt(ew(1) / ew(2));
+	circularity = std::sqrt(std::abs(ew(1) / ew(2)));
 
-	eccentricity = std::sqrt(1.0f - ew(1) / ew(2));
+	eccentricity = std::sqrt(1.0f - std::abs(ew(1) / ew(2)));
 
-	area_quotient = cSigmaScale * cSigmaScale * std::sqrt(ew(1) * ew(2)) / (opt.base_radius * opt.base_radius);
+	area_quotient = cSigmaScale * cSigmaScale * std::sqrt(std::abs(ew(1) * ew(2))) / (opt.base_radius * opt.base_radius);
 
 }
 
@@ -122,7 +122,7 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 
 	{
 		float error_area = 0;
-//		float expected_area = 0;
+		float expected_area = 0;
 		int cx = center.spatial_x();
 		int cy = center.spatial_y();
 		int R = int(2.0f * center.image_super_radius);
@@ -144,16 +144,15 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 				if(expected != actual) {
 					error_area += area_of_a_px;
 				}
-//				if(expected) {
-//					expected_area += area_of_a_px;
-//				}
+				if(expected) {
+					expected_area += area_of_a_px;
+				}
 			}
 		}
-		float real_expected_area = M_PI * opt.base_radius * opt.base_radius;
 //		std::cout << 10000.0f*error_area << " - " << 10000.0f*expected_area << " - " << 10000.0f*real_expected_area << std::endl;
-		//float expected_area = opt.base_radius*opt.base_radius*M_PI;
-//		infos.coverage = error_area / expected_area;
-		coverage_error = error_area / real_expected_area;
+		coverage_error = (expected_area == 0) ? 0 : error_area / expected_area;
+		float real_expected_area = M_PI * opt.base_radius * opt.base_radius;
+		area_error = expected_area / real_expected_area;
 	}
 
 }
