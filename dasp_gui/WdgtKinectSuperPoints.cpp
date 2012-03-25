@@ -167,7 +167,10 @@ void WdgtKinectSuperPoints::OnLive()
 
 void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
-	save_debug_next_ = true;
+	for(auto p : dasp_tracker_->getImages()) {
+		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
+	}
+//	save_debug_next_ = true;
 }
 
 void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
@@ -191,12 +194,9 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	dasp::SetRandomNumberSeed(0);
 	dasp_tracker_->step(kinect_depth, kinect_color);
 
-	if(save_debug_next_) {
-		for(auto p : dasp_tracker_->getImages()) {
-			slimage::Save(p.second, p.first + ".png");
-		}
-		save_debug_next_ = false;
-	}
+//	if(save_debug_next_) {
+//		save_debug_next_ = false;
+//	}
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()
