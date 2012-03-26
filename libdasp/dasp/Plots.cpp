@@ -100,7 +100,8 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
 }
 
-void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
+template<typename T>
+void PlotEdgesImpl(const slimage::Image<T>& img, const slimage::Image1i& labels, const slimage::Pixel<T>& color, unsigned int size, bool internal)
 {
 	assert(img.dimensions() == labels.dimensions());
 
@@ -136,6 +137,16 @@ void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, con
 			}
 		}
 	}
+}
+
+void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
+{
+	PlotEdgesImpl(img, labels, color, size, internal);
+}
+
+void PlotEdges(const slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size, bool internal)
+{
+	PlotEdgesImpl(img, labels, color, size, internal);
 }
 
 template<typename T>

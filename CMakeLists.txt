@@ -26,4 +26,5 @@ add_subdirectory(dasp_cmd)
 add_subdirectory(boundary_recall)
 add_subdirectory(redcarpet)
 add_subdirectory(dasp_gui)
+add_subdirectory(segments_precision_recall)
 
