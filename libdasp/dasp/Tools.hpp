@@ -272,9 +272,9 @@ inline Eigen::Vector2f LocalDepthGradient(const slimage::Image1ui16& depth, unsi
 
 	Eigen::Vector2f g(camera.convertKinectToMeter(dx) * scl, camera.convertKinectToMeter(dy) * scl);
 
-	const float cGMax = 3.0f;
-	g[0] = std::min(+cGMax, std::max(-cGMax, g[0]));
-	g[1] = std::min(+cGMax, std::max(-cGMax, g[1]));
+//	const float cGMax = 3.0f;
+//	g[0] = std::min(+cGMax, std::max(-cGMax, g[0]));
+//	g[1] = std::min(+cGMax, std::max(-cGMax, g[1]));
 
 	return g;
 }

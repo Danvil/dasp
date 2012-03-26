@@ -315,7 +315,11 @@ void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, Color
 	for(size_t i=0; i<c.cluster.size(); i++) {
 		if(selection[i]) {
 			const Cluster& cluster = c.cluster[i];
-			slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), colors[i], size);
+			slimage::Pixel3ub color = colors[i];
+			if(!cluster.hasPoints()) {
+				color = {{255,0,0}};
+			}
+			slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), color, size);
 		}
 	}
 }
@@ -377,14 +381,15 @@ void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub&
 	glPolygonMode(GL_BACK, GL_LINE);
 	// render circle at position
 	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.world);
-	Eigen::Vector3f v = cluster.center.world.cross(cluster.center.normal).normalized();
-	Eigen::Vector3f u = v.cross(cluster.center.normal);
+	Eigen::Vector3f n = cluster.center.computeNormal();
+	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
+	Eigen::Vector3f u = v.cross(n);
 	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);
 	Danvil::ctLinAlg::Vec3f minor = r * Danvil::ctLinAlg::Convert(u);
 	glColor3ub(color[0], color[1], color[2]);
 	Danvil::SimpleEngine::Primitives::RenderEllipseCap(pos, major, minor);
 	glColor3f(0.9f, 0.9f, 0.9f);
-	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(cluster.center.normal));
+	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(n));
 }
 
 void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float r, const slimage::Pixel3ub& color)

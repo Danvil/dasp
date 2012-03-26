@@ -13,4 +13,3 @@ if (DASP_HAS_SIMPLEENGINE)
 	include_directories(../../DanvilTools/SimpleEngine/src)
 	target_link_libraries(libdasp DanvilSimpleEngine)
 endif (DASP_HAS_SIMPLEENGINE)
-

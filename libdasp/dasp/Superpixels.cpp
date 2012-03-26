@@ -6,8 +6,6 @@
  */
 
 #include "Superpixels.hpp"
-#include "tools/Mipmaps.hpp"
-#include "tools/BlueNoise.hpp"
 #include "tools/Graph.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
@@ -16,7 +14,6 @@
 #include <Danvil/Color/LAB.h>
 #include <Danvil/Color/HSV.h>
 #include <eigen3/Eigen/Eigenvalues>
-#include <boost/random.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <queue>
 #include <set>
@@ -28,13 +25,6 @@
 namespace dasp {
 //------------------------------------------------------------------------------
 
-boost::mt19937 cGlobalRndRng;
-
-void SetRandomNumberSeed(unsigned int x)
-{
-	cGlobalRndRng.seed(x);
-}
-
 std::map<std::string,slimage::ImagePtr> sDebugImages;
 
 Parameters::Parameters()
@@ -43,7 +33,7 @@ Parameters::Parameters()
 	weight_color = 1.0f;
 	weight_spatial = 1.0f;
 	weight_normal = 1.0f;
-	weight_depth = 1.0f;
+	weight_depth = 0.0f;
 	iterations = 3;
 	coverage = 1.7f;
 	base_radius = 0.02f;
@@ -73,6 +63,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	center.world = mean_world / float(pixel_ids.size());
 	center.pos = opt.camera.project(center.world);
 	center.depth_i16 = opt.camera.depth(center.world);
+	center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
 
 	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
@@ -80,20 +71,20 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	ew = solver.eigenvalues();
 	ev = solver.eigenvectors();
 
-	center.normal = ev.col(0).normalized();
-	if(center.normal[2] == 0.0f) {
-		center.normal[2] = -0.01f;
+	Eigen::Vector3f normal = ev.col(0);
+	if(normal[2] == 0.0f) {
+		normal[2] = -0.01f;
 	}
-	if(center.normal[2] > 0.0f) {
-		center.normal *= -1.0f;
+	else if(normal[2] > 0.0f) {
+		normal *= -1.0f;
 	}
-	center.gradient[0] = - center.normal[0] / center.normal[2];
-	center.gradient[1] = - center.normal[1] / center.normal[2];
+	normal.normalize();
+	center.gradient[0] = - normal[0] / normal[2];
+	center.gradient[1] = - normal[1] / normal[2];
+	center.circularity = std::abs(normal[2]); // == 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
 
 //	center.normal = points(center.pos).normal;
 //	center.gradient = points(center.pos).gradient;
-
-	// scala is not changed!
 
 	// eigenvalues are the square of the standard deviation!
 
@@ -113,47 +104,54 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 	dist.reserve(pixel_ids.size());
 	for(unsigned int id : pixel_ids) {
 		Eigen::Vector3f p = points[id].world - center.world;
-		float d = p.dot(center.normal);
+		float d = p.dot(center.computeNormal());
 		dist.push_back(d);
 	}
 	unsigned int nth = static_cast<unsigned int>(cPercentage * static_cast<float>(dist.size()));
 	std::nth_element(dist.begin(), dist.begin() + nth, dist.end());
-	thickness_plane = 2.0f * (*(dist.begin() + nth));
+	thickness_plane = (*(dist.begin() + nth));
 
 	{
+		area_actual = 0.0f;
+		area_expected = 0.0f;
 		float error_area = 0;
-		float expected_area = 0;
 		int cx = center.spatial_x();
 		int cy = center.spatial_y();
-		int R = int(2.0f * center.image_super_radius);
+		int R = int(center.image_super_radius * opt.coverage * 1.5f);
 		unsigned int xmin = std::max(0, cx - R);
-		unsigned int xmax = std::min(int(points.width()), cx + R);
+		unsigned int xmax = std::min(int(points.width()-1), cx + R);
 		unsigned int ymin = std::max(0, cy - R);
-		unsigned int ymax = std::min(int(points.height()), cy + R);
-		for(unsigned int y=ymin; y<ymax; y++) {
-			for(unsigned int x=xmin; x<xmax; x++) {
+		unsigned int ymax = std::min(int(points.height()-1), cy + R);
+		for(unsigned int y=ymin; y<=ymax; y++) {
+			for(unsigned int x=xmin; x<=xmax; x++) {
 				unsigned int i = points.index(x,y);
 				const Point& p = points[i];
 				Eigen::Vector3f t = p.world - center.world;
-				float lam = t.dot(center.normal);
+				float lam = t.dot(center.computeNormal());
 				float d2 = t.squaredNorm() - lam*lam;
-				bool expected = d2 < opt.base_radius*opt.base_radius;
+				bool expected = lam < thickness_plane && d2 < opt.base_radius*opt.base_radius;
 				bool actual = std::find(pixel_ids.begin(), pixel_ids.end(), i) != pixel_ids.end();
 				float size_of_a_px = p.depth() / opt.camera.focal;
-				float area_of_a_px = size_of_a_px*size_of_a_px*std::sqrt(p.gradient.squaredNorm() + 1.0f);
-				if(expected != actual) {
-					error_area += area_of_a_px;
+				float area_of_a_px = size_of_a_px*size_of_a_px / p.circularity;
+				if(actual) {
+					area_actual += area_of_a_px;
 				}
 				if(expected) {
-					expected_area += area_of_a_px;
+					area_expected += area_of_a_px;
+				}
+				if(actual != expected) {
+					error_area += area_of_a_px;
 				}
 			}
 		}
 //		std::cout << 10000.0f*error_area << " - " << 10000.0f*expected_area << " - " << 10000.0f*real_expected_area << std::endl;
-		coverage_error = (expected_area == 0) ? 0 : error_area / expected_area;
-		float real_expected_area = M_PI * opt.base_radius * opt.base_radius;
-		area_error = expected_area / real_expected_area;
+		coverage_error = (area_expected == 0) ? 0 : error_area / area_expected;
+		area_expected_global = M_PI * opt.base_radius * opt.base_radius;
 	}
+
+	// we delay the multiplication with two, so that we do not need to divide
+	// by two in the computation of the area error
+	thickness_plane *= 2.0f;
 
 }
 
@@ -231,9 +229,13 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 
 void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
+	assert(normals.isNull());
+
+	const float cTempBaseRadius = 0.025f;
+
 	// compute base radius from desired super pixel count
 	if(opt.count > 0) {
-		opt.base_radius = 0.02f;
+		opt.base_radius = cTempBaseRadius;
 	}
 
 	unsigned int width = image.width();
@@ -248,7 +250,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 
 	slimage::It3f p_col = image.begin();
 	slimage::It1ui16 p_depth = depth.begin();
-//	const float* p_normals = normals.isNull() ? 0 : normals.begin();
+	//const float* p_normals = normals.isNull() ? 0 : normals.begin();
 
 	for(unsigned int y=0; y<height; y++) {
 		for(unsigned int x=0; x<width; x++, ++p_col, ++p_depth) {
@@ -261,7 +263,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 				p.world = Eigen::Vector3f::Zero();
 				p.image_super_radius = 0.0f;
 				p.gradient = Eigen::Vector2f::Zero();
-				p.normal = Eigen::Vector3f::Zero();
+				p.circularity = 1.0f;
 			}
 			else {
 				float scala = opt.camera.scala(p.depth_i16);
@@ -270,6 +272,12 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
 				p.world = opt.camera.unprojectUsingScala(x, y, scala);
+				// FIXME in count mode the gradient is computed using a default radius of 0.02
+				// FIXME regardless of the radius chosen later
+				p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
+				p.circularity = Danvil::MoreMath::FastInverseSqrt(p.gradient.squaredNorm() + 1.0f);
+				// limit minimal circularity such that the maximum angle is 80 deg
+				p.circularity = std::max(p.circularity, 0.173913043f);
 			}
 		}
 	}
@@ -285,31 +293,11 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
 		float p = static_cast<float>(opt.count) / density_sum;
 		std::for_each(density.begin(), density.end(), [p](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v *= p; });
+		// correct base radius
 		opt.base_radius = opt.base_radius / std::sqrt(p);
-	}
-
-	for(unsigned int y=0; y<height; y++) {
-		for(unsigned int x=0; x<width; x++) {
-			Point& p = points(x, y);
-			if(p.depth_i16 == 0) {
-				continue;
-			}
-			float scala = opt.camera.scala(p.depth_i16);
-			p.image_super_radius = opt.base_radius * scala;
-			p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
-//			if(p_normals != 0) {
-//				p.normal[0] = p_normals[0];
-//				p.normal[1] = p_normals[1];
-//				p.normal[2] = p_normals[2];
-//				p_normals += 3;
-//			}
-//			else {
-				p.normal[0] = p.gradient[0];
-				p.normal[1] = p.gradient[1];
-				p.normal[2] = -1.0f;
-				p.normal *= Danvil::MoreMath::FastInverseSqrt(p.normal.squaredNorm());
-				//p.normal.normalize();
-//			}
+		// correct image_base_radius
+		for(unsigned int i=0; i<points.size(); i++) {
+			points[i].image_super_radius *= opt.base_radius / cTempBaseRadius;
 		}
 	}
 
@@ -327,9 +315,19 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
 	CreateClusters(seeds);
+//	std::cout << std::endl << " 0: n=" << cluster.size() << std::endl;
+//	for(unsigned int i=0; i<cluster.size(); i++) {
+//		std::cout << cluster[i].pixel_ids.size() << " ";
+//	}
+//	std::cout << std::endl;
 	for(unsigned int i=0; i<opt.iterations; i++) {
 		MoveClusters();
+//		std::cout << i+1 << ": n=" << cluster.size() << std::endl;
+//		for(unsigned int j=0; j<cluster.size(); j++) {
+//			std::cout << cluster[j].pixel_ids.size() << " ";
+//		}
 	}
+//	std::cout << std::endl;
 	if(opt.is_conquer_enclaves) {
 		//ConquerEnclaves();
 		ConquerMiniEnclaves();
@@ -558,383 +556,6 @@ slimage::Image1i Clustering::ComputeLabels() const
 	}
 	return img;
 }
-
-std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
-{
-//	const float d = std::sqrt(float(opt.width*opt.height) / float(opt.cluster_count));
-//	const unsigned int Nx = (unsigned int)std::ceil(float(opt.width) / d);
-//	const unsigned int Ny = (unsigned int)std::ceil(float(opt.height) / d);
-//	const unsigned int Dx = (unsigned int)std::floor(float(opt.width) / float(Nx));
-//	const unsigned int Dy = (unsigned int)std::floor(float(opt.height) / float(Ny));
-//	const unsigned int Hx = Dx/2;
-//	const unsigned int Hy = Dy/2;
-//	const float S = float(std::max(Dx, Dy));
-
-	// assume that everything has a distance of 1.5 meters
-	const float cAssumedDistance = 1.5f;
-	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
-	unsigned int Dx = R;
-	unsigned int Dy = R;
-	unsigned int Hx = Dx/2;
-	unsigned int Hy = Dy/2;
-	unsigned int Nx = points.width() / Dx;
-	unsigned int Ny = points.height() / Dy;
-
-	// space seeds evently
-	std::vector<Seed> seeds;
-	seeds.reserve(Nx*Ny);
-	for(unsigned int iy=0; iy<Ny; iy++) {
-		unsigned int y = Hy + Dy * iy;
-		for(unsigned int ix=0; ix<Nx; ix++) {
-			unsigned int x = Hx + Dx * ix;
-			Seed p;
-			p.x = x;
-			p.y = y;
-			p.scala = R;
-			seeds.push_back(p);
-		}
-	}
-
-	return seeds;
-}
-
-std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	assert(false && "FindSeedsRandom: Not implemented!");
-//	constexpr float cCameraFocal = 25.0f;
-//	// for each pixel compute number of expected clusters
-//	std::vector<float> cdf(points.size());
-//	for(unsigned int i=0; i<points.size(); i++) {
-//		uint16_t zi = *(depth->begin() + i);
-//		float z = 0.001f * float(zi);
-//		float v = z * z;
-//		cdf[i] = (i == 0) ? v : (v + cdf[i-1]);
-//	}
-//	float sum = cdf[cdf.size() - 1];
-//	boost::uniform_real<float> rnd(0.0f, sum);
-//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-//	// randomly pick clusters based on probability
-//	std::vector<Seed> seeds;
-//	seeds.reserve(opt.cluster_count);
-//	while(seeds.size() < opt.cluster_count) {
-//		Seed s;
-//		float rnd = die();
-//		auto it = std::lower_bound(cdf.begin(), cdf.end(), rnd);
-//		unsigned int index = it - cdf.begin() - 1;
-//		uint16_t zi = *(depth->begin() + index);
-//		if(zi == 0) {
-//			continue;
-//		}
-//		float z = 0.001f * float(zi);
-//		s.x = index % opt.width;
-//		s.y = index / opt.width;
-//		s.radius = cCameraFocal / z;
-//		seeds.push_back(s);
-//	}
-//	return seeds;
-}
-
-void FindSeedsDepthMipmap_Walk(
-		const ImagePoints& points,
-		std::vector<Seed>& seeds,
-		const std::vector<slimage::Image1f>& mipmaps,
-		int level, unsigned int x, unsigned int y)
-{
-	static boost::uniform_real<float> rnd(0.0f, 1.0f);
-	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-
-	const slimage::Image1f& mm = mipmaps[level];
-
-	float v = mm(x, y);
-
-	if(v > 1.0f && level > 1) { // do not access mipmap 0!
-		// go down
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
-	}
-	else {
-		if(die() < v)
-		{
-			Seed s;
-			unsigned int half = (1 << (level - 1));
-			// create seed in the middle
-			s.x = (x << level) + half;
-			s.y = (y << level) + half;
-			// add random offset to add noise
-
-			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
-					cGlobalRndRng, boost::uniform_int<>(-int(half/2), +int(half/2)));
-			s.x += delta();
-			s.y += delta();
-			if(s.x < int(points.width()) && s.y < int(points.height())) {
-				s.scala = points(s.x, s.y).image_super_radius;
-//				std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
-				if(s.scala >= 2.0f) {
-					seeds.push_back(s);
-				}
-			}
-		}
-	}
-}
-
-slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt)
-{
-	slimage::Image1f density(points.width(), points.height());
-	for(unsigned int i=0; i<points.size(); i++) {
-		const Point& p = points[i];
-		/** Estimated number of super pixels at this point
-		 * We assume circular superpixels. So the area A of a superpixel at
-		 * point location is R*R*pi and the superpixel density is 1/A.
-		 * If the depth information is invalid, the density is 0.
-		 */
-		float cnt = p.isInvalid() ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
-		// Additionally the local gradient has to be considered.
-		// We assume local affine projection and compute the distortion
-		// factor.
-		float lambda = 1.0f;
-		if(opt.gradient_adaptive_density) {
-			lambda = std::sqrt(p.gradient.squaredNorm() + 1.0f);
-			// max angle = 80 deg
-			lambda = std::min(lambda, 5.75f);
-		}
-//		lambda = std::min(20.0f, lambda); // limit
-		density[i] = lambda * cnt;
-	}
-	return density;
-}
-
-slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt)
-{
-	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
-	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
-	slimage::Image1f density(target.width(), target.height());
-	density.fill(slimage::Pixel1f{0.0f});
-	for(const Seed& s : seeds) {
-		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-		float rho = target(s.x, s.y);
-//		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
-//			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
-//			rho *= 0.25f;
-//		}
-		// dimension is 2!
-		float norm = rho;
-		float sigma = 1.0f / std::sqrt(norm);
-		float sigma_inv_2 = norm;
-		// kernel influence range
-		int R = static_cast<int>(std::ceil(cRange * sigma));
-		int xmin = std::max<int>(s.x - R, 0);
-		int xmax = std::min<int>(s.x + R, int(target.width()) - 1);
-		int ymin = std::max<int>(s.y - R, 0);
-		int ymax = std::min<int>(s.y + R, int(target.height()) - 1);
-		for(int yi=ymin; yi<=ymax; yi++) {
-			for(int xi=xmin; xi<=xmax; xi++) {
-				float d = static_cast<float>(Square(xi - s.x) + Square(yi - s.y));
-				float delta = norm * BlueNoise::KernelFunctorSquare(d*sigma_inv_2);
-				density(xi, yi) += delta;
-			}
-		}
-	}
-	return density;
-}
-
-//slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
-//{
-//	slimage::Image1d num(points.width(), points.height());
-//	for(unsigned int i=0; i<points.size(); i++) {
-//		num[i] = double(points[i].estimatedCount());
-//	}
-//	return num;
-//}
-
-std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
-	// now create pixel seeds
-	std::vector<Seed> seeds;
-	FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
-	return seeds;
-}
-
-std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	// compute blue noise points
-	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(density);
-	// convert to seeds
-	std::vector<Seed> seeds;
-	seeds.reserve(pnts.size());
-	for(unsigned int i=0; i<pnts.size(); i++) {
-		Seed s;
-		s.x = std::round(pnts[i].x);
-		s.y = std::round(pnts[i].y);
-		if(0 <= s.x && s.x < int(points.width()) && 0 <= s.y && s.y < int(points.height())) {
-			s.scala = points(s.x, s.y).image_super_radius;
-			seeds.push_back(s);
-		}
-	}
-	return seeds;
-}
-
-std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	std::vector<Seed> seeds;
-	for(unsigned int y=0; y<density.height() - 1; y++) {
-		density(1,y) += density(0,y);
-		for(unsigned int x=1; x<density.width() - 1; x++) {
-			float v = density(x,y);
-			if(v >= 0.5f) {
-				v -= 1.0f;
-				Seed s;
-				s.x = x;
-				s.y = y;
-				s.scala = points(s.x, s.y).image_super_radius;
-				seeds.push_back(s);
-			}
-			density(x+1,y  ) += 7.0f / 16.0f * v;
-			density(x-1,y+1) += 3.0f / 16.0f * v;
-			density(x  ,y+1) += 5.0f / 16.0f * v;
-			density(x+1,y+1) += 1.0f / 16.0f * v;
-		}
-		// carry over
-		density(0, y+1) += density(density.width()-1, y);
-	}
-	return seeds;
-}
-
-void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
-{
-	static boost::uniform_real<float> rnd(0.0f, 1.0f);
-	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-
-	const slimage::Image2f& mm = mipmaps[level];
-
-	float v_sum = mm(x, y)[0];
-	float v_abs = std::abs(v_sum);// mm(x, y)[1];
-
-	if(v_abs > 1.0f && level > 1) { // do not access mipmap 0!
-		// go down
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
-	}
-	else {
-		if(die() < v_abs)
-		{
-			unsigned int half = (1 << (level - 1));
-			// create seed in the middle
-			int sx = (x << level) + half;
-			int sy = (y << level) + half;
-			// add random offset to add noise
-			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
-					cGlobalRndRng, boost::uniform_int<>(-int(half/2), +int(half/2)));
-			sx += delta();
-			sy += delta();
-
-			if(v_sum > 0.0f) {
-				// create seed in the middle
-				if(sx < int(points.width()) && sy < int(points.height())) {
-					float scala = points(sx, sy).image_super_radius;
-					Seed s{sx, sy, scala};
-//					std::cout << s.x << " " << s.y << " " << scala << std::endl;
-					if(s.scala >= 2.0f) {
-						seeds.push_back(s);
-#ifdef CREATE_DEBUG_IMAGES
-						slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
-						debug(sx, sy) = slimage::Pixel3ub{{255,0,0}};
-#endif
-					}
-				}
-			}
-			else {
-				// find nearest
-				int best_dist = 1000000000;
-				std::size_t best_index = 0;
-				for(std::size_t i=0; i<seeds.size(); i++) {
-					const Seed& s = seeds[i];
-					int dist =  Square(sx - s.x) + Square(sy - s.y);
-					if(dist < best_dist) {
-						best_dist = dist;
-						best_index = i;
-					}
-				}
-//				auto it = std::min_element(seeds.begin(), seeds.end(), [sx, sy](const Seed& a, const Seed& b) {
-//					return Square(sx - a.x) + Square(sy - a.y) < Square(sx - b.x) + Square(sy - b.y);
-//				});
-				// delete nearest seed
-//				seeds.erase(it);
-#ifdef CREATE_DEBUG_IMAGES
-				slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
-				debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
-#endif
-				seeds.erase(seeds.begin() + best_index);
-			}
-		}
-	}
-}
-
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
-{
-#ifdef CREATE_DEBUG_IMAGES
-	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
-	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
-#endif
-
-	// compute old density
-	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
-	// difference
-	slimage::Image1f density_delta = density_new - density_old;
-	// compute mipmaps
-	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
-	// we need to add and delete points!
-	std::vector<Seed> seeds = old_seeds;
-	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
-//	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
-	// give all seed points the correct scala
-	for(Seed& s : seeds) {
-		s.scala = points(s.x, s.y).image_super_radius;
-	}
-	// delete seeds with low scala
-	std::vector<Seed> ok_size_seeds;
-	ok_size_seeds.reserve(seeds.size());
-	for(Seed& s : seeds) {
-		if(s.scala >= 2.0f) {
-			ok_size_seeds.push_back(s);
-		}
-	}
-	return ok_size_seeds;
-}
-
-std::vector<Seed> Clustering::FindSeeds()
-{
-	switch(opt.seed_mode) {
-	case SeedModes::EquiDistant:
-		return FindSeedsGrid(points, opt);
-	case SeedModes::DepthShooting:
-		return FindSeedsDepthRandom(points, density, opt);
-	case SeedModes::DepthMipmap:
-		return FindSeedsDepthMipmap(points, density, opt);
-	case SeedModes::DepthBlueNoise:
-		return FindSeedsDepthBlue(points, density, opt);
-	case SeedModes::DepthFloyd:
-		return FindSeedsDepthFloyd(points, density, opt);
-	default:
-		assert(false && "FindSeeds: Unkown mode!");
-	};
-}
-
-std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
-{
-	if(opt.seed_mode == SeedModes::Delta) {
-		return FindSeedsDelta(points, old_seeds, old_points, density, opt);
-	}
-	else {
-		return FindSeeds();
-	}
-}
-
 void Clustering::CreateClusters(const std::vector<Seed>& seeds)
 {
 	// create clusters
@@ -947,7 +568,8 @@ void Clustering::CreateClusters(const std::vector<Seed>& seeds)
 		c.center.pos[1] = float(p.y);
 		c.center.image_super_radius = p.scala;
 		// assign points (use only half the radius)
-		int R = static_cast<int>(std::ceil(c.center.image_super_radius * 0.5f));
+		int R = static_cast<int>(std::ceil(c.center.image_super_radius * 0.35f));
+		R = std::min(2, R);
 		assert(R >= 0 && "CreateClusters: Invalid radius!");
 		c.pixel_ids.reserve((2*R + 1)*(2*R + 1));
 		unsigned int xmin = std::max<int>(p.x - R, 0);
@@ -972,38 +594,41 @@ void Clustering::CreateClusters(const std::vector<Seed>& seeds)
 	}
 }
 
-void Clustering::ComputeEdges(slimage::Image1f& edges)
+slimage::Image1f Clustering::ComputeEdges()
 {
 	const unsigned int width = points.width();
 	const unsigned int height = points.height();
+	slimage::Image1f edges(width, height);
 
 	// compute edges strength
-	edges.resize(width, height);
 	slimage::It1f p_edge_begin = edges.begin();
-	slimage::ParallelProcess(edges, [this,p_edge_begin,width,height,&opt](const slimage::It1f& p_edge) {
+	slimage::ParallelProcess(edges, [this,p_edge_begin,width,height](const slimage::It1f& p_edge) {
 		int i = p_edge - p_edge_begin;
 		int x = i % width;
 		int y = i / width;
 		float v = 0.0f;
-		if(x-1 < 0 || int(width) <= x+1 || y-1 < 0 || int(height) <= y+1) {
-			v = 1e9; // dont want to be here
+		if(x < 1 || int(width) <= x+1 || y < 1 || int(height) <= y+1) {
+			v = 1e6; // dont want to be here
 		}
 		else {
+			const Point& p0 = points(x, y);
 			const Point& px1 = points(x-1, y);
 			const Point& px2 = points(x+1, y);
 			const Point& py1 = points(x, y-1);
 			const Point& py2 = points(x, y+1);
-//			if(!px1.valid || !px2.valid || !py1.valid || !py2.valid) {
-//				v = 1e9; // dont want to be here
-//			}
-//			else {
+			if(p0.isInvalid() || px1.isInvalid() || px2.isInvalid() || py1.isInvalid() || py2.isInvalid()) {
+				v = 1e6; // dont want to be here
+			}
+			else {
 				float dx = Distance(px1, px2);
 				float dy = Distance(py1, py2);
 				v = dx + dy;
-//			}
+			}
 		}
 		*p_edge = v;
-	}, threadopt);
+	}, slimage::ThreadingOptions::Single());
+
+	return edges;
 }
 
 void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges)
@@ -1035,15 +660,8 @@ void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& 
 
 void Clustering::PurgeInvalidClusters()
 {
-	std::vector<Cluster> clusters_valid;
-	clusters_valid.reserve(cluster.size());
-	for(unsigned int i=0; i<cluster.size(); i++) {
-		const Cluster& c = cluster[i];
-		if(c.hasPoints()) {
-			clusters_valid.push_back(c);
-		}
-	}
-	cluster = clusters_valid;
+	auto it = std::remove_if(cluster.begin(), cluster.end(), [](const Cluster& c) { return !c.hasPoints(); });
+	cluster.resize(it - cluster.begin());
 }
 
 void Clustering::MoveClusters()
@@ -1060,9 +678,10 @@ void Clustering::MoveClusters()
 		const unsigned int xmax = std::min(int(points.width()-1), cx + R);
 		const unsigned int ymin = std::max(0, cy - R);
 		const unsigned int ymax = std::min(int(points.height()-1), cy + R);
-		unsigned int pnt_index = points.index(xmin,ymin);
+		//unsigned int pnt_index = points.index(xmin,ymin);
 		for(unsigned int y=ymin; y<=ymax; y++) {
-			for(unsigned int x=xmin; x<=xmax; x++, pnt_index++) {
+			for(unsigned int x=xmin; x<=xmax; x++/*, pnt_index++*/) {
+				unsigned int pnt_index = points.index(x, y);
 				const Point& p = points[pnt_index];
 				if(p.isInvalid()) {
 					// omit invalid points
@@ -1075,8 +694,8 @@ void Clustering::MoveClusters()
 					v_label[pnt_index] = j;
 				}
 			}
-			pnt_index -= (xmax - xmin + 1);
-			pnt_index += points.width();
+			//pnt_index -= (xmax - xmin + 1);
+			//pnt_index += points.width();
 		}
 	}
 	// delete clusters assignments

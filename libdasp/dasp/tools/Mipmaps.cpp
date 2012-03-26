@@ -8,6 +8,7 @@
 #include "Mipmaps.hpp"
 #include <Danvil/Tools/MoreMath.h>
 #include <boost/assert.hpp>
+#include <iostream>
 //----------------------------------------------------------------------------//
 namespace dasp {
 namespace Mipmaps {
@@ -112,6 +113,7 @@ std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsign
 		BOOST_ASSERT(mipmaps[i-1].width() == mipmaps[i-1].height());
 		BOOST_ASSERT(mipmaps[i-1].width() >= 1);
 		mipmaps[i] = SumMipMap(mipmaps[i - 1]);
+//		std::cout << std::accumulate(mipmaps[i].begin(), mipmaps[i].end(), 0.0f, [](float sum, float x) { return sum + x; }) << std::endl;
 	}
 	return mipmaps;
 }

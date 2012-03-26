@@ -44,8 +44,8 @@ namespace dasp
 		/** local depth gradient (depth[m]/distance[m]) */
 		Eigen::Vector2f gradient;
 
-		/** direction of local normal */
-		Eigen::Vector3f normal;
+		/** circularity = b/a = 1/sqrt(||gradient||^2 + 1) = sqrt(1 - ecc*ecc) */
+		float circularity;
 
 		/** estimated radius [px] on the image screen of a super pixel at point depth */
 		float image_super_radius;
@@ -73,6 +73,11 @@ namespace dasp
 		/** Depth [m] of point */
 		float depth() const {
 			return world[2];
+		}
+
+		/** Computes the normal from the gradient */
+		Eigen::Vector3f computeNormal() const {
+			return Eigen::Vector3f(gradient[0], gradient[1], -1.0f) * circularity;
 		}
 
 //	public:
@@ -193,6 +198,7 @@ namespace dasp
 		float computePixelScala(uint16_t depth) const {
 			return (depth == 0) ? 0.0f : (camera.focal / camera.convertKinectToMeter(depth) * base_radius);
 		}
+
 	};
 
 	struct Cluster
@@ -249,7 +255,12 @@ namespace dasp
 		 */
 		float coverage_error;
 
-		float area_error;
+		/** actual area of the superpixel (computed from all pixels) */
+		float area_actual;
+		/** expected area of the superpixel (considering local geometry and thickness) */
+		float area_expected;
+		/** expected area using the actual base radius (computed from cluster count) (same for all clusters...) */
+		float area_expected_global;
 
 		void UpdateCenter(const ImagePoints& points, const Parameters& opt);
 
@@ -317,7 +328,7 @@ namespace dasp
 
 		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);
 
-		void ComputeEdges(slimage::Image1f& edges);
+		slimage::Image1f ComputeEdges();
 
 		void ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges);
 
@@ -401,16 +412,23 @@ namespace dasp
 
 		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
-		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y) const
-		{
-			// x and y are assumed to be normalized
-			// dot(x,y) yields the cos of the angle
-			// 1 is perfect, -1 is opposite
-			// map to [0|2]
-			return 1.0f - x.dot(y);
+		inline static float NormalDistance(const Point& u, const Point& v) {
+			// we want to compute 1 - dot(n(u), n(v))
+			// the normal is implicitly given by the gradient
+			// multiplying with the circularity yields the required normalization
+			return 1.0f - (u.gradient.dot(v.gradient) + 1.0f) * u.circularity * v.circularity;
 		}
 
-		template<bool cUseSqrt=false, bool WeightNormalsByDepth=true>
+//		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y) const
+//		{
+//			// x and y are assumed to be normalized
+//			// dot(x,y) yields the cos of the angle
+//			// 1 is perfect, -1 is opposite
+//			// map to [0|2]
+//			return 1.0f - x.dot(y);
+//		}
+
+		template<bool cUseSqrt=false, bool WeightNormalsByDepth=false>
 		inline float Distance(const Point& u, const Point& v) const
 		{
 			float d_color;
@@ -436,7 +454,7 @@ namespace dasp
 				d_world /= opt.base_radius * opt.base_radius;
 			}
 
-			float d_normal = DistanceForNormals(u.normal, v.normal);
+			float d_normal = NormalDistance(u, v);
 			if(WeightNormalsByDepth) {
 				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
 			}
@@ -447,7 +465,7 @@ namespace dasp
 				+ opt.weight_normal * d_normal;
 		}
 
-		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=true>
+		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=false>
 		inline float DistancePlanar(const Point& u, const Point& v) const
 		{
 			float d_color;
@@ -492,7 +510,7 @@ namespace dasp
 				}
 			}
 
-			float d_normal = DistanceForNormals(u.normal, v.normal);
+			float d_normal = NormalDistance(u, v);
 			if(WeightNormalsByDepth) {
 				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
 			}
@@ -528,12 +546,12 @@ namespace dasp
 			return DistanceSpatial(x.center, y.center);
 		}
 
-		template<bool WeightNormalsByDepth=true>
+		template<bool WeightNormalsByDepth=false>
 		inline float DistanceWorld(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
-			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
 				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
 			}
@@ -544,22 +562,22 @@ namespace dasp
 				+ opt.weight_normal*d_normal;
 		}
 
-		template<bool WeightNormalsByDepth=true>
+		template<bool WeightNormalsByDepth=false>
 		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
 			float d_color = (x.center.color - y.center.color).norm();
 			// mean cluster normals and
-			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
 				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
 			}
 			return opt.weight_color*d_color + opt.weight_normal*d_normal;
 		}
 
-		template<bool WeightNormalsByDepth=true>
+		template<bool WeightNormalsByDepth=false>
 		inline float DistanceNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster normals and
-			float d_normal = DistanceForNormals(x.center.normal, y.center.normal);
+			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
 				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
 			}
