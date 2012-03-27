@@ -10,9 +10,12 @@
 
 #include <Slimage/Slimage.hpp>
 #include "Superpixels.hpp"
+#include <vector>
 
 namespace dasp
 {
+
+extern std::vector<slimage::Image3ub> cSegmentationDebug;
 
 slimage::Image1ub ComputeBoundary(const Clustering& clusters);
 

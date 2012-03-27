@@ -6,15 +6,17 @@
  */
 
 #include "Segmentation.hpp"
-#include <Slimage/IO.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
 #include <fstream>
+#include <iostream>
 
 namespace dasp
 {
+
+std::vector<slimage::Image3ub> cSegmentationDebug;
 
 slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 {
@@ -90,8 +92,8 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
 	std::cout << "Eigenvalues = " << solver.eigenvalues().transpose() << std::endl;
 	if(cDebugSaveImages) {	// DEBUG
+		cSegmentationDebug.clear();
 		// create image from eigenvectors (omit first)
-		boost::format fmt_fn("/tmp/ev_%03d.png");
 		for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
 			// get k-th eigenvector
 			Eigen::VectorXf ev = solver.eigenvectors().col(k);
@@ -107,7 +109,7 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 				unsigned char v = ev_ub[cid];
 				img[pid] = slimage::Pixel3ub{{v,v,v}};
 			});
-			slimage::Save(img, (fmt_fn % k).str());
+			cSegmentationDebug.push_back(img);
 		}
 	}	// DEBUG
 	// compute edge border pixels
