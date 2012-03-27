@@ -43,7 +43,7 @@ Parameters::Parameters()
 	gradient_adaptive_density = true;
 	is_conquer_enclaves = true;
 	segment_threshold = 1.0f;
-	is_repair_depth = false;
+	is_repair_depth = true;
 	is_smooth_depth = false;
 	is_improve_seeds = false;
 }
