@@ -169,6 +169,7 @@ namespace dasp
 		float weight_spatial;
 		float weight_normal;
 		float weight_depth;
+		float weight_image;
 
 		/** Number of iterations for superpixel k-means clustering */
 		unsigned int iterations;
@@ -439,6 +440,20 @@ namespace dasp
 		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
 		template<bool cUseSqrt>
+		inline static float ImageDistance(const Point& x, const Point& y) {
+			float d_img;
+			if(cUseSqrt) {
+				d_img = (x.pos - y.pos).norm();
+				d_img /= y.image_super_radius;
+			}
+			else {
+				d_img = (x.pos - y.pos).squaredNorm();
+				d_img /= y.image_super_radius * y.image_super_radius;
+			}
+			return d_img;
+		}
+
+		template<bool cUseSqrt>
 		inline float SpatialDistance(const Point& x, const Point& y) const {
 			float d_world;
 			if(cUseSqrt) {
@@ -483,6 +498,7 @@ namespace dasp
 		template<bool cUseSqrt=false, bool WeightNormalsByDepth=false>
 		inline float Distance(const Point& u, const Point& v) const
 		{
+			float d_image = ImageDistance<cUseSqrt>(u,v);
 			float d_world = SpatialDistance<cUseSqrt>(u,v);
 			float d_color = ColorDistance<cUseSqrt>(u,v);
 			float d_normal = NormalDistance(u, v);
@@ -490,6 +506,7 @@ namespace dasp
 				d_normal *= DepthWeight(u, v);
 			}
 			return opt.weight_spatial * d_world
+				+ opt.weight_image * d_image
 				+ opt.weight_color * d_color
 				+ opt.weight_normal * d_normal;
 		}

@@ -23,24 +23,26 @@ void SetRandomNumberSeed(unsigned int x)
 
 std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
 {
-//	const float d = std::sqrt(float(opt.width*opt.height) / float(opt.cluster_count));
-//	const unsigned int Nx = (unsigned int)std::ceil(float(opt.width) / d);
-//	const unsigned int Ny = (unsigned int)std::ceil(float(opt.height) / d);
-//	const unsigned int Dx = (unsigned int)std::floor(float(opt.width) / float(Nx));
-//	const unsigned int Dy = (unsigned int)std::floor(float(opt.height) / float(Ny));
-//	const unsigned int Hx = Dx/2;
-//	const unsigned int Hy = Dy/2;
-//	const float S = float(std::max(Dx, Dy));
+	unsigned int width = points.width();
+	unsigned int height = points.height();
+	const float d = std::sqrt(float(width*height) / float(opt.count));
+	const unsigned int Nx = (unsigned int)std::ceil(float(width) / d);
+	const unsigned int Ny = (unsigned int)std::ceil(float(height) / d);
+	const unsigned int Dx = (unsigned int)std::floor(float(width) / float(Nx));
+	const unsigned int Dy = (unsigned int)std::floor(float(height) / float(Ny));
+	const unsigned int Hx = Dx/2;
+	const unsigned int Hy = Dy/2;
+	const float S = float(std::max(Dx, Dy));
 
-	// assume that everything has a distance of 1.5 meters
-	const float cAssumedDistance = 1.5f;
-	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
-	unsigned int Dx = R;
-	unsigned int Dy = R;
-	unsigned int Hx = Dx/2;
-	unsigned int Hy = Dy/2;
-	unsigned int Nx = points.width() / Dx;
-	unsigned int Ny = points.height() / Dy;
+//	// assume that everything has a distance of 1.5 meters
+//	const float cAssumedDistance = 1.5f;
+//	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
+//	unsigned int Dx = R;
+//	unsigned int Dy = R;
+//	unsigned int Hx = Dx/2;
+//	unsigned int Hy = Dy/2;
+//	unsigned int Nx = points.width() / Dx;
+//	unsigned int Ny = points.height() / Dy;
 
 	// space seeds evently
 	std::vector<Seed> seeds;
@@ -52,7 +54,7 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 			Seed p;
 			p.x = x;
 			p.y = y;
-			p.scala = R;
+			p.scala = S;
 			seeds.push_back(p);
 		}
 	}

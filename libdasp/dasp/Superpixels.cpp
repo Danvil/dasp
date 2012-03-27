@@ -31,11 +31,12 @@ std::map<std::string,slimage::ImagePtr> sDebugImages;
 Parameters::Parameters()
 {
 	color_space = ColorSpaces::RGB;
-	weight_color = 1.0f;
+	weight_color = 2.0f;
 	weight_spatial = 1.0f;
-	weight_normal = 1.0f;
+	weight_normal = 3.0f;
 	weight_depth = 0.0f;
-	iterations = 3;
+	weight_image = 0.0f;
+	iterations = 5;
 	coverage = 1.7f;
 	base_radius = 0.02f;
 	count = 0;
@@ -67,7 +68,9 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	center.world = mean_world / float(pixel_ids.size());
 	center.pos = opt.camera.project(center.world);
 	center.depth_i16 = opt.camera.depth(center.world);
-	center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
+
+	// FIXME change or not change? (SLIC mode does not allow change!)
+	//center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
 
 	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
