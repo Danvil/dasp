@@ -17,7 +17,7 @@ namespace dasp
 
 extern std::vector<slimage::Image3ub> cSegmentationDebug;
 
-slimage::Image1ub ComputeBoundary(const Clustering& clusters);
+slimage::Image1f ComputeBoundary(const Clustering& clusters);
 
 }
 

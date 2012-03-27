@@ -20,7 +20,7 @@ std::vector<slimage::Image3ub> cSegmentationDebug;
 
 slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 {
-	const bool cDebugSaveImages = true;
+	const bool cDebugSaveImages = false;
 
 	const unsigned int cNEV = 48;
 	const float cWeightRho = 1.0f;
@@ -28,7 +28,7 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	std::cout << "SpectralSegmentation: n = " << n << std::endl;
 	// create local neighbourhood graph
 	Clustering::NeighborGraphSettings Gnb_settings;
-	Gnb_settings.cut_by_spatial = true;
+	Gnb_settings.cut_by_spatial = false;
 	Gnb_settings.min_border_overlap = 0.05f;
 	Gnb_settings.cost_function = Clustering::NeighborGraphSettings::SpatialNormalColor;
 	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
@@ -90,13 +90,14 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> solver;
 	solver.compute(A, D); // only need some eigenvectors!
 	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
-	std::cout << "Eigenvalues = " << solver.eigenvalues().transpose() << std::endl;
+	unsigned int n_used_ew = std::min(n - 1, cNEV);
+	std::cout << "Eigenvalues = " << solver.eigenvalues().topRows(n_used_ew + 1).transpose() << std::endl;
 	if(cDebugSaveImages) {	// DEBUG
 		cSegmentationDebug.clear();
 		// create image from eigenvectors (omit first)
-		for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
+		for(unsigned int k=0; k<n_used_ew; k++) {
 			// get k-th eigenvector
-			Eigen::VectorXf ev = solver.eigenvectors().col(k);
+			Eigen::VectorXf ev = solver.eigenvectors().col(k + 1);
 			// convert to plotable values
 			std::vector<unsigned char> ev_ub(n);
 			for(unsigned int i=0; i<n; i++) {
@@ -118,27 +119,30 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	// later we weight by eigenvalues
 	// find a positive eigenvalue (need to do this because of ugly instabilities ...
 	float ew_pos = -1.0f;
-	for(unsigned int i=0; ew_pos < 0.0f; i++) {
-		ew_pos = solver.eigenvalues()[i + 3]; // FIXME magic to get a not to small eigenvalue
+	for(unsigned int i=0; ; i++) {
+		if(solver.eigenvalues()[i] > 0) {
+			// FIXME magic to get a not too small eigenvalue
+//			unsigned int x = (n_used_ew + i)/2;
+			unsigned int x = i + 5;
+			ew_pos = solver.eigenvalues()[x];
+			break;
+		}
 	}
 	// compute normalized weights from eigenvalues
-	std::vector<float> weights(1,0.0f);
-	float w_sum = 0.0f;
-	for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
-		float ew = solver.eigenvalues()[k];
-		if(ew <= 0.0f) {
+	Eigen::VectorXf weights = Eigen::VectorXf::Zero(n_used_ew);
+	for(unsigned int k=0; k<n_used_ew; k++) {
+		float ew = solver.eigenvalues()[k + 1];
+		if(ew <= ew_pos) {
 			ew = ew_pos;
 		}
-		float w = 1.0f / std::sqrt(ew);
-		weights.push_back(w);
-		w_sum += w;
+		weights[k] = 1.0f / std::sqrt(ew);
 	}
+	std::cout << "Weights = " << weights.transpose() << std::endl;
 	// look into first eigenvectors
-	for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
+	for(unsigned int k=0; k<n_used_ew; k++) {
 		// weight by eigenvalue
 		float w = weights[k];// / w_sum;
-		std::cout << w << std::endl;
-		Eigen::VectorXf ev = solver.eigenvectors().col(k);
+		Eigen::VectorXf ev = solver.eigenvectors().col(k + 1);
 		// for each edge
 		for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 			const graph::Edge& e = Gnb.edges[eid];
@@ -147,22 +151,25 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 			edge_weight[eid] += w * d;
 		}
 	}
+	// normalize edge weights to [0,1]
+	std::cout << "Edge weights: min=" << edge_weight.minCoeff() << ", max=" << edge_weight.maxCoeff() << std::endl;
+	edge_weight /= edge_weight.maxCoeff();
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
 	// write value to border pixels
 	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
-	for(unsigned int y=1; y<clusters.height()-1; y++) {
-		for(unsigned int x=1; x<clusters.width()-1; x++) {
-			if(clusters.points(x,y).isInvalid()) {
-				continue;
-			}
-			if(clusters.points(x-1,y).isInvalid()
-			|| clusters.points(x+1,y).isInvalid()
-			|| clusters.points(x,y-1).isInvalid()
-			|| clusters.points(x,y+1).isInvalid()) {
-				result(x,y) = 100.0f;
-			}
-		}
-	}
+//	for(unsigned int y=1; y<clusters.height()-1; y++) {
+//		for(unsigned int x=1; x<clusters.width()-1; x++) {
+//			if(clusters.points(x,y).isInvalid()) {
+//				continue;
+//			}
+//			if(clusters.points(x-1,y).isInvalid()
+//			|| clusters.points(x+1,y).isInvalid()
+//			|| clusters.points(x,y-1).isInvalid()
+//			|| clusters.points(x,y+1).isInvalid()) {
+//				result(x,y) = 100.0f;
+//			}
+//		}
+//	}
 	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 		for(unsigned int pid : border_pixels[eid]) {
 			result[pid] = edge_weight[eid];
@@ -171,10 +178,9 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	return result;
 }
 
-slimage::Image1ub ComputeBoundary(const Clustering& clusters)
+slimage::Image1f ComputeBoundary(const Clustering& clusters)
 {
-	slimage::Image1f cut = SpectralSegmentation(clusters);
-	return slimage::Convert_f_2_ub(cut, 0.03f);
+	return SpectralSegmentation(clusters);
 }
 
 }

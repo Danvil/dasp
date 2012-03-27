@@ -14,7 +14,8 @@ namespace dasp
 
 const unsigned int cBorder = 50;
 
-float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, int d)
+template<typename K, typename L>
+float ComputeRecallBoxImpl(const slimage::Image<slimage::Traits<K,1>>& img_exp, const slimage::Image<slimage::Traits<L,1>>& img_act, K threshold_exp, L threshold_act, int d)
 {
 	BOOST_ASSERT(img_exp.hasSameShape(img_act));
 	// check how much pixels from the expected boundary are near a boundary pixel in the actual image
@@ -22,11 +23,11 @@ float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub
 	unsigned int cnt_recalled = 0;
 	for(int y=cBorder+d; y+cBorder+d<static_cast<int>(img_exp.height()); y++) {
 		for(int x=cBorder+d; x+cBorder+d<static_cast<int>(img_exp.width()); x++) {
-			if(img_exp(x,y)) {
+			if(img_exp(x,y) >= threshold_act) {
 				bool recalled = false;
 				for(int u=-d; u<=+d; u++) {
 					for(int v=-d; v<=+d; v++) {
-						if(img_act(x+u, y+v)) {
+						if(img_act(x+u, y+v) >= threshold_exp) {
 							recalled = true;
 						}
 					}
@@ -38,7 +39,12 @@ float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub
 			}
 		}
 	}
-	return static_cast<float>(cnt_recalled) / static_cast<float>(cnt);
+	return cnt == 0 ? 1.0f : static_cast<float>(cnt_recalled) / static_cast<float>(cnt);
+}
+
+float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, int d)
+{
+	return ComputeRecallBoxImpl(img_exp, img_act, static_cast<unsigned char>(255), static_cast<unsigned char>(255), d);
 }
 
 float ComputeRecallGaussian(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, float sigma)
