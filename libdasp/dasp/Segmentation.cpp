@@ -153,8 +153,18 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	}
 	// normalize edge weights to [0,1]
 	std::cout << "Edge weights: min=" << edge_weight.minCoeff() << ", max=" << edge_weight.maxCoeff() << std::endl;
+
+	{
+		std::ofstream ofs("/tmp/edge_weights.txt");
+		for(unsigned int i=0; i<n; i++) {
+			ofs << edge_weight[i] << std::endl;
+		}
+	}
+
+//	edge_weight /= edge_weight[(95*edge_weight.rows())/100];
 	edge_weight /= edge_weight.maxCoeff();
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
+
 	// write value to border pixels
 	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
 //	for(unsigned int y=1; y<clusters.height()-1; y++) {

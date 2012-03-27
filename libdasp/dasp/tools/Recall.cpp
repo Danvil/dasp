@@ -47,6 +47,47 @@ float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub
 	return ComputeRecallBoxImpl(img_exp, img_act, static_cast<unsigned char>(255), static_cast<unsigned char>(255), d);
 }
 
+PrecisionRecallStats PrecisionRecall(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrievend, int d)
+{
+	BOOST_ASSERT(img_relevant.hasSameShape(img_retrievend));
+	PrecisionRecallStats stats;
+	for(int y=cBorder+d; y+cBorder+d<static_cast<int>(img_relevant.height()); y++) {
+		for(int x=cBorder+d; x+cBorder+d<static_cast<int>(img_relevant.width()); x++) {
+			if(img_relevant(x,y)) {
+				stats.num_relevant ++;
+				bool is_retrieved = false;
+				// check if pixels from the relevant boundary is near a boundary pixel in the retrieved image
+				for(int u=-d; u<=+d && !is_retrieved; u++) {
+					for(int v=-d; v<=+d && !is_retrieved; v++) {
+						if(img_retrievend(x+u, y+v)) {
+							is_retrieved = true;
+						}
+					}
+				}
+				if(is_retrieved) {
+					stats.num_relevant_and_retrieved ++;
+				}
+			}
+			if(img_retrievend(x,y)) {
+				stats.num_retrieved ++;
+				bool is_relevant = false;
+				// check if pixels from the retrieved boundary is near a boundary pixel in the relevant image
+				for(int u=-d; u<=+d && !is_relevant; u++) {
+					for(int v=-d; v<=+d && !is_relevant; v++) {
+						if(img_relevant(x+u, y+v)) {
+							is_relevant = true;
+						}
+					}
+				}
+				if(is_relevant) {
+					stats.num_retrieved_and_relevant ++;
+				}
+			}
+		}
+	}
+	return stats;
+}
+
 float ComputeRecallGaussian(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, float sigma)
 {
 	BOOST_ASSERT(img_exp.hasSameShape(img_act));
