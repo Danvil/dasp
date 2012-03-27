@@ -18,12 +18,18 @@ namespace dasp
 
 slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 {
+	const bool cDebugSaveImages = true;
+
 	const unsigned int cNEV = 48;
 	const float cWeightRho = 1.0f;
 	unsigned int n = clusters.clusterCount();
 	std::cout << "SpectralSegmentation: n = " << n << std::endl;
 	// create local neighbourhood graph
-	graph::Graph Gnb = clusters.CreateNeighborhoodGraph();
+	Clustering::NeighborGraphSettings Gnb_settings;
+	Gnb_settings.cut_by_spatial = true;
+	Gnb_settings.min_border_overlap = 0.05f;
+	Gnb_settings.cost_function = Clustering::NeighborGraphSettings::SpatialNormalColor;
+	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
 	BOOST_ASSERT(n == Gnb.nodes_);
 	// create W matrix from neighbourhood graph
 	Eigen::MatrixXf W = Eigen::MatrixXf::Zero(n,n);
@@ -83,27 +89,27 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 	solver.compute(A, D); // only need some eigenvectors!
 	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
 	std::cout << "Eigenvalues = " << solver.eigenvalues().transpose() << std::endl;
-//	{	// DEBUG
-//		// create image from eigenvectors (omit first)
-//		boost::format fmt_fn("/tmp/ev_%03d.png");
-//		for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
-//			// get k-th eigenvector
-//			Eigen::VectorXf ev = solver.eigenvectors().col(k);
-//			// convert to plotable values
-//			std::vector<unsigned char> ev_ub(n);
-//			for(unsigned int i=0; i<n; i++) {
-//				float v = 0.5f + 2.0f*ev[i];
-//				ev_ub[i] = static_cast<unsigned char>(std::min(255, std::max(0, static_cast<int>(255.0f * v))));
-//			}
-//			// write to image
-//			slimage::Image3ub img(clusters.width(), clusters.height(), slimage::Pixel3ub{{255,0,0}});
-//			clusters.ForPixelClusters([&img,&ev_ub](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-//				unsigned char v = ev_ub[cid];
-//				img[pid] = slimage::Pixel3ub{{v,v,v}};
-//			});
-//			slimage::Save(img, (fmt_fn % k).str());
-//		}
-//	}	// DEBUG
+	if(cDebugSaveImages) {	// DEBUG
+		// create image from eigenvectors (omit first)
+		boost::format fmt_fn("/tmp/ev_%03d.png");
+		for(unsigned int k=1; k<std::min(n, cNEV + 1); k++) {
+			// get k-th eigenvector
+			Eigen::VectorXf ev = solver.eigenvectors().col(k);
+			// convert to plotable values
+			std::vector<unsigned char> ev_ub(n);
+			for(unsigned int i=0; i<n; i++) {
+				float v = 0.5f + 2.0f*ev[i];
+				ev_ub[i] = static_cast<unsigned char>(std::min(255, std::max(0, static_cast<int>(255.0f * v))));
+			}
+			// write to image
+			slimage::Image3ub img(clusters.width(), clusters.height(), slimage::Pixel3ub{{255,0,0}});
+			clusters.ForPixelClusters([&img,&ev_ub](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+				unsigned char v = ev_ub[cid];
+				img[pid] = slimage::Pixel3ub{{v,v,v}};
+			});
+			slimage::Save(img, (fmt_fn % k).str());
+		}
+	}	// DEBUG
 	// compute edge border pixels
 	std::vector<std::vector<unsigned int>> border_pixels = clusters.ComputeBorderPixels(Gnb);
 	Eigen::VectorXf edge_weight = Eigen::VectorXf::Zero(Gnb.edges.size());
@@ -142,6 +148,19 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
 	// write value to border pixels
 	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
+	for(unsigned int y=1; y<clusters.height()-1; y++) {
+		for(unsigned int x=1; x<clusters.width()-1; x++) {
+			if(clusters.points(x,y).isInvalid()) {
+				continue;
+			}
+			if(clusters.points(x-1,y).isInvalid()
+			|| clusters.points(x+1,y).isInvalid()
+			|| clusters.points(x,y-1).isInvalid()
+			|| clusters.points(x,y+1).isInvalid()) {
+				result(x,y) = 100.0f;
+			}
+		}
+	}
 	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 		for(unsigned int pid : border_pixels[eid]) {
 			result[pid] = edge_weight[eid];
@@ -153,7 +172,7 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 slimage::Image1ub ComputeBoundary(const Clustering& clusters)
 {
 	slimage::Image1f cut = SpectralSegmentation(clusters);
-	return slimage::Convert_f_2_ub(cut, 0.10f);
+	return slimage::Convert_f_2_ub(cut, 0.03f);
 }
 
 }
