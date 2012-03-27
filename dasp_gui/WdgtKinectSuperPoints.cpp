@@ -115,7 +115,9 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	interrupt_loaded_thread_ = false;
 	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
 		while(!interrupt_loaded_thread_) {
-			this->OnImages(loaded_kinect_depth, loaded_kinect_color);
+			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
+			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
+			this->OnImages(cpy_depth, cpy_color);
 			while(!reload && !interrupt_loaded_thread_) {
 				usleep(1000);
 			}

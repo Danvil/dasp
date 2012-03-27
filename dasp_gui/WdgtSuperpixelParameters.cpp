@@ -37,8 +37,8 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxPlotClusterMode->addItem("ClusterEllipsesFilled", dasp::plots::ClusterEllipsesFilled);
 	ui.comboBoxPlotClusterMode->setCurrentIndex(1);
 
-	QObject::connect(ui.checkBoxSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeSmoothDepth(int)));
-
+	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
+	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
 	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSuperSeedType(int)));
 	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
@@ -66,8 +66,8 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.checkBoxPlotDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotDensity(int)));
 	QObject::connect(ui.checkBoxPlotSegments, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotSegments(int)));
 
-	dasp_tracker_->enable_smooth_depth_ = ui.checkBoxSmoothDepth->isChecked();
-
+	dasp_tracker_->dasp_params->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
+	dasp_tracker_->dasp_params->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
 	dasp_tracker_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_tracker_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
 	dasp_tracker_->dasp_params->count = ui.spinBoxSuperCount->value();
@@ -97,9 +97,15 @@ WdgtSuperpixelParameters::~WdgtSuperpixelParameters()
 
 }
 
-void WdgtSuperpixelParameters::ChangeSmoothDepth(int state)
+void WdgtSuperpixelParameters::ChangeDaspRepairDepth(int state)
 {
-	dasp_tracker_->enable_smooth_depth_ = state;
+	dasp_tracker_->dasp_params->is_repair_depth = state;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeDaspSmoothDepth(int state)
+{
+	dasp_tracker_->dasp_params->is_smooth_depth = state;
 	*reload = true;
 }
 

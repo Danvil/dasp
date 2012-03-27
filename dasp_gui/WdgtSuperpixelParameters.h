@@ -17,7 +17,8 @@ public:
 	bool* reload;
 
 public Q_SLOTS:
-	void ChangeSmoothDepth(int state);
+	void ChangeDaspSmoothDepth(int state);
+	void ChangeDaspRepairDepth(int state);
 	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelRadius(double val);
