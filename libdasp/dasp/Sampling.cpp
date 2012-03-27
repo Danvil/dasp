@@ -385,10 +385,11 @@ std::vector<Seed> Clustering::FindSeeds()
 	};
 }
 
-std::vector<Seed> Clustering::FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points)
+std::vector<Seed> Clustering::FindSeeds(const ImagePoints& old_points)
 {
 	if(opt.seed_mode == SeedModes::Delta) {
-		return FindSeedsDelta(points, old_seeds, old_points, density, opt);
+		seeds_previous = getClusterCentersAsSeeds();
+		return FindSeedsDelta(points, seeds_previous, old_points, density, opt);
 	}
 	else {
 		return FindSeeds();

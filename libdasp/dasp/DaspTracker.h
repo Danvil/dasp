@@ -49,8 +49,6 @@ private:
 public:
 	bool training_;
 
-	bool enable_smooth_depth_;
-
 	bool show_points_;
 	bool show_clusters_;
 	bool show_cluster_borders_;

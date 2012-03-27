@@ -7,6 +7,7 @@
 
 #include "Superpixels.hpp"
 #include "tools/Graph.hpp"
+#include "tools/RepairDepth.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
@@ -42,6 +43,9 @@ Parameters::Parameters()
 	gradient_adaptive_density = true;
 	is_conquer_enclaves = true;
 	segment_threshold = 1.0f;
+	is_repair_depth = false;
+	is_smooth_depth = false;
+	is_improve_seeds = false;
 }
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
@@ -870,6 +874,64 @@ ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_t
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
 	}
 	return cgi;
+}
+
+Clustering ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
+{
+	Clustering clustering;
+	clustering.opt = opt;
+	ComputeSuperpixelsIncremental(clustering, color, depth);
+	return clustering;
+}
+
+void ComputeSuperpixelsIncremental(Clustering& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth)
+{
+	if(clustering.opt.is_repair_depth) {
+		DANVIL_BENCHMARK_START(dasp_repair)
+		RepairDepth(depth, color);
+		DANVIL_BENCHMARK_STOP(dasp_repair)
+	}
+
+	if(clustering.opt.is_smooth_depth) {
+		DANVIL_BENCHMARK_START(dasp_smooth)
+		SmoothDepth(depth, color);
+		DANVIL_BENCHMARK_STOP(dasp_smooth)
+	}
+
+	// compute normals only if necessary
+	slimage::Image3f normals;
+//	if(super_params_ext.weight_normal > 0.0f) {
+//		DANVIL_BENCHMARK_START(normals)
+//		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+//		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+//	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
+//		DANVIL_BENCHMARK_STOP(normals)
+//	}
+
+	// prepare super pixel points
+	DANVIL_BENCHMARK_START(dasp_points)
+	ImagePoints old_points = clustering.points;
+	clustering.CreatePoints(color, depth, normals);
+	DANVIL_BENCHMARK_STOP(dasp_points)
+
+	// compute super pixel seeds
+	DANVIL_BENCHMARK_START(dasp_seeds)
+	clustering.seeds = clustering.FindSeeds(old_points);
+//	std::cout << "Seeds: " << seeds.size() << std::endl;
+	DANVIL_BENCHMARK_STOP(dasp_seeds)
+
+	// compute super pixel point edges and improve seeds with it
+	if(clustering.opt.is_repair_depth) {
+		DANVIL_BENCHMARK_START(dasp_improve)
+		slimage::Image1f edges = clustering.ComputeEdges();
+		clustering.ImproveSeeds(clustering.seeds, edges);
+		DANVIL_BENCHMARK_STOP(dasp_improve)
+	}
+
+	// compute clusters
+	DANVIL_BENCHMARK_START(dasp_clusters)
+	clustering.ComputeSuperpixels(clustering.seeds);
+	DANVIL_BENCHMARK_STOP(dasp_clusters)
 }
 
 //------------------------------------------------------------------------------

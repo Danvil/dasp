@@ -42,8 +42,6 @@ DaspTracker::DaspTracker()
 	thread_pool_index_ = 100;
 	has_hand_gmm_model_ = false;
 
-	enable_smooth_depth_ = false;
-
 	show_points_ = false;
 	show_clusters_ = true;
 	show_cluster_borders_ = true;
@@ -86,45 +84,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 {
 	DANVIL_BENCHMARK_START(step)
 
-	if(enable_smooth_depth_) {
-		kinect_depth.resize(raw_kinect_depth.width(), raw_kinect_depth.height());
-		slimage::ParallelProcess(raw_kinect_depth, kinect_depth, [&raw_kinect_depth](const slimage::It1ui16& src, const slimage::It1ui16& smth) {
-			const uint16_t* raw = src.pointer();
-			int i = raw - raw_kinect_depth.buffer().begin();
-			int w = raw_kinect_depth.width();
-			int h = raw_kinect_depth.height();
-			int x = i % w;
-			int y = i / w;
-			if(x == 0 || x+1 == w || y == 0 || y+1 == h) {
-				*smth = 0;
-			}
-			else {
-				uint16_t values[3][3] = {
-						{*(raw -1-w), *(raw -w), *(raw +1-w)},
-						{*(raw -1  ), *(raw   ), *(raw +1  )},
-						{*(raw -1+w), *(raw +w), *(raw +1+w)}
-				};
-				if(
-						values[0][0] == 0 || values[0][1] == 0 || values[0][2] == 0 ||
-						values[1][0] == 0 || values[1][1] == 0 || values[1][2] == 0 ||
-						values[2][0] == 0 || values[2][1] == 0 || values[2][2] == 0)
-				{
-					*smth = 0;
-				}
-				else {
-					*smth = (
-							  (unsigned int)(values[0][0]) + 2*(unsigned int)(values[0][1]) +   (unsigned int)(values[0][2]) +
-							2*(unsigned int)(values[1][0]) + 4*(unsigned int)(values[1][1]) + 2*(unsigned int)(values[1][2]) +
-							  (unsigned int)(values[2][0]) + 2*(unsigned int)(values[2][1]) +   (unsigned int)(values[2][2])
-					) / 16;
-				}
-			}
-		}, slimage::ThreadingOptions::Single());
-	}
-	else {
-		kinect_depth = raw_kinect_depth;
-	}
-
+	kinect_depth = raw_kinect_depth;
 	kinect_color_rgb = raw_kinect_color;
 
 	DANVIL_BENCHMARK_STOP(step)
@@ -167,48 +127,55 @@ void DaspTracker::performSegmentationStep()
 	// superpixel parameters
 	clustering_.opt = *dasp_params;
 
-	// compute normals only if necessary
-	slimage::Image3f kinect_normals;
-//	if(super_params_ext.weight_normal > 0.0f) {
-//		DANVIL_BENCHMARK_START(normals)
-//		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
-//		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
-//	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
-//		DANVIL_BENCHMARK_STOP(normals)
-//	}
-
-	// prepare super pixel points
-	DANVIL_BENCHMARK_START(points)
-	ImagePoints old_points = clustering_.points;
-	clustering_.CreatePoints(kinect_color_rgb, kinect_depth, kinect_normals);
-	DANVIL_BENCHMARK_STOP(points)
-
-	// compute super pixel seeds
-	DANVIL_BENCHMARK_START(seeds)
-	std::vector<Seed> old_seeds = clustering_.getClusterCentersAsSeeds();
-	seeds = clustering_.FindSeeds(old_seeds, old_points);
-//	std::cout << "Seeds: " << seeds.size() << std::endl;
-	DANVIL_BENCHMARK_STOP(seeds)
-
-	// compute super pixel point edges and improve seeds with it
-//	slimage::Image1f edges;
-//	DANVIL_BENCHMARK_START(improve)
-//	dasp::ComputeEdges(points, edges, super_params_ext);
-//	if(!edges.isNull()) {
-//		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
-//	}
-//	DANVIL_BENCHMARK_STOP(improve)
-
-	// compute clusters
-	DANVIL_BENCHMARK_START(clusters)
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
-		clustering_.ComputeSuperpixels(seeds);
-		std::cout << "Cluster count=" << clustering_.cluster.size() << ", cluster radius=" << clustering_.opt.base_radius << std::endl;
+		ComputeSuperpixelsIncremental(clustering_, kinect_color_rgb, kinect_depth);
 		if(show_clusters_ && (cluster_color_mode_ == plots::CoverageError)) {
 			clustering_.ComputeExt();
 		}
 	}
-	DANVIL_BENCHMARK_STOP(clusters)
+
+//	// compute normals only if necessary
+//	slimage::Image3f kinect_normals;
+////	if(super_params_ext.weight_normal > 0.0f) {
+////		DANVIL_BENCHMARK_START(normals)
+////		slimage::Image3f kinect_points = dasp::PointsAndNormals::ComputePoints(kinect_depth, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+////		slimage::Image3f kinect_normals = dasp::PointsAndNormals::ComputeNormals(kinect_depth, kinect_points, slimage::ThreadingOptions::UsePool(thread_pool_index_));
+////	//	dasp::PointsAndNormals::ComputeNormalsFast(kinect_depth, kinect_points, kinect_normals);
+////		DANVIL_BENCHMARK_STOP(normals)
+////	}
+//
+//	// prepare super pixel points
+//	DANVIL_BENCHMARK_START(points)
+//	ImagePoints old_points = clustering_.points;
+//	clustering_.CreatePoints(kinect_color_rgb, kinect_depth, kinect_normals);
+//	DANVIL_BENCHMARK_STOP(points)
+//
+//	// compute super pixel seeds
+//	DANVIL_BENCHMARK_START(seeds)
+//	std::vector<Seed> old_seeds = clustering_.getClusterCentersAsSeeds();
+//	seeds = clustering_.FindSeeds(old_seeds, old_points);
+////	std::cout << "Seeds: " << seeds.size() << std::endl;
+//	DANVIL_BENCHMARK_STOP(seeds)
+//
+//	// compute super pixel point edges and improve seeds with it
+////	slimage::Image1f edges;
+////	DANVIL_BENCHMARK_START(improve)
+////	dasp::ComputeEdges(points, edges, super_params_ext);
+////	if(!edges.isNull()) {
+////		dasp::ImproveSeeds(seeds, points, edges, super_params_ext);
+////	}
+////	DANVIL_BENCHMARK_STOP(improve)
+//
+//	// compute clusters
+//	DANVIL_BENCHMARK_START(clusters)
+//	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+//		clustering_.ComputeSuperpixels(seeds);
+//		std::cout << "Cluster count=" << clustering_.cluster.size() << ", cluster radius=" << clustering_.opt.base_radius << std::endl;
+//		if(show_clusters_ && (cluster_color_mode_ == plots::CoverageError)) {
+//			clustering_.ComputeExt();
+//		}
+//	}
+//	DANVIL_BENCHMARK_STOP(clusters)
 
 	DANVIL_BENCHMARK_START(segmentation)
 
@@ -402,7 +369,7 @@ void DaspTracker::performSegmentationStep()
 		if(plot_density_) {
 			slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
 			vis_density = slimage::Convert_f_2_ub(density, 20.0f);
-			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(old_seeds, density, clustering_.opt);
+			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density, clustering_.opt);
 			vis_seed_density = slimage::Convert_f_2_ub(seed_density, 20.0f);
 			vis_density_delta.resize(density.width(), density.height());
 			for(unsigned int i=0; i<density.size(); i++) {

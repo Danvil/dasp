@@ -191,6 +191,10 @@ namespace dasp
 
 		float segment_threshold;
 
+		bool is_repair_depth;
+		bool is_smooth_depth;
+		bool is_improve_seeds;
+
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and
 		 * at given depth [kinect] on the image sensor
@@ -291,6 +295,9 @@ namespace dasp
 
 		std::vector<Cluster> cluster;
 
+		std::vector<Seed> seeds_previous;
+		std::vector<Seed> seeds;
+
 		std::size_t clusterCount() const {
 			return cluster.size();
 		}
@@ -326,7 +333,7 @@ namespace dasp
 
 		std::vector<Seed> FindSeeds();
 
-		std::vector<Seed> FindSeeds(const std::vector<Seed>& old_seeds, const ImagePoints& old_points);
+		std::vector<Seed> FindSeeds(const ImagePoints& old_points);
 
 		slimage::Image1f ComputeEdges();
 
@@ -585,6 +592,12 @@ namespace dasp
 	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
 
 	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt);
+
+	Clustering ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt);
+
+	void ComputeSuperpixelsIncremental(Clustering& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+
+
 }
 
 #endif
