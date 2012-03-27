@@ -338,8 +338,27 @@ namespace dasp
 
 		void MoveClusters();
 
+		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const graph::Graph& graph) const;
+
+		struct NeighborGraphSettings {
+			NeighborGraphSettings() {
+				cut_by_spatial = true;
+				max_spatial_distance_mult = 5.0f;
+				min_border_overlap = 0.05f;
+				cost_function = NormalColor;
+			}
+			bool cut_by_spatial;
+			float max_spatial_distance_mult;
+			float min_border_overlap;
+			enum CostFunction {
+				SpatialNormalColor,
+				NormalColor
+			};
+			CostFunction cost_function;
+		};
+
 		/** Creates the superpixel neighborhood graph. Superpixels are neighbors if they share border pixels. */
-		graph::Graph CreateNeighborhoodGraph() const;
+		graph::Graph CreateNeighborhoodGraph(NeighborGraphSettings settings=NeighborGraphSettings()) const;
 
 		struct Segmentation
 		{
@@ -412,6 +431,37 @@ namespace dasp
 
 		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
+		template<bool cUseSqrt>
+		inline float SpatialDistance(const Point& x, const Point& y) const {
+			float d_world;
+			if(cUseSqrt) {
+				d_world = (x.world - y.world).norm();
+				d_world /= opt.base_radius;
+			}
+			else {
+				d_world = (x.world - y.world).squaredNorm();
+				d_world /= opt.base_radius * opt.base_radius;
+			}
+			return d_world;
+		}
+
+		template<bool cUseSqrt>
+		inline static float ColorDistance(const Point& u, const Point& v) {
+			float d_color;
+			if(cUseSqrt) {
+				d_color = (u.color - v.color).norm();
+//				d_color /= 0.25f;
+			}
+			else {
+				d_color = (u.color - v.color).squaredNorm();
+//				d_color /= (0.25f * 0.25f);
+			}
+//			if(d_color > 1.0f) {
+//				d_color = 1.0f;
+//			}
+			return d_color;
+		}
+
 		inline static float NormalDistance(const Point& u, const Point& v) {
 			// we want to compute 1 - dot(n(u), n(v))
 			// the normal is implicitly given by the gradient
@@ -419,159 +469,105 @@ namespace dasp
 			return 1.0f - (u.gradient.dot(v.gradient) + 1.0f) * u.circularity * v.circularity;
 		}
 
-//		inline float DistanceForNormals(const Eigen::Vector3f& x, const Eigen::Vector3f& y) const
-//		{
-//			// x and y are assumed to be normalized
-//			// dot(x,y) yields the cos of the angle
-//			// 1 is perfect, -1 is opposite
-//			// map to [0|2]
-//			return 1.0f - x.dot(y);
-//		}
+		inline static float DepthWeight(const Point& u, const Point& v) {
+			return 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+		}
 
 		template<bool cUseSqrt=false, bool WeightNormalsByDepth=false>
 		inline float Distance(const Point& u, const Point& v) const
 		{
-			float d_color;
-			if(cUseSqrt) {
-				d_color = (u.color - v.color).norm();
-				d_color /= 0.25f;
-			}
-			else {
-				d_color = (u.color - v.color).squaredNorm();
-				d_color /= (0.25f * 0.25f);
-			}
-			if(d_color > 1.0f) {
-				d_color = 1.0f;
-			}
-
-			float d_world;
-			if(cUseSqrt) {
-				d_world = (u.world - v.world).norm();
-				d_world /= opt.base_radius;
-			}
-			else {
-				d_world = (u.world - v.world).squaredNorm();
-				d_world /= opt.base_radius * opt.base_radius;
-			}
-
+			float d_world = SpatialDistance<cUseSqrt>(u,v);
+			float d_color = ColorDistance<cUseSqrt>(u,v);
 			float d_normal = NormalDistance(u, v);
 			if(WeightNormalsByDepth) {
-				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
+				d_normal *= DepthWeight(u, v);
 			}
-
-			return
-				opt.weight_color * d_color
-				+ opt.weight_spatial * d_world
+			return opt.weight_spatial * d_world
+				+ opt.weight_color * d_color
 				+ opt.weight_normal * d_normal;
 		}
 
-		template<bool cUseSqrt=false, bool cDisparity=true, bool WeightNormalsByDepth=false>
-		inline float DistancePlanar(const Point& u, const Point& v) const
-		{
-			float d_color;
-			if(cUseSqrt) {
-				d_color = (u.color - v.color).norm();
-				d_color /= 0.25f;
-			}
-			else {
-				d_color = (u.color - v.color).squaredNorm();
-				d_color /= (0.25f * 0.25f);
-			}
-			if(d_color > 1.0f) {
-				d_color = 1.0f;
-			}
+//		template<bool cUseSqrt=true, bool cDisparity=true, bool WeightNormalsByDepth=false>
+//		inline float DistancePlanar(const Point& u, const Point& v) const
+//		{
+//			float d_color = ColorDistance<cUseSqrt>(u,v);
+//
+//			float d_point;
+//			if(cUseSqrt) {
+//				d_point = (u.pos - v.pos).norm();
+//				d_point /= 0.5f*(u.image_super_radius + v.image_super_radius);
+//			}
+//			else {
+//				d_point = (u.pos - v.pos).squaredNorm();
+//				float q = 0.5f*(u.image_super_radius + v.image_super_radius);
+//				d_point /= q*q;
+//			}
+//
+//			float d_depth;
+//			if(cDisparity) {
+//				if(cUseSqrt) {
+//					d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
+//				}
+//				else {
+//					d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
+//				}
+//			}
+//			else {
+//				if(cUseSqrt) {
+//					d_depth = std::abs(u.depth() - v.depth());
+//				}
+//				else {
+//					d_depth = Square(u.depth() - v.depth());
+//				}
+//			}
+//
+//			float d_normal = NormalDistance(u, v);
+//			if(WeightNormalsByDepth) {
+//				d_normal *= DepthWeight(u, v);
+//			}
+//
+//			return
+//				opt.weight_color * d_color
+//				+ opt.weight_spatial * d_point
+//				+ opt.weight_depth*d_depth
+//				+ opt.weight_normal * d_normal;
+//		}
 
-			float d_point;
-			if(cUseSqrt) {
-				d_point = (u.pos - v.pos).norm();
-				d_point /= 0.5f*(u.image_super_radius + v.image_super_radius);
-			}
-			else {
-				d_point = (u.pos - v.pos).squaredNorm();
-				float q = 0.5f*(u.image_super_radius + v.image_super_radius);
-				d_point /= q*q;
-			}
-
-			float d_depth;
-			if(cDisparity) {
-				if(cUseSqrt) {
-					d_depth = std::abs(1.0f/u.depth() - 1.0f/v.depth());
-				}
-				else {
-					d_depth = Square(1.0f/u.depth() - 1.0f/v.depth());
-				}
-			}
-			else {
-				if(cUseSqrt) {
-					d_depth = std::abs(u.depth() - v.depth());
-				}
-				else {
-					d_depth = Square(u.depth() - v.depth());
-				}
-			}
-
-			float d_normal = NormalDistance(u, v);
-			if(WeightNormalsByDepth) {
-				d_normal *= 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
-			}
-
-			return
-				opt.weight_color * d_color
-				+ opt.weight_spatial * d_point
-				+ opt.weight_depth*d_depth
-				+ opt.weight_normal * d_normal;
-		}
-
-		inline float Distance(const Point& u, const Cluster& c) const {
-			return Distance(u, c.center);
-		}
-
-		inline float Distance(const Cluster& x, const Cluster& y) const {
-			return Distance(x.center, y.center);
-		}
-
-		template<bool cUseSqrt=true>
-		inline float DistanceSpatial(const Point& x, const Point& y) const {
-			float d_point;
-			if(cUseSqrt) {
-				d_point = (x.pos - y.pos).norm();
-			}
-			else {
-				d_point = (x.pos - y.pos).squaredNorm();
-			}
-			return d_point;
-		}
-
-		inline float DistanceSpatial(const Cluster& x, const Cluster& y) const {
-			return DistanceSpatial(x.center, y.center);
-		}
+//		inline float Distance(const Point& u, const Cluster& c) const {
+//			return Distance(u, c.center);
+//		}
+//
+//		inline float Distance(const Cluster& x, const Cluster& y) const {
+//			return Distance(x.center, y.center);
+//		}
 
 		template<bool WeightNormalsByDepth=false>
-		inline float DistanceWorld(const Cluster& x, const Cluster& y) const {
+		inline float DistanceSpatialColorNormal(const Cluster& x, const Cluster& y) const {
+			// world position of cluster centers.
+			float d_world = SpatialDistance<true>(x.center, y.center);
 			// mean cluster colors,
-			float d_color = (x.center.color - y.center.color).norm();
+			float d_color = ColorDistance<true>(x.center, y.center);
 			// mean cluster normals and
 			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
-				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+				d_normal *= DepthWeight(x.center, y.center);
 			}
-			// world position of cluster centers.
-			float d_world = (x.center.world - y.center.world).norm();
-			return opt.weight_color*d_color
-				+ opt.weight_spatial*d_world
+			return opt.weight_spatial*d_world
+				+ opt.weight_color*d_color
 				+ opt.weight_normal*d_normal;
 		}
 
 		template<bool WeightNormalsByDepth=false>
 		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
-			float d_color = (x.center.color - y.center.color).norm();
+			float d_color = ColorDistance<true>(x.center, y.center);
 			// mean cluster normals and
 			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
-				d_normal *= 2.0f / (1.0f + 0.5f * (x.center.depth() + y.center.depth()));
+				d_normal *= DepthWeight(x.center, y.center);
 			}
-			return opt.weight_color*d_color + opt.weight_normal*d_normal;
+			return opt.weight_color*d_color
+				+ opt.weight_normal*d_normal;
 		}
 
 		template<bool WeightNormalsByDepth=false>

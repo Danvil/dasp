@@ -687,7 +687,7 @@ void Clustering::MoveClusters()
 					// omit invalid points
 					continue;
 				}
-				float dist = Distance(p, c);
+				float dist = Distance(p, c.center);
 				float& v_dist_best = v_dist[pnt_index];
 				if(dist < v_dist_best) {
 					v_dist_best = dist;
@@ -729,7 +729,7 @@ void Clustering::MoveClusters()
 //#endif
 }
 
-std::vector<int> ComputeBorder(unsigned int cid, const Clustering& spc, const slimage::Image1i& labels) {
+std::vector<int> ComputeBorderLabels(unsigned int cid, const Clustering& spc, const slimage::Image1i& labels) {
 	const int w = static_cast<int>(spc.width());
 	const int h = static_cast<int>(spc.height());
 	const int d[4] = { -1, +1, -w, +w };
@@ -749,40 +749,89 @@ std::vector<int> ComputeBorder(unsigned int cid, const Clustering& spc, const sl
 	return border;
 }
 
+/** Computes a list of all pixels which are have label cid and have a face neighbor which has label cjd */
+std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Clustering& spc, const slimage::Image1i& labels) {
+	const int w = static_cast<int>(spc.width());
+	const int h = static_cast<int>(spc.height());
+	const int d[4] = { -1, +1, -w, +w };
+	std::vector<unsigned int> border;
+	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
+		int x = pid % w;
+		int y = pid / w;
+		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
+			for(int i=0; i<4; i++) {
+				int label = labels[pid + d[i]];
+				if(label == static_cast<int>(cjd)) {
+					border.push_back(pid);
+				}
+			}
+		}
+	}
+	return border;
+}
+
 std::vector<std::vector<int> > ComputeBorders(const Clustering& spc) {
 	slimage::Image1i labels = spc.ComputeLabels();
 	std::vector<std::vector<int> > border_pixels(spc.cluster.size());
 	for(unsigned int cid=0; cid<spc.cluster.size(); cid++) {
-		border_pixels[cid] = ComputeBorder(cid, spc, labels);
+		border_pixels[cid] = ComputeBorderLabels(cid, spc, labels);
 	}
 	return border_pixels;
 }
 
-graph::Graph Clustering::CreateNeighborhoodGraph() const
+std::vector<std::vector<unsigned int> > Clustering::ComputeBorderPixels(const graph::Graph& graph) const
 {
-	const float cSpatialDistanceThreshold = 5.0f;
-	const float cMinCommonBorderPercentage = 0.05f;
+	slimage::Image1i labels = ComputeLabels();
+	std::vector<std::vector<unsigned int> > borders(graph.edges.size());
+	for(unsigned int k=0; k<graph.edges.size(); k++) {
+		// compute pixels which are at the border between superpixels e.a and e.b
+		unsigned int i = graph.edges[k].a;
+		unsigned int j = graph.edges[k].b;
+		// superpixel i should have less points than superpixel j
+		if(cluster[i].pixel_ids.size() > cluster[j].pixel_ids.size()) {
+			std::swap(i,j);
+		}
+		// find border pixels
+		borders[k] = ComputeBorderPixelsImpl(i, j, *this, labels);
+	}
+	return borders;
+}
+
+graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
+{
 	std::vector<std::vector<int> > borders = ComputeBorders(*this);
 	graph::Graph G;
 	G.nodes_ = cluster.size();
-	const float node_distance_threshold = cSpatialDistanceThreshold * opt.base_radius;
+	const float node_distance_threshold = settings.max_spatial_distance_mult * opt.base_radius;
 	for(unsigned int i=0; i<G.nodes_; i++) {
 		for(unsigned int j=i+1; j<G.nodes_; j++) {
-			float d = (cluster[i].center.world - cluster[j].center.world).norm();
-			// only test if distance is smaller than threshold
-			if(d > node_distance_threshold) {
-				continue;
+			if(settings.cut_by_spatial) {
+				float d = (cluster[i].center.world - cluster[j].center.world).norm();
+				// only test if distance is smaller than threshold
+				if(d > node_distance_threshold) {
+					continue;
+				}
 			}
 			// test if superpixels have a common border
 			unsigned int cnt_j_in_i = std::count(borders[i].begin(), borders[i].end(), j);
 //			unsigned int cnt_i_in_j = std::count(borders[j].begin(), borders[j].end(), i);
 //			assert(cnt_j_in_i == cnt_i_in_j);
 			float p = static_cast<float>(cnt_j_in_i) / static_cast<float>(std::min(borders[i].size(),borders[j].size()));
-			if(p < cMinCommonBorderPercentage) {
+			if(p < settings.min_border_overlap) {
 				continue;
 			}
 			// compute cost using color and normal
-			float cost = Clustering::DistanceColorNormal(cluster[i], cluster[j]);
+			float cost;
+			if(settings.cost_function == NeighborGraphSettings::SpatialNormalColor) {
+				cost = DistanceSpatialColorNormal(cluster[i], cluster[j]);
+			}
+			else if(settings.cost_function == NeighborGraphSettings::NormalColor) {
+				cost = DistanceColorNormal(cluster[i], cluster[j]);
+			}
+			else {
+				BOOST_ASSERT(false);
+				cost = 0.0f;
+			}
 			G.edges.push_back({i,j,cost});
 		}
 	}
