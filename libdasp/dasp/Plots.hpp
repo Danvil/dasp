@@ -83,6 +83,7 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 
 void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size=1, bool internal=false);
 void PlotEdges(const slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size=1, bool internal=false);
+void PlotEdges(const slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size=1, bool internal=false);
 
 void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey=0, int size=1);
 

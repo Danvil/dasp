@@ -149,6 +149,11 @@ void PlotEdges(const slimage::Image1ub& img, const slimage::Image1i& labels, con
 	PlotEdgesImpl(img, labels, color, size, internal);
 }
 
+void PlotEdges(const slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size, bool internal)
+{
+	PlotEdgesImpl(img, labels, color, size, internal);
+}
+
 template<typename T>
 void PlotSeedsImpl(const slimage::Image<T>& img, const std::vector<Seed>& seeds, const slimage::Pixel<T>& color, int size)
 {
