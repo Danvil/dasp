@@ -845,23 +845,6 @@ graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings)
 	return G;
 }
 
-Clustering::Segmentation Clustering::CreateSegmentation(const graph::Graph& Gn) const
-{
-	Segmentation seg;
-	seg.cluster_graph = Gn;
-	// graph segmentation
-	seg.segmentation_graph = graph::MinimalSpanningCutting(seg.cluster_graph, opt.segment_threshold, &seg.cluster_labels);
-	// remap labels to get a continuous interval of labels
-	std::set<unsigned int> unique_labels_set(seg.cluster_labels.begin(), seg.cluster_labels.end());
-	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
-	seg.segment_count = unique_labels.size();
-	for(unsigned int& x : seg.cluster_labels) {
-		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
-		x = it - unique_labels.begin();
-	}
-	return seg;
-}
-
 ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_thick)
 {
 	ClusterGroupInfo cgi;

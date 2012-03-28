@@ -9,6 +9,7 @@
 #include "tools/Mipmaps.hpp"
 #include "tools/BlueNoise.hpp"
 #include "tools/AutoDepth.hpp"
+#include "Segmentation.hpp"
 #include "Plots.hpp"
 #include <Slimage/Paint.hpp>
 #define DANVIL_ENABLE_BENCHMARK
@@ -305,14 +306,11 @@ void DaspTracker::performSegmentationStep()
 		}
 
 		if(show_graph_ || plot_segments_) {
-			// create neighbourhood graph
-			graph::Graph Gn = clustering_.CreateNeighborhoodGraph();
-
-			Clustering::Segmentation segments;
+			Segmentation segments;
 			if(plot_segments_) {
 				// create segmentation graph
-				segments = clustering_.CreateSegmentation(Gn);
-				std::cout << "Cluster Count: " << segments.countClusters() << ", Segment Count: " << segments.countSegments() << std::endl;
+				segments = MinCutSegmentation(clustering_);
+				std::cout << "Segment Count: " << segments.countSegments() << std::endl;
 
 				// plot segmentation graph
 				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(segments.countSegments());
@@ -322,7 +320,9 @@ void DaspTracker::performSegmentationStep()
 			}
 
 			if(show_graph_) {
-				graph::Graph Gp = plot_segments_ ? segments.segmentation_graph : Gn;
+				graph::Graph Gp = plot_segments_
+						? segments.segmentation_graph
+						: clustering_.CreateNeighborhoodGraph();
 				// plot neighbourhood graph
 				for(graph::Edge& e : Gp.edges) {
 					const Point& a = clustering_.cluster[e.a].center;

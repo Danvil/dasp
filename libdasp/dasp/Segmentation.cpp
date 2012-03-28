@@ -6,19 +6,34 @@
  */
 
 #include "Segmentation.hpp"
+#include "tools/Graph.hpp"
+#include "Plots.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
 #include <fstream>
 #include <iostream>
+#include <set>
 
 namespace dasp
 {
 
 std::vector<slimage::Image3ub> cSegmentationDebug;
 
-slimage::Image1f SpectralSegmentation(const Clustering& clusters)
+void Segmentation::createBoundariesFromLabels(const Clustering& clustering)
+{
+	// create segment labeling
+	slimage::Image1i labels(clustering.width(), clustering.height(), slimage::Pixel1i{-1});
+	clustering.ForPixelClusters([this,&labels](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+		labels[pid] = cluster_labels[cid];
+	});
+	// plot segment boundaries
+	boundaries_wt = slimage::Image1ub(clustering.width(), clustering.height(), slimage::Pixel1ub{0});
+	dasp::plots::PlotEdges(boundaries_wt, labels, slimage::Pixel1ub{255}, 1);
+}
+
+Segmentation SpectralSegmentation(const Clustering& clusters)
 {
 	const bool cDebugSaveImages = false;
 
@@ -185,12 +200,31 @@ slimage::Image1f SpectralSegmentation(const Clustering& clusters)
 			result[pid] = edge_weight[eid];
 		}
 	}
-	return result;
+
+	// FIXME create and segmentation graph labels!
+
+	Segmentation segs;
+	segs.boundaries = result;
+	return segs;
 }
 
-slimage::Image1f ComputeBoundary(const Clustering& clusters)
+Segmentation MinCutSegmentation(const Clustering& clusters)
 {
-	return SpectralSegmentation(clusters);
+	graph::Graph Gn = clusters.CreateNeighborhoodGraph();
+	Segmentation seg;
+	// graph segmentation
+	seg.segmentation_graph = graph::MinimalSpanningCutting(Gn, clusters.opt.segment_threshold, &seg.cluster_labels);
+	// remap labels to get a continuous interval of labels
+	std::set<unsigned int> unique_labels_set(seg.cluster_labels.begin(), seg.cluster_labels.end());
+	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
+	seg.segment_count = unique_labels.size();
+	for(unsigned int& x : seg.cluster_labels) {
+		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
+		x = it - unique_labels.begin();
+	}
+	return seg;
 }
+
+
 
 }

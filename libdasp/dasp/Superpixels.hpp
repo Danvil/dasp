@@ -368,25 +368,6 @@ namespace dasp
 		/** Creates the superpixel neighborhood graph. Superpixels are neighbors if they share border pixels. */
 		graph::Graph CreateNeighborhoodGraph(NeighborGraphSettings settings=NeighborGraphSettings()) const;
 
-		struct Segmentation
-		{
-			std::vector<unsigned int> cluster_labels;
-			unsigned int segment_count;
-			graph::Graph cluster_graph;
-			graph::Graph segmentation_graph;
-
-			unsigned int countSegments() const {
-				return segment_count;
-			}
-
-			unsigned int countClusters() const {
-				return cluster_graph.nodes_;
-			}
-		};
-
-		/** Create clusters of superpixels (= segments) */
-		Segmentation CreateSegmentation(const graph::Graph& neighbourhood) const;
-
 		/**
 		 * Signature of F :
 		 * void F(unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p)
