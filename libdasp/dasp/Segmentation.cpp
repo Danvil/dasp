@@ -8,8 +8,10 @@
 #include "Segmentation.hpp"
 #include "tools/Graph.hpp"
 #include "Plots.hpp"
+#include <Slimage/Gui.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
+#include <opencv2/opencv.hpp>
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
 #include <fstream>
@@ -37,7 +39,11 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 {
 	const bool cDebugSaveImages = false;
 
-	const unsigned int cNEV = 48;
+	typedef float Real;
+	typedef Eigen::MatrixXf Mat;
+	typedef Eigen::VectorXf Vec;
+
+	const unsigned int cNEV = 16;
 	const float cWeightRho = 1.0f;
 	unsigned int n = clusters.clusterCount();
 	std::cout << "SpectralSegmentation: n = " << n << std::endl;
@@ -49,7 +55,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
 	BOOST_ASSERT(n == Gnb.nodes_);
 	// create W matrix from neighbourhood graph
-	Eigen::MatrixXf W = Eigen::MatrixXf::Zero(n,n);
+	Mat W = Mat::Zero(n,n);
 	std::vector<float> Di(n, 0.0f);
 	for(const graph::Edge& e : Gnb.edges) {
 		BOOST_ASSERT(e.a != e.b);
@@ -75,11 +81,11 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 		}
 	}
 	// compute matrices D = diagonal(Di) and A = D - W
-	Eigen::MatrixXf D = Eigen::MatrixXf::Zero(n,n);
-	Eigen::MatrixXf A = -W;
+	Mat D = Mat::Zero(n,n);
+	Mat A = -W;
 	for(unsigned int i=0; i<n; i++) {
-		float di = Di[i];
-		BOOST_ASSERT(di > 0.0f);
+		Real di = Di[i];
+		BOOST_ASSERT(di > static_cast<Real>(0));
 		A(i,i) += di;
 		D(i,i) = di;
 	}
@@ -102,7 +108,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 //		}
 //	}	// DEBUG
 	// solve eigensystem
-	Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> solver;
+	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
 	solver.compute(A, D); // only need some eigenvectors!
 	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
 	unsigned int n_used_ew = std::min(n - 1, cNEV);
@@ -112,7 +118,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 		// create image from eigenvectors (omit first)
 		for(unsigned int k=0; k<n_used_ew; k++) {
 			// get k-th eigenvector
-			Eigen::VectorXf ev = solver.eigenvectors().col(k + 1);
+			Vec ev = solver.eigenvectors().col(k + 1);
 			// convert to plotable values
 			std::vector<unsigned char> ev_ub(n);
 			for(unsigned int i=0; i<n; i++) {
@@ -130,54 +136,61 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	}	// DEBUG
 	// compute edge border pixels
 	std::vector<std::vector<unsigned int>> border_pixels = clusters.ComputeBorderPixels(Gnb);
-	Eigen::VectorXf edge_weight = Eigen::VectorXf::Zero(Gnb.edges.size());
-	// later we weight by eigenvalues
-	// find a positive eigenvalue (need to do this because of ugly instabilities ...
-	float ew_pos = -1.0f;
-	for(unsigned int i=0; ; i++) {
-		if(solver.eigenvalues()[i] > 0) {
-			// FIXME magic to get a not too small eigenvalue
-//			unsigned int x = (n_used_ew + i)/2;
-			unsigned int x = i + 5;
-			ew_pos = solver.eigenvalues()[x];
-			break;
-		}
-	}
-	// compute normalized weights from eigenvalues
-	Eigen::VectorXf weights = Eigen::VectorXf::Zero(n_used_ew);
-	for(unsigned int k=0; k<n_used_ew; k++) {
-		float ew = solver.eigenvalues()[k + 1];
-		if(ew <= ew_pos) {
-			ew = ew_pos;
-		}
-		weights[k] = 1.0f / std::sqrt(ew);
-	}
-	std::cout << "Weights = " << weights.transpose() << std::endl;
+	Vec edge_weight = Vec::Zero(Gnb.edges.size());
+//	// later we weight by eigenvalues
+//	// find a positive eigenvalue (need to do this because of ugly instabilities ...
+//	Real ew_pos = -1.0f;
+//	for(unsigned int i=0; ; i++) {
+//		if(solver.eigenvalues()[i] > 0) {
+//			// FIXME magic to get a not too small eigenvalue
+////			unsigned int x = (n_used_ew + i)/2;
+//			unsigned int x = i + 5;
+//			ew_pos = solver.eigenvalues()[x];
+//			break;
+//		}
+//	}
+//	// compute normalized weights from eigenvalues
+//	Vec weights = Vec::Zero(n_used_ew);
+//	for(unsigned int k=0; k<n_used_ew; k++) {
+//		Real ew = solver.eigenvalues()[k + 1];
+//		if(ew <= ew_pos) {
+//			ew = ew_pos;
+//		}
+//		weights[k] = 1.0f / std::sqrt(ew);
+//	}
+//	std::cout << "Weights = " << weights.transpose() << std::endl;
 	// look into first eigenvectors
 	for(unsigned int k=0; k<n_used_ew; k++) {
 		// weight by eigenvalue
-		float w = weights[k];// / w_sum;
-		Eigen::VectorXf ev = solver.eigenvectors().col(k + 1);
+		Real ew = solver.eigenvalues()[k + 1];
+		if(ew <= Real(0)) {
+			continue;
+		}
+		float w = 1.0f / std::sqrt(ew);
+		Vec ev = solver.eigenvectors().col(k + 1);
+		// normalize
+		ev = (ev - ev.minCoeff()*Vec::Ones(ev.rows())) / (ev.maxCoeff() - ev.minCoeff());
 		// for each edge
 		for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 			const graph::Edge& e = Gnb.edges[eid];
 			// sum difference between eigenvector values for superpixels
-			float d = std::abs(ev[e.a] - ev[e.b]);
+			Real d = std::abs(ev[e.a] - ev[e.b]);
 			edge_weight[eid] += w * d;
 		}
 	}
 	// normalize edge weights to [0,1]
 	std::cout << "Edge weights: min=" << edge_weight.minCoeff() << ", max=" << edge_weight.maxCoeff() << std::endl;
+	std::cout << "Edge weights: median=" << edge_weight[edge_weight.rows()/2] << std::endl;
 
-	{
-		std::ofstream ofs("/tmp/edge_weights.txt");
-		for(unsigned int i=0; i<n; i++) {
-			ofs << edge_weight[i] << std::endl;
-		}
-	}
+//	{
+//		std::ofstream ofs("/tmp/edge_weights.txt");
+//		for(unsigned int i=0; i<n; i++) {
+//			ofs << edge_weight[i] << std::endl;
+//		}
+//	}
 
 //	edge_weight /= edge_weight[(95*edge_weight.rows())/100];
-	edge_weight /= edge_weight.maxCoeff();
+//	edge_weight /= edge_weight.maxCoeff();
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
 
 	// write value to border pixels
@@ -197,9 +210,11 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 //	}
 	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 		for(unsigned int pid : border_pixels[eid]) {
-			result[pid] = edge_weight[eid];
+			result[pid] = static_cast<float>(edge_weight[eid]);
 		}
 	}
+
+	slimage::gui::Show("segs", result, 0.1f);
 
 	// FIXME create and segmentation graph labels!
 
