@@ -47,6 +47,51 @@ float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub
 	return ComputeRecallBoxImpl(img_exp, img_act, static_cast<unsigned char>(255), static_cast<unsigned char>(255), d);
 }
 
+slimage::Image3ub CreateRecallImage(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrieved, int d)
+{
+	BOOST_ASSERT(img_relevant.dimensions() == img_retrieved.dimensions());
+	slimage::Image3ub vis(img_relevant.dimensions());
+	for(int y=cBorder+d; y+cBorder+d<static_cast<int>(img_relevant.height()); y++) {
+		for(int x=cBorder+d; x+cBorder+d<static_cast<int>(img_relevant.width()); x++) {
+			bool is_relevant = false;
+			bool is_relevant_and_retrieved = false;
+			bool is_retrieved = false;
+			bool is_retrieved_and_relevant = false;
+			if(img_relevant(x,y)) {
+				is_relevant = true;
+				// check if pixels from the relevant boundary is near a boundary pixel in the retrieved image
+				for(int u=-d; u<=+d && !is_retrieved_and_relevant; u++) {
+					for(int v=-d; v<=+d && !is_retrieved_and_relevant; v++) {
+						if(img_retrieved(x+u, y+v)) {
+							is_relevant_and_retrieved = true;
+						}
+					}
+				}
+			}
+			if(img_retrieved(x,y)) {
+				is_retrieved = true;
+				// check if pixels from the retrieved boundary is near a boundary pixel in the relevant image
+				for(int u=-d; u<=+d && !is_retrieved_and_relevant; u++) {
+					for(int v=-d; v<=+d && !is_retrieved_and_relevant; v++) {
+						if(img_relevant(x+u, y+v)) {
+							is_retrieved_and_relevant = true;
+						}
+					}
+				}
+			}
+			slimage::Pixel3ub color{{0,0,0}};
+			if(is_relevant_and_retrieved || is_retrieved_and_relevant) {
+				color = slimage::Pixel3ub{{255,255,255}};
+			}
+			else if(is_relevant || is_retrieved) {
+				color = slimage::Pixel3ub{{255,0,0}};
+			}
+			vis(x,y) = color;
+		}
+	}
+	return vis;
+}
+
 PrecisionRecallStats PrecisionRecall(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrievend, int d)
 {
 	BOOST_ASSERT(img_relevant.hasSameShape(img_retrievend));

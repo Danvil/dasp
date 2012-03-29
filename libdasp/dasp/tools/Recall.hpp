@@ -66,6 +66,8 @@ float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub
 
 float ComputeRecallGaussian(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, float sigma);
 
+slimage::Image3ub CreateRecallImage(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrieved, int d);
+
 }
 
 #endif
