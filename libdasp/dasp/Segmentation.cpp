@@ -45,6 +45,11 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 
 #ifdef SEGS_DBG_SHOWGUI
 	{
+		slimage::Image3ub vis = clusters.color_raw.clone();
+		dasp::plots::PlotEdges(vis, clusters.ComputeLabels(), slimage::Pixel3ub{{255,255,255}},1);
+		slimage::gui::Show("color", vis);
+	}
+	{
 		slimage::Image3ub vis = dasp::plots::PlotClusters(clusters, dasp::plots::ClusterPoints, dasp::plots::Color);
 		dasp::plots::PlotEdges(vis, clusters.ComputeLabels(), slimage::Pixel3ub{{255,255,255}},1);
 		slimage::gui::Show("clusters", vis);
@@ -98,6 +103,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 		}
 		// compute total edge connectivity
 		float w = std::exp(-(w_maha_color + w_maha_world + w_maha_normal));
+//		float w = std::exp(-w_maha_world);
 //		float w = std::exp(-w_maha_normal);
 //		float w = std::exp(-w_maha_color);
 		edge_connectivity[i] = w;
@@ -301,7 +307,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	}
 
 #ifdef SEGS_DBG_SHOWGUI
-	slimage::gui::Show("segs", result, 0.1f);
+	slimage::gui::Show("segs", result, 0.01f);
 	slimage::gui::WaitForKeypress();
 #endif
 
