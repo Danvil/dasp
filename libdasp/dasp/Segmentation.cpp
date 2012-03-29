@@ -10,6 +10,7 @@
 #include "Plots.hpp"
 #include <Slimage/Gui.hpp>
 #include <Eigen/Dense>
+//#include <Eigen/Sparse>
 #include <Eigen/Eigenvalues>
 #include <opencv2/opencv.hpp>
 #include <boost/assert.hpp>
@@ -39,6 +40,128 @@ void Segmentation::createBoundariesFromLabels(const Clustering& clustering)
 	dasp::plots::PlotEdges(boundaries_wt, labels, slimage::Pixel1ub{255}, 1);
 }
 
+struct Entry {
+	unsigned int a, b;
+	float w;
+};
+
+typedef float Real;
+typedef Eigen::MatrixXf Mat;
+typedef Eigen::VectorXf Vec;
+
+void SolveSpectralDense(const std::vector<Entry>& entries, unsigned int n, Vec& ew, Mat& ev)
+{
+	// creating matrices
+	Mat W = Mat::Zero(n,n);
+	std::vector<float> Di(n, 0.0f);
+	for(const Entry& e : entries) {
+		W(e.a, e.b) = e.w;
+		W(e.b, e.a) = e.w;
+		Di[e.a] += e.w;
+		Di[e.b] += e.w;
+	}
+	std::cout << "SpectralSegmentation: W non zero percentage = " << static_cast<float>(2 * entries.size()) / static_cast<float>(n*n) << std::endl;
+	// connect disconnected segments to everything -> ARGH!
+	for(unsigned int i=0; i<n; i++) {
+		float& di = Di[i];
+		if(di == 0) {
+			std::cout << "Cluster " << i << " has no connections! " << std::endl;
+			// connect the disconnected cluster to all other clusters with a very small weight
+			di = 1.0f;
+			float q = di / static_cast<float>(n-1);
+			for(unsigned int j=0; j<n; j++) {
+				if(j == i) continue;
+				W(i,j) = q;
+				W(j,i) = q;
+			}
+		}
+	}
+	// compute matrices D = diagonal(Di) and A = D - W
+	Mat D = Mat::Zero(n,n);
+	Mat A = -W;
+	for(unsigned int i=0; i<n; i++) {
+		Real di = Di[i];
+		BOOST_ASSERT(di > static_cast<Real>(0));
+		A(i,i) += di;
+		D(i,i) = di;
+	}
+	// solve eigensystem
+	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
+	solver.compute(A, D); // only need some eigenvectors!
+	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+	// return eigenvectors and eigenvalues
+	ew = solver.eigenvalues();
+	ev = solver.eigenvectors();
+}
+
+//void SolveSpectralSparse(const std::vector<Entry>& entries, unsigned int n, Vec& ew, Mat& ev)
+//{
+//	std::vector<float> Di(n, 0.0f);
+//	std::vector<Eigen::Triplet<Real>> W_triplets;
+//	W_triplets.reserve(2*entries.size());
+//	for(const Entry& e : entries) {
+//		Di[e.a] += e.w;
+//		Di[e.b] += e.w;
+//		W_triplets.push_back(Eigen::Triplet<Real>(e.a,e.b,e.w));
+//		W_triplets.push_back(Eigen::Triplet<Real>(e.b,e.a,e.w));
+//	}
+//	std::vector<Eigen::Triplet<Real>> D_triplets;
+//	// connect disconnected segments to everything -> ARGH!
+//	for(unsigned int i=0; i<n; i++) {
+//		float& di = Di[i];
+//		if(di == 0) {
+//			std::cout << "Cluster " << i << " has no connections! " << std::endl;
+//			// connect the disconnected cluster to all other clusters with a very small weight
+//			di = 1.0f;
+//			float q = di / static_cast<float>(n-1);
+//			for(unsigned int j=0; j<n; j++) {
+//				if(j == i) continue;
+//				W_triplets.push_back(Eigen::Triplet<Real>(i,j,q));
+//				W_triplets.push_back(Eigen::Triplet<Real>(j,i,q));
+//			}
+//		}
+//		D_triplets.push_back(Eigen::Triplet<Real>(i,i,di));
+//	}
+//	// create matrices
+//	Eigen::SparseMatrix<Real> W(n,n);
+//	W.setFromTriplets(W_triplets.begin(), W_triplets.end());
+//	Eigen::SparseMatrix<Real> D(n,n);
+//	W.setFromTriplets(D_triplets.begin(), D_triplets.end());
+//	Eigen::SparseMatrix<Real> A = D - W;
+//	// solve eigensystem
+//	Eigen::GeneralizedSelfAdjointEigenSolver< Eigen::SparseSelfAdjointView<Eigen::SparseMatrix<Real>,1u> > solver;
+//	solver.compute(A, D); // only need some eigenvectors!
+//	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+//	// return eigenvectors and eigenvalues
+//	ew = solver.eigenvalues();
+//	ev = solver.eigenvectors();
+//}
+
+void SolveSpectral(const std::vector<Entry>& entries, unsigned int n, Vec& ew, Mat& ev)
+{
+	SolveSpectralDense(entries, n, ew, ev);
+
+	//	{	// DEBUG
+	//		std::ofstream ofs_D("/tmp/spectral_D.csv");
+	//		std::ofstream ofs_W("/tmp/spectral_W.csv");
+	//		for(unsigned int i=0; i<n; i++) {
+	//			for(unsigned int j=0; j<n; j++) {
+	//				ofs_D << D(i,j);
+	//				ofs_W << W(i,j);
+	//				if(j+1 == n) {
+	//					ofs_D << std::endl;
+	//					ofs_W << std::endl;
+	//				}
+	//				else {
+	//					ofs_D << ",";
+	//					ofs_W << ",";
+	//				}
+	//			}
+	//		}
+	//	}	// DEBUG
+
+}
+
 Segmentation SpectralSegmentation(const Clustering& clusters)
 {
 	const bool cOnlyConcaveEdges = true;
@@ -57,10 +180,6 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 
 #endif
 
-	typedef float Real;
-	typedef Eigen::MatrixXf Mat;
-	typedef Eigen::VectorXf Vec;
-
 	const unsigned int cNEV = 16;
 	const float cWeightRho = 0.01f; // 640x480 clusters would yield 0.1 which is used in gPb
 	unsigned int n = clusters.clusterCount();
@@ -74,8 +193,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	BOOST_ASSERT(n == Gnb.nodes_);
 	// create W matrix from neighbourhood graph
 	Vec edge_connectivity(Gnb.edges.size());
-	Mat W = Mat::Zero(n,n);
-	std::vector<float> Di(n, 0.0f);
+	std::vector<Entry> entries;
 	for(unsigned int i=0; i<Gnb.edges.size(); i++) {
 		const graph::Edge& e = Gnb.edges[i];
 		BOOST_ASSERT(e.a != e.b);
@@ -108,10 +226,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 //		float w = std::exp(-w_maha_color);
 		edge_connectivity[i] = w;
 		// write in W and D matrix
-		W(e.a, e.b) = w;
-		W(e.b, e.a) = w;
-		Di[e.a] += w;
-		Di[e.b] += w;
+		entries.push_back({e.a, e.b, w});
 	}
 
 	std::cout << "Edve connectivity: min=" << edge_connectivity.minCoeff() << ", max=" << edge_connectivity.maxCoeff() << std::endl;
@@ -131,61 +246,20 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	}
 #endif
 
-	std::cout << "SpectralSegmentation: W non zero percentage = " << static_cast<float>(2 * Gnb.edges.size()) / static_cast<float>(n*n) << std::endl;
-	// connect disconnected segments to everything -> ARGH!
-	for(unsigned int i=0; i<n; i++) {
-		float& di = Di[i];
-		if(di == 0) {
-			std::cout << "Cluster " << i << " has no connections! pixels=" << clusters.cluster[i].pixel_ids.size() << std::endl;
-			di = 1.0f; // FIXME wtf!
-			float q = di / static_cast<float>(n-1);
-			for(unsigned int j=0; j<n; j++) {
-				if(j == i) continue;
-				W(i,j) = q;
-				W(j,i) = q;
-			}
-		}
-	}
-	// compute matrices D = diagonal(Di) and A = D - W
-	Mat D = Mat::Zero(n,n);
-	Mat A = -W;
-	for(unsigned int i=0; i<n; i++) {
-		Real di = Di[i];
-		BOOST_ASSERT(di > static_cast<Real>(0));
-		A(i,i) += di;
-		D(i,i) = di;
-	}
-//	{	// DEBUG
-//		std::ofstream ofs_D("/tmp/spectral_D.csv");
-//		std::ofstream ofs_W("/tmp/spectral_W.csv");
-//		for(unsigned int i=0; i<n; i++) {
-//			for(unsigned int j=0; j<n; j++) {
-//				ofs_D << D(i,j);
-//				ofs_W << W(i,j);
-//				if(j+1 == n) {
-//					ofs_D << std::endl;
-//					ofs_W << std::endl;
-//				}
-//				else {
-//					ofs_D << ",";
-//					ofs_W << ",";
-//				}
-//			}
-//		}
-//	}	// DEBUG
-	// solve eigensystem
-	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
-	solver.compute(A, D); // only need some eigenvectors!
-	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+	Vec result_ew;
+	Mat result_ev;
+	SolveSpectral(entries, n, result_ew, result_ev);
+
+
 	unsigned int n_used_ew = std::min(n - 1, cNEV);
-	std::cout << "Eigenvalues = " << solver.eigenvalues().topRows(n_used_ew + 1).transpose() << std::endl;
+	std::cout << "Eigenvalues = " << result_ew.topRows(n_used_ew + 1).transpose() << std::endl;
 #ifdef SEGS_DBG_CREATE_EV_IMAGES
 	{
 		cSegmentationDebug.clear();
 		// create image from eigenvectors (omit first)
 		for(unsigned int k=0; k<std::min(cNEV,3u); k++) {
 			// get k-th eigenvector
-			Vec ev = solver.eigenvectors().col(k + 1);
+			Vec ev = result_ev.col(k + 1);
 			// convert to plotable values
 			std::vector<unsigned char> ev_ub(n);
 			for(unsigned int i=0; i<n; i++) {
@@ -231,14 +305,14 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	// look into first eigenvectors
 	for(unsigned int k=0; k<n_used_ew; k++) {
 		// weight by eigenvalue
-		Real ew = solver.eigenvalues()[k + 1];
+		Real ew = result_ew[k + 1];
 		if(ew <= Real(0)) {
 			// omit if eigenvalue is not positive
 			continue;
 		}
 		float w = 1.0f / std::sqrt(ew);
 		// get eigenvector and normalize
-		Vec ev = solver.eigenvectors().col(k + 1);
+		Vec ev = result_ev.col(k + 1);
 		ev = (ev - ev.minCoeff()*Vec::Ones(ev.rows())) / (ev.maxCoeff() - ev.minCoeff());
 		// for each edge compute difference of eigenvector values
 		Vec e_k = Vec::Zero(Gnb.edges.size());
