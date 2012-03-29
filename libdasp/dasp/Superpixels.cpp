@@ -199,8 +199,19 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 			float r = float(cub[0]) / 255.0f;
 			float g = float(cub[1]) / 255.0f;
 			float b = float(cub[2]) / 255.0f;
+			Danvil::convert_hsv_2_rgb(r, g, b, r, g, b);
+			cf[0] = r;
+			cf[1] = g;
+			cf[2] = b;
+		}, slimage::ThreadingOptions::Single());
+	} break;
+	case ColorSpaces::LAB: {
+		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
+			float r = float(cub[0]) / 255.0f;
+			float g = float(cub[1]) / 255.0f;
+			float b = float(cub[2]) / 255.0f;
 			Danvil::color_rgb_to_lab(r, g, b, r, g, b);
-			r /= 1000.0f;
+			r /= 100.0f;
 			g /= 100.0f;
 			b /= 100.0f;
 			cf[0] = r;
@@ -828,18 +839,23 @@ graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings)
 				continue;
 			}
 			// compute cost using color and normal
-			float cost;
+			graph::Edge edge;
+			edge.a = i;
+			edge.b = j;
+			edge.c_world = SpatialDistance<true>(cluster[i].center, cluster[j].center);
+			edge.c_color = ColorDistance<true,true>(cluster[i].center, cluster[j].center);
+			edge.c_normal = NormalDistance(cluster[i].center, cluster[j].center);
 			if(settings.cost_function == NeighborGraphSettings::SpatialNormalColor) {
-				cost = DistanceSpatialColorNormal(cluster[i], cluster[j]);
+				edge.cost = opt.weight_spatial * edge.c_world + opt.weight_color * edge.c_color + opt.weight_normal * edge.c_normal;
 			}
 			else if(settings.cost_function == NeighborGraphSettings::NormalColor) {
-				cost = DistanceColorNormal(cluster[i], cluster[j]);
+				edge.cost = opt.weight_color * edge.c_color + opt.weight_normal * edge.c_normal;
 			}
 			else {
 				BOOST_ASSERT(false);
-				cost = 0.0f;
+				edge.cost = 0.0f;
 			}
-			G.edges.push_back({i,j,cost});
+			G.edges.push_back(edge);
 		}
 	}
 	return G;

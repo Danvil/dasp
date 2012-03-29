@@ -151,7 +151,7 @@ namespace dasp
 
 	namespace ColorSpaces {
 		enum Type {
-			RGB, HSV, HN
+			RGB, HSV, LAB, HN
 		};
 	}
 	typedef ColorSpaces::Type ColorSpace;
@@ -448,20 +448,26 @@ namespace dasp
 			return d_world;
 		}
 
-		template<bool cUseSqrt>
+		template<bool cUseSqrt, bool cLimit>
 		inline static float ColorDistance(const Point& u, const Point& v) {
 			float d_color;
 			if(cUseSqrt) {
 				d_color = (u.color - v.color).norm();
-//				d_color /= 0.25f;
+				if(cLimit) {
+					d_color /= 0.25f;
+				}
 			}
 			else {
 				d_color = (u.color - v.color).squaredNorm();
-//				d_color /= (0.25f * 0.25f);
+				if(cLimit) {
+					d_color /= (0.25f * 0.25f);
+				}
 			}
-//			if(d_color > 1.0f) {
-//				d_color = 1.0f;
-//			}
+			if(cLimit) {
+				if(d_color > 1.0f) {
+					d_color = 1.0f;
+				}
+			}
 			return d_color;
 		}
 
@@ -476,12 +482,12 @@ namespace dasp
 			return 2.0f / (1.0f + 0.5f * (u.depth() + v.depth()));
 		}
 
-		template<bool cUseSqrt=false, bool WeightNormalsByDepth=false>
+		template<bool cUseSqrt=false, bool WeightNormalsByDepth=false, bool cLimitColorDist=false>
 		inline float Distance(const Point& u, const Point& v) const
 		{
 			float d_image = ImageDistance<cUseSqrt>(u,v);
 			float d_world = SpatialDistance<cUseSqrt>(u,v);
-			float d_color = ColorDistance<cUseSqrt>(u,v);
+			float d_color = ColorDistance<cUseSqrt,cLimitColorDist>(u,v);
 			float d_normal = NormalDistance(u, v);
 			if(WeightNormalsByDepth) {
 				d_normal *= DepthWeight(u, v);
@@ -551,7 +557,7 @@ namespace dasp
 			// world position of cluster centers.
 			float d_world = SpatialDistance<true>(x.center, y.center);
 			// mean cluster colors,
-			float d_color = ColorDistance<true>(x.center, y.center);
+			float d_color = ColorDistance<true,true>(x.center, y.center);
 			// mean cluster normals and
 			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
@@ -565,7 +571,7 @@ namespace dasp
 		template<bool WeightNormalsByDepth=false>
 		inline float DistanceColorNormal(const Cluster& x, const Cluster& y) const {
 			// mean cluster colors,
-			float d_color = ColorDistance<true>(x.center, y.center);
+			float d_color = ColorDistance<true,true>(x.center, y.center);
 			// mean cluster normals and
 			float d_normal = NormalDistance(x.center, y.center);
 			if(WeightNormalsByDepth) {
