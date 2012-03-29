@@ -62,15 +62,27 @@ struct ExtrapolateDepth
 	ExtrapolateDepth(const std::vector<uint16_t>& data)
 	: data_(data) {
 		BOOST_ASSERT(data_.size() > 0);
-		solveSimple();
+		solveConst();
+//		solveSimple();
 //		solveFit();
 	}
 
 	uint16_t operator()(unsigned int i) const {
 		return static_cast<uint16_t>(lin_t_ + lin_m_ * static_cast<float>(i));
+//		return data_[data_.size() - i % std::min<unsigned>(4, data_.size())];
 	}
 
 private:
+	void solveConst() {
+		lin_t_ = 0.0f;
+		unsigned int n = std::min<unsigned int>(4,data_.size());
+		for(unsigned int i=0; i<n; i++) {
+			lin_t_ += static_cast<float>(data_[data_.size() - 1 - i]);
+		}
+		lin_t_ /= static_cast<float>(n);
+		lin_m_ = 0.0f;
+	}
+
 	void solveSimple() {
 		int i = std::min(10, static_cast<int>(data_.size()));
 		float a = data_[data_.size() - i];
