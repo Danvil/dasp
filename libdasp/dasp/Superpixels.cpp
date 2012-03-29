@@ -181,6 +181,7 @@ std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
 
 void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
+	color_raw = image.clone();
 	slimage::Image3f colf(image.width(), image.height());
 	// convert to desired color space
 	switch(opt.color_space) {

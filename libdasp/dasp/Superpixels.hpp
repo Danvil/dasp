@@ -290,6 +290,8 @@ namespace dasp
 
 		Parameters opt;
 
+		slimage::Image3ub color_raw;
+
 		ImagePoints points;
 
 		slimage::Image1f density;
