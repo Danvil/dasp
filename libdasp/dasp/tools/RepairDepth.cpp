@@ -220,7 +220,7 @@ inline uint16_t KinectBorderSensitiveSmooth(unsigned int vmm, unsigned int vm, u
 		return (4*v0 + 3*vm + vmm)/8;
 	}
 	else {
-		if(std::abs(static_cast<int>(vpp) - static_cast<int>(v0)) < std::abs(static_cast<int>(vmm) - static_cast<int>(vm))) {
+		if(std::abs(static_cast<int>(vpp) - static_cast<int>(v0)) < std::abs(static_cast<int>(vmm) - static_cast<int>(v0))) {
 			return (4*v0 + 3*vp + vpp)/8;
 		}
 		else {
