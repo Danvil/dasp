@@ -302,7 +302,17 @@ void DaspTracker::performSegmentationStep()
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
 		}
 		if(show_cluster_borders_) {
-			plots::PlotEdges(vis_img, clustering_.ComputeLabels(), slimage::Pixel3ub{{255,255,255}}, 2);
+			slimage::Pixel3ub border_color;
+			if(cluster_color_mode_ == plots::ColorMode::UniBlack || cluster_color_mode_ == plots::ColorMode::Gradient) {
+				border_color = slimage::Pixel3ub{{255,255,255}};
+			}
+			else if(cluster_color_mode_ == plots::ColorMode::UniWhite || cluster_color_mode_ == plots::ColorMode::Depth) {
+				border_color = slimage::Pixel3ub{{0,0,0}};
+			}
+			else {
+				border_color = slimage::Pixel3ub{{255,0,0}};
+			}
+			plots::PlotEdges(vis_img, clustering_.ComputeLabels(), border_color, 2);
 		}
 
 		if(show_graph_ || plot_segments_) {
@@ -363,12 +373,15 @@ void DaspTracker::performSegmentationStep()
 		}
 
 		// visualize density, seed density and density error
-		slimage::Image1ub vis_density;
+		slimage::Image3ub vis_density;
 		slimage::Image1ub vis_seed_density;
 		slimage::Image3ub vis_density_delta;
 		if(plot_density_) {
 			slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
-			vis_density = slimage::Convert_f_2_ub(density, 20.0f);
+			vis_density = slimage::Image3ub(density.dimensions());
+			for(unsigned int i=0; i<vis_density.size(); i++) {
+				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.1f);
+			}
 			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density, clustering_.opt);
 			vis_seed_density = slimage::Convert_f_2_ub(seed_density, 20.0f);
 			vis_density_delta.resize(density.width(), density.height());
