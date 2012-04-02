@@ -12,6 +12,7 @@
 #include <Danvil/SimpleEngine/GlHelpers.h>
 #endif
 #include <Slimage/Paint.hpp>
+#include <Slimage/Convert.hpp>
 #include <Danvil/LinAlg/Eigen.hpp>
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
@@ -281,8 +282,7 @@ namespace detail
 		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
 			if(selection[i]) {
 				Eigen::Vector3f color = clusters.ColorToRGB(clusters.cluster[i].center.color);
-				slimage::Pixel3f target{{color[0], color[1], color[2]}};
-				slimage::conversion::Convert(target, colors[i]);
+				colors[i] = slimage::conversion::Convert<slimage::Pixel3f,slimage::Pixel3ub>(slimage::Pixel3f{{color[0], color[1], color[2]}});
 			}
 			else {
 				colors[i] = slimage::Pixel3ub{{0,0,0}};
