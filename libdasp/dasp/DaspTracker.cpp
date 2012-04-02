@@ -319,14 +319,13 @@ void DaspTracker::performSegmentationStep()
 			Segmentation segments;
 			if(plot_segments_) {
 				// create segmentation graph
-				segments = MinCutSegmentation(clustering_);
+				//segments = MinCutSegmentation(clustering_);
+				segments = SpectralSegmentation(clustering_);
+				segments.createLabelsFromBoundaries(clustering_, clustering_.opt.segment_threshold);
 				std::cout << "Segment Count: " << segments.countSegments() << std::endl;
 
 				// plot segmentation graph
-				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(segments.countSegments());
-				clustering_.ForPixelClusters([&segments,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-					vis_img[pid] = colors[segments.cluster_labels[cid]];
-				});
+				vis_img = segments.computeLabelImage(clustering_);
 			}
 
 			if(show_graph_) {

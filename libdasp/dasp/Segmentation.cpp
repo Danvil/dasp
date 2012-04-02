@@ -15,6 +15,8 @@
 #include <opencv2/opencv.hpp>
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/connected_components.hpp>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -38,6 +40,64 @@ void Segmentation::createBoundariesFromLabels(const Clustering& clustering)
 	// plot segment boundaries
 	boundaries_wt = slimage::Image1ub(clustering.width(), clustering.height(), slimage::Pixel1ub{0});
 	dasp::plots::PlotEdges(boundaries_wt, labels, slimage::Pixel1ub{255}, 1);
+}
+
+void Segmentation::createLabelsFromBoundaries(const Clustering& clusters, float threshold)
+{
+	struct Vertex {
+		 // superpixel id
+		unsigned int sid;
+	};
+	struct Edge {
+		// edge weight
+		float weight;
+	};
+	// create a graph will all edges with costs >= threshold
+	typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, Vertex, Edge> MyGraph;
+	MyGraph graph;
+	std::vector<MyGraph::vertex_descriptor> vids(segmentation_graph.nodes_);
+	for(unsigned int i=0; i<segmentation_graph.nodes_; i++) {
+		MyGraph::vertex_descriptor vid = boost::add_vertex(graph);
+		graph[vid].sid = i;
+		vids[i] = vid;
+	}
+	for(const graph::Edge& e : segmentation_graph.edges) {
+		// take only edges with weight < threshold
+		if(e.cost > threshold) {
+			continue;
+		}
+		MyGraph::edge_descriptor eid;
+		bool ok;
+		boost::tie(eid, ok) = boost::add_edge(vids[e.a], vids[e.b], graph);
+		assert(ok);
+		graph[eid].weight = e.cost;
+	}
+	// compute connected components
+	typedef std::map<MyGraph::vertex_descriptor, MyGraph::vertices_size_type> component_type;
+	component_type component;
+	boost::associative_property_map< component_type > component_map(component);
+	segment_count = boost::connected_components(graph, component_map);
+	cluster_labels.resize(segmentation_graph.nodes_);
+	for(unsigned int i=0; i<segmentation_graph.nodes_; i++) {
+		cluster_labels[i] = component[vids[i]];
+	}
+}
+
+std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Clustering& clusters) const
+{
+	return plots::CreateRandomColors(segment_count);
+//	std::vector<slimage::Pixel3ub> colors(segment_count);
+//	return colors;
+}
+
+slimage::Image3ub Segmentation::computeLabelImage(const Clustering& clusters) const
+{
+	std::vector<slimage::Pixel3ub> colors = computeSegmentColors(clusters);
+	slimage::Image3ub vis_img(clusters.width(), clusters.height());
+	clusters.ForPixelClusters([this,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+		vis_img[pid] = colors[cluster_labels[cid]];
+	});
+	return vis_img;
 }
 
 struct Entry {
@@ -351,13 +411,24 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 #endif
 
 
-	// normalize edge weights to [0,1]
 	std::cout << "Edge weights: min=" << edge_weight.minCoeff() << ", max=" << edge_weight.maxCoeff() << std::endl;
 	std::cout << "Edge weights: median=" << edge_weight[edge_weight.rows()/2] << std::endl;
 
 //	edge_weight /= edge_weight[(95*edge_weight.rows())/100];
 //	edge_weight /= edge_weight.maxCoeff();
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
+
+	// create superpixel neighbourhood graph with edge strength
+	graph::Graph graph;
+	graph.nodes_ = Gnb.nodes_;
+	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
+		const graph::Edge& e = Gnb.edges[eid];
+		float w = edge_weight[eid];
+		graph.edges.push_back(graph::Edge{
+			e.a, e.b,
+			e.c_world, e.c_color, e.c_normal, w
+		});
+	}
 
 	// write value to border pixels
 	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
@@ -389,6 +460,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 
 	Segmentation segs;
 	segs.boundaries = result;
+	segs.segmentation_graph = graph;
 	return segs;
 }
 
