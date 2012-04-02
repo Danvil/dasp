@@ -6,8 +6,10 @@
  */
 
 #include "Recall.hpp"
-#include <cmath>
 #include <boost/assert.hpp>
+#include <map>
+#include <set>
+#include <cmath>
 
 namespace dasp
 {
@@ -162,6 +164,35 @@ float ComputeRecallGaussian(const slimage::Image1ub& img_exp, const slimage::Ima
 		}
 	}
 	return recalled / static_cast<float>(cnt);
+}
+
+std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved)
+{
+	BOOST_ASSERT(labels_relevant.dimensions() == labels_retrieved.dimensions());
+	std::map<int, unsigned int> retrieved_area;
+	std::map<int, unsigned int> relevant_area;
+	std::map<int, std::set<int> > relevant_superpixel_labels;
+	for(unsigned int i=0; i<labels_relevant.size(); i++) {
+		retrieved_area[labels_retrieved[i]] ++;
+		relevant_area[labels_relevant[i]] ++;
+		relevant_superpixel_labels[labels_relevant[i]].insert(labels_retrieved[i]);
+	}
+	std::vector<float> error;
+	for(auto it=relevant_superpixel_labels.begin(); it!=relevant_superpixel_labels.end(); ++it) {
+		unsigned int g_area = relevant_area[it->first];
+		unsigned int s_area = 0;
+		for(int sid : it->second) {
+			s_area += retrieved_area[sid];
+		}
+		error.push_back(static_cast<float>(s_area) / static_cast<float>(g_area) - 1.0f);
+	}
+	return error;
+}
+
+std::pair<float,unsigned int> UndersegmentationErrorTotal(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved)
+{
+	std::vector<float> error = UndersegmentationError(labels_relevant, labels_retrieved);
+	return { std::accumulate(error.begin(), error.end(), 0.0f), error.size() };
 }
 
 }
