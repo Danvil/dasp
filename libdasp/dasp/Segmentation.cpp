@@ -85,15 +85,26 @@ void Segmentation::createLabelsFromBoundaries(const Clustering& clusters, float 
 
 std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Clustering& clusters) const
 {
-	return plots::CreateRandomColors(segment_count);
-//	std::vector<slimage::Pixel3ub> colors(segment_count);
-//	return colors;
+//	return plots::CreateRandomColors(segment_count);
+	struct Pair { Eigen::Vector3f val; unsigned int cnt; };
+	std::vector<Pair> segment_center_sum(segment_count);
+	for(unsigned int i=0; i<cluster_labels.size(); i++) {
+		Pair& p = segment_center_sum[cluster_labels[i]];
+		p.val += clusters.cluster[i].center.color;
+		p.cnt ++;
+	}
+	std::vector<slimage::Pixel3ub> colors(segment_count);
+	for(unsigned int i=0; i<colors.size(); i++) {
+		Eigen::Vector3f c = segment_center_sum[i].val / static_cast<float>(segment_center_sum[i].cnt);
+		slimage::conversion::Convert(slimage::Pixel3f{{c[0],c[1],c[2]}}, colors[i]);
+	}
+	return colors;
 }
 
 slimage::Image3ub Segmentation::computeLabelImage(const Clustering& clusters) const
 {
 	std::vector<slimage::Pixel3ub> colors = computeSegmentColors(clusters);
-	slimage::Image3ub vis_img(clusters.width(), clusters.height());
+	slimage::Image3ub vis_img(clusters.width(), clusters.height(), slimage::Pixel3ub{{0,0,0}});
 	clusters.ForPixelClusters([this,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
 		vis_img[pid] = colors[cluster_labels[cid]];
 	});
