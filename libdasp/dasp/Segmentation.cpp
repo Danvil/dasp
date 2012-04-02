@@ -96,6 +96,7 @@ std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Clusteri
 	std::vector<slimage::Pixel3ub> colors(segment_count);
 	for(unsigned int i=0; i<colors.size(); i++) {
 		Eigen::Vector3f c = segment_center_sum[i].val / static_cast<float>(segment_center_sum[i].cnt);
+		c = clusters.ColorToRGB(c);
 		slimage::conversion::Convert(slimage::Pixel3f{{c[0],c[1],c[2]}}, colors[i]);
 	}
 	return colors;

@@ -107,7 +107,7 @@ enum ColorMode {
 	CoverageError
 };
 
-std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm);
+//std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm);
 
 slimage::Image3ub PlotPoints(const Clustering& c, ColorMode pcm);
 

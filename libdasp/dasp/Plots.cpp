@@ -13,6 +13,9 @@
 #endif
 #include <Slimage/Paint.hpp>
 #include <Danvil/LinAlg/Eigen.hpp>
+#include <Danvil/Color.h>
+#include <Danvil/Color/LAB.h>
+#include <Danvil/Color/HSV.h>
 #include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
@@ -244,22 +247,46 @@ namespace detail
 		return IntensityColor(c.coverage_error, 0.0f, 1.0f);
 	}
 
-	template<int M>
-	std::vector<slimage::Pixel3ub> ComputePixelColorsImpl(const dasp::ImagePoints& points)
-	{
-		std::vector<slimage::Pixel3ub> colors(points.size());
-		for(unsigned int i=0; i<points.size(); i++) {
-			colors[i] = ComputePointColor<M>(points[i]);
-		}
-		return colors;
-	}
+//	template<int M>
+//	std::vector<slimage::Pixel3ub> ComputePixelColorsImpl(const dasp::ImagePoints& points)
+//	{
+//		std::vector<slimage::Pixel3ub> colors(points.size());
+//		for(unsigned int i=0; i<points.size(); i++) {
+//			colors[i] = ComputePointColor<M>(points[i]);
+//		}
+//		return colors;
+//	}
 
 	template<int M>
-	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const std::vector<Cluster>& clusters, const ClusterSelection& selection)
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const Clustering& clusters, const ClusterSelection& selection)
 	{
-		std::vector<slimage::Pixel3ub> colors(clusters.size());
-		for(unsigned int i=0; i<clusters.size(); i++) {
-			colors[i] = selection[i] ? ComputeClusterColor<M>(clusters[i]) : slimage::Pixel3ub{{0,0,0}};
+		std::vector<slimage::Pixel3ub> colors(clusters.cluster.size());
+		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
+			colors[i] = selection[i] ? ComputeClusterColor<M>(clusters.cluster[i]) : slimage::Pixel3ub{{0,0,0}};
+		}
+		return colors;
+//		if(ccm == Color) {
+//			// possibly need to convert back from strange color spaces
+//			switch(c.opt.color_space) {
+//			case ColorSpaces::RGB: return
+//			}
+//		}
+//		else {
+	}
+
+	template<>
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl<Color>(const Clustering& clusters, const ClusterSelection& selection)
+	{
+		std::vector<slimage::Pixel3ub> colors(clusters.cluster.size());
+		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
+			if(selection[i]) {
+				Eigen::Vector3f color = clusters.ColorToRGB(clusters.cluster[i].center.color);
+				slimage::Pixel3f target{{color[0], color[1], color[2]}};
+				slimage::conversion::Convert(target, colors[i]);
+			}
+			else {
+				colors[i] = slimage::Pixel3ub{{0,0,0}};
+			}
 		}
 		return colors;
 	}
@@ -272,23 +299,32 @@ namespace detail
 		}
 	}
 
-}
-
-#define ComputePixelColors_HELPER(T) case T: return detail::ComputePixelColorsImpl<T>(c.points);
-
-std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm)
-{
-	switch(ccm) {
-	ComputePixelColors_HELPER(UniBlack)
-	ComputePixelColors_HELPER(UniWhite)
-	ComputePixelColors_HELPER(Color)
-	ComputePixelColors_HELPER(Depth)
-	ComputePixelColors_HELPER(Gradient)
-	default: return detail::ComputePixelColorsImpl<-1>(c.points);
+	template<>
+	void PlotPointsImpl<Color>(const slimage::Image3ub& img, const Clustering& c)
+	{
+		for(size_t i=0; i<img.size(); i++) {
+//			img[i] = c.color_raw[i];
+			img[i] = ComputePointColor<Color>(c.points[i]);
+		}
 	}
+
 }
 
-#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c.cluster, selection);
+//#define ComputePixelColors_HELPER(T) case T: return detail::ComputePixelColorsImpl<T>(c.points);
+//
+//std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm)
+//{
+//	switch(ccm) {
+//	ComputePixelColors_HELPER(UniBlack)
+//	ComputePixelColors_HELPER(UniWhite)
+//	ComputePixelColors_HELPER(Color)
+//	ComputePixelColors_HELPER(Depth)
+//	ComputePixelColors_HELPER(Gradient)
+//	default: return detail::ComputePixelColorsImpl<-1>(c.points);
+//	}
+//}
+
+#define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c, selection);
 
 std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
 {
@@ -303,7 +339,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMo
 	ComputeClusterColors_HELPER(Eccentricity)
 	ComputeClusterColors_HELPER(AreaQuotient)
 	ComputeClusterColors_HELPER(CoverageError)
-	default: return detail::ComputeClusterColorsImpl<-1>(c.cluster, selection);
+	default: return detail::ComputeClusterColorsImpl<-1>(c, selection);
 	}
 }
 

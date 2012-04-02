@@ -13,6 +13,12 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	ui.comboBoxSeedType->addItem("Delta", dasp::SeedModes::Delta);
 	ui.comboBoxSeedType->setCurrentIndex(1);
 
+	ui.comboBoxDaspColorSpace->addItem("RGB", dasp::ColorSpaces::RGB);
+	ui.comboBoxDaspColorSpace->addItem("HSV", dasp::ColorSpaces::HSV);
+	ui.comboBoxDaspColorSpace->addItem("LAB", dasp::ColorSpaces::LAB);
+	ui.comboBoxDaspColorSpace->addItem("HN", dasp::ColorSpaces::HN);
+	ui.comboBoxPlotPointsColor->setCurrentIndex(1);
+
 	ui.comboBoxPlotPointsColor->addItem("Color", dasp::plots::Color);
 	ui.comboBoxPlotPointsColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotPointsColor->addItem("Valid", dasp::plots::Valid);
@@ -44,14 +50,14 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
 	QObject::connect(ui.spinBoxSuperCount, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelCount(int)));
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
-	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
 	QObject::connect(ui.doubleSpinBoxWeightSpatial, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightSpatial(double)));
-	QObject::connect(ui.doubleSpinBoxWeightDepth, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightDepth(double)));
+	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
+	QObject::connect(ui.comboBoxDaspColorSpace, SIGNAL(currentIndexChanged(int)), this, SLOT(OnDaspColorSpace(int)));
 	QObject::connect(ui.doubleSpinBoxWeightNormal, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightNormal(double)));
+	QObject::connect(ui.doubleSpinBoxWeightDepth, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightDepth(double)));
 	QObject::connect(ui.doubleSpinBoxCoverage, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelCoverage(double)));
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
 	QObject::connect(ui.doubleSpinBoxDaspSegmentThreshold, SIGNAL(valueChanged(double)), this, SLOT(ChangeDaspSegmentThreshold(double)));
-
 
 	QObject::connect(ui.pushButtonColorModelTrain, SIGNAL(clicked()), this, SLOT(OnColorModelTrain()));
 	QObject::connect(ui.doubleSpinBoxColorSoftness, SIGNAL(valueChanged(double)), this, SLOT(ChangeColorModelSigmaScale(double)));
@@ -68,14 +74,16 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 
 	dasp_tracker_->dasp_params->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
 	dasp_tracker_->dasp_params->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
+	dasp_tracker_->dasp_params->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(ui.comboBoxSeedType->currentIndex()).toInt());
 	dasp_tracker_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_tracker_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
 	dasp_tracker_->dasp_params->count = ui.spinBoxSuperCount->value();
 	dasp_tracker_->dasp_params->iterations = ui.spinBoxIterations->value();
-	dasp_tracker_->dasp_params->weight_color = ui.doubleSpinBoxWeightColor->value();
 	dasp_tracker_->dasp_params->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
-	dasp_tracker_->dasp_params->weight_depth = ui.doubleSpinBoxWeightDepth->value();
+	dasp_tracker_->dasp_params->weight_color = ui.doubleSpinBoxWeightColor->value();
+	dasp_tracker_->dasp_params->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(ui.comboBoxDaspColorSpace->currentIndex()).toInt());
 	dasp_tracker_->dasp_params->weight_normal = ui.doubleSpinBoxWeightNormal->value();
+	dasp_tracker_->dasp_params->weight_depth = ui.doubleSpinBoxWeightDepth->value();
 	dasp_tracker_->dasp_params->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_tracker_->dasp_params->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
 	dasp_tracker_->dasp_params->segment_threshold = ui.doubleSpinBoxDaspSegmentThreshold->value();
@@ -140,27 +148,33 @@ void WdgtSuperpixelParameters::ChangeSuperpixelIterations(int val)
 	*reload = true;
 }
 
-void WdgtSuperpixelParameters::ChangeSuperpixelWeightColor(double val)
-{
-	dasp_tracker_->dasp_params->weight_color = val;
-	*reload = true;
-}
-
 void WdgtSuperpixelParameters::ChangeSuperpixelWeightSpatial(double val)
 {
 	dasp_tracker_->dasp_params->weight_spatial = val;
 	*reload = true;
 }
 
-void WdgtSuperpixelParameters::ChangeSuperpixelWeightDepth(double val)
+void WdgtSuperpixelParameters::ChangeSuperpixelWeightColor(double val)
 {
-	dasp_tracker_->dasp_params->weight_depth = val;
+	dasp_tracker_->dasp_params->weight_color = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::OnDaspColorSpace(int selection)
+{
+	dasp_tracker_->dasp_params->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(selection).toInt());
 	*reload = true;
 }
 
 void WdgtSuperpixelParameters::ChangeSuperpixelWeightNormal(double val)
 {
 	dasp_tracker_->dasp_params->weight_normal = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeSuperpixelWeightDepth(double val)
+{
+	dasp_tracker_->dasp_params->weight_depth = val;
 	*reload = true;
 }
 

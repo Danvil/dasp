@@ -24,10 +24,11 @@ public Q_SLOTS:
 	void ChangeSuperpixelRadius(double val);
 	void ChangeSuperpixelCount(int val);
 	void ChangeSuperpixelIterations(int val);
-	void ChangeSuperpixelWeightColor(double val);
 	void ChangeSuperpixelWeightSpatial(double val);
-	void ChangeSuperpixelWeightDepth(double val);
+	void ChangeSuperpixelWeightColor(double val);
+	void OnDaspColorSpace(int selection);
 	void ChangeSuperpixelWeightNormal(double val);
+	void ChangeSuperpixelWeightDepth(double val);
 	void ChangeSuperConquerEnclaves(int val);
 	void ChangeSuperpixelCoverage(double val);
 	void ChangeDaspSegmentThreshold(double val);

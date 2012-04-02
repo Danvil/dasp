@@ -422,6 +422,10 @@ namespace dasp
 
 		ClusterGroupInfo ComputeClusterGroupInfo(unsigned int n, float max_thick);
 
+		Eigen::Vector3f ColorToRGB(const Eigen::Vector3f& c) const;
+
+		Eigen::Vector3f ColorFromRGB(const Eigen::Vector3f& c) const;
+
 		template<bool cUseSqrt>
 		inline static float ImageDistance(const Point& x, const Point& y) {
 			float d_img;

@@ -184,64 +184,14 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 	color_raw = image.clone();
 	slimage::Image3f colf(image.width(), image.height());
 	// convert to desired color space
-	switch(opt.color_space) {
-	case ColorSpaces::RGB: {
-		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
-			float r = float(cub[0]) / 255.0f;
-			float g = float(cub[1]) / 255.0f;
-			float b = float(cub[2]) / 255.0f;
-			cf[0] = r;
-			cf[1] = g;
-			cf[2] = b;
-		}, slimage::ThreadingOptions::Single());
-	} break;
-	case ColorSpaces::HSV: {
-		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
-			float r = float(cub[0]) / 255.0f;
-			float g = float(cub[1]) / 255.0f;
-			float b = float(cub[2]) / 255.0f;
-			Danvil::convert_hsv_2_rgb(r, g, b, r, g, b);
-			cf[0] = r;
-			cf[1] = g;
-			cf[2] = b;
-		}, slimage::ThreadingOptions::Single());
-	} break;
-	case ColorSpaces::LAB: {
-		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
-			float r = float(cub[0]) / 255.0f;
-			float g = float(cub[1]) / 255.0f;
-			float b = float(cub[2]) / 255.0f;
-			Danvil::color_rgb_to_lab(r, g, b, r, g, b);
-			r /= 100.0f;
-			g /= 100.0f;
-			b /= 100.0f;
-			cf[0] = r;
-			cf[1] = g;
-			cf[2] = b;
-		}, slimage::ThreadingOptions::Single());
-	} break;
-	case ColorSpaces::HN: {
-		slimage::ParallelProcess(image, colf, [](const slimage::It3ub& cub, const slimage::It3f& cf) {
-			float r = float(cub[0]) / 255.0f;
-			float g = float(cub[1]) / 255.0f;
-			float b = float(cub[2]) / 255.0f;
-			float a = r + g + b;
-			if(a > 0.05f) {
-				r /= a;
-				g /= a;
-				b = a * 0.1;
-			}
-			else {
-				r = 0;
-				g = 0;
-				b = 0;
-			}
-			cf[0] = r;
-			cf[1] = g;
-			cf[2] = b;
-		}, slimage::ThreadingOptions::Single());
-	} break;
-	};
+	slimage::ParallelProcess(image, colf, [this](const slimage::It3ub& cub, const slimage::It3f& cf) {
+		Eigen::Vector3f source;
+		source << float(cub[0]) / 255.0f, float(cub[1]) / 255.0f, float(cub[2]) / 255.0f;
+		Eigen::Vector3f target = ColorFromRGB(source);
+		cf[0] = target[0];
+		cf[1] = target[1];
+		cf[2] = target[2];
+	}, slimage::ThreadingOptions::Single());
 	// compute points
 	CreatePoints(colf, depth, normals);
 }
@@ -877,6 +827,78 @@ ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_t
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;
 	}
 	return cgi;
+}
+
+Eigen::Vector3f Clustering::ColorToRGB(const Eigen::Vector3f& source) const
+{
+	Eigen::Vector3f target;
+	switch(opt.color_space) {
+	case ColorSpaces::HSV: {
+		Danvil::convert_hsv_2_rgb(source[0], source[1], source[2], target[0], target[1], target[2]);
+	} break;
+	case ColorSpaces::LAB: {
+		Danvil::color_lab_to_rgb(100.0f*source[0], 100.0f*source[1], 100.0f*source[2], target[0], target[1], target[2]);
+	} break;
+	case ColorSpaces::HN: {
+		float ra = source[0];
+		float ga = source[1];
+		float a = source[2];
+		if(a > 0) {
+			target[0] = ra * a;
+			target[1] = ga * a;
+			target[2] = a - (target[0] + target[1]);
+		}
+		else {
+			// fixme
+			target[0] = 0;
+			target[1] = 0;
+			target[2] = 0;
+		}
+	} break;
+	default: case ColorSpaces::RGB: {
+		target[0] = source[0];
+		target[1] = source[1];
+		target[2] = source[2];
+	} break;
+	}
+	return target;
+}
+
+Eigen::Vector3f Clustering::ColorFromRGB(const Eigen::Vector3f& source) const
+{
+	Eigen::Vector3f target;
+	switch(opt.color_space) {
+	case ColorSpaces::HSV: {
+		Danvil::convert_rgb_2_hsv(source[0], source[1], source[2], target[0], target[1], target[2]);
+	} break;
+	case ColorSpaces::LAB: {
+		Danvil::color_rgb_to_lab(source[0], source[1], source[2], target[0], target[1], target[2]);
+		target /= 100.0f;
+	} break;
+	case ColorSpaces::HN: {
+		float r = source[0];
+		float g = source[1];
+		float b = source[2];
+		float a = r + g + b;
+		if(a > 0.05f) {
+			target[0] = r / a;
+			target[1] = g / a;
+			target[2] = a * 0.1f;
+		}
+		else {
+			// fixme
+			target[0] = 0;
+			target[1] = 0;
+			target[2] = 0;
+		}
+	} break;
+	default: case ColorSpaces::RGB: {
+		target[0] = source[0];
+		target[1] = source[1];
+		target[2] = source[2];
+	} break;
+	}
+	return target;
 }
 
 Clustering ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
