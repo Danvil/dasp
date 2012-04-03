@@ -13,7 +13,7 @@
 #include <set>
 #include <cmath>
 
-#define DASP_DEBUG_GUI
+//#define DASP_DEBUG_GUI
 
 namespace dasp
 {
