@@ -254,7 +254,7 @@ void DaspTracker::performSegmentationStep()
 
 	result_.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
 	if(has_hand_gmm_model_) {
-		result_ = slimage::conversion::Convert<slimage::Image1f,slimage::Image1ub>(probability);
+		slimage::conversion::Convert(probability, result_);
 	}
 	else {
 		result_.fill({0});
@@ -383,7 +383,7 @@ void DaspTracker::performSegmentationStep()
 				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.1f);
 			}
 			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density, clustering_.opt);
-			vis_seed_density = slimage::conversion::Convert<slimage::Image1f, slimage::Image1ub>(seed_density); // FIXME * 20.0f
+			slimage::conversion::Convert(seed_density, vis_seed_density); // FIXME * 20.0f
 			vis_density_delta.resize(density.width(), density.height());
 			for(unsigned int i=0; i<density.size(); i++) {
 				vis_density_delta[i] = plots::PlusMinusColor(density[i] - seed_density[i], 0.025f);

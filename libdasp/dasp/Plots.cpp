@@ -282,7 +282,7 @@ namespace detail
 		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
 			if(selection[i]) {
 				Eigen::Vector3f color = clusters.ColorToRGB(clusters.cluster[i].center.color);
-				colors[i] = slimage::conversion::Convert<slimage::Pixel3f,slimage::Pixel3ub>(slimage::Pixel3f{{color[0], color[1], color[2]}});
+				slimage::conversion::Convert(slimage::Pixel3f{{color[0], color[1], color[2]}}, colors[i]);
 			}
 			else {
 				colors[i] = slimage::Pixel3ub{{0,0,0}};
