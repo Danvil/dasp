@@ -6,10 +6,14 @@
  */
 
 #include "Recall.hpp"
+#include <Slimage/Gui.hpp>
 #include <boost/assert.hpp>
+#include <iostream>
 #include <map>
 #include <set>
 #include <cmath>
+
+#define DASP_DEBUG_GUI
 
 namespace dasp
 {
@@ -173,9 +177,15 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 	std::map<int, unsigned int> relevant_area;
 	std::map<int, std::set<int> > relevant_superpixel_labels;
 	for(unsigned int i=0; i<labels_relevant.size(); i++) {
-		retrieved_area[labels_retrieved[i]] ++;
-		relevant_area[labels_relevant[i]] ++;
-		relevant_superpixel_labels[labels_relevant[i]].insert(labels_retrieved[i]);
+		int label_retrieved = labels_retrieved[i];
+		int label_relevant = labels_relevant[i];
+		if(label_retrieved == -1 || label_retrieved == 65535) {
+			// ignore -1
+			continue;
+		}
+		retrieved_area[label_retrieved] ++;
+		relevant_area[label_relevant] ++;
+		relevant_superpixel_labels[label_relevant].insert(label_retrieved);
 	}
 	std::vector<float> error;
 	for(auto it=relevant_superpixel_labels.begin(); it!=relevant_superpixel_labels.end(); ++it) {
@@ -184,14 +194,47 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 		for(int sid : it->second) {
 			s_area += retrieved_area[sid];
 		}
-		error.push_back(static_cast<float>(s_area) / static_cast<float>(g_area) - 1.0f);
+		float q = static_cast<float>(s_area) / static_cast<float>(g_area) - 1.0f;
+		std::cout << "label=" << it->first << ", A_g=" << g_area << ", S_g=" << s_area << ", error=" << q << std::endl;
+		error.push_back(q);
 	}
+
+#ifdef DASP_DEBUG_GUI
+	{
+		for(auto p : relevant_superpixel_labels) {
+			slimage::Image3ub vis(labels_relevant.dimensions(), slimage::Pixel3ub{{0,0,0}});
+			unsigned int label = p.first;
+			std::set<int> ids = p.second;
+			for(unsigned int i=0; i<vis.size(); i++) {
+				bool is_ground = (labels_relevant[i] == label);
+				bool is_super = (ids.find(labels_retrieved[i]) != ids.end());
+				if(is_ground && is_super) {
+					vis[i] = slimage::Pixel3ub{{255,255,255}};
+				}
+				else if(is_ground) {
+					vis[i] = slimage::Pixel3ub{{255,0,0}};
+				}
+				else if(is_super) {
+					vis[i] = slimage::Pixel3ub{{0,128,255}};
+				}
+			}
+			std::cout << "label=" << label << std::endl;
+			slimage::gui::Show("undersegmentation error", vis);
+			slimage::gui::WaitForKeypress();
+		}
+	}
+#endif
+
 	return error;
 }
 
 std::pair<float,unsigned int> UndersegmentationErrorTotal(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved)
 {
 	std::vector<float> error = UndersegmentationError(labels_relevant, labels_retrieved);
+	for(float e : error) {
+		std::cout << e << " ";
+	}
+	std::cout << std::endl;
 	return { std::accumulate(error.begin(), error.end(), 0.0f), error.size() };
 }
 
