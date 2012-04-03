@@ -195,7 +195,9 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 			s_area += retrieved_area[sid];
 		}
 		float q = static_cast<float>(s_area) / static_cast<float>(g_area) - 1.0f;
+#ifdef DASP_DEBUG_GUI
 		std::cout << "label=" << it->first << ", A_g=" << g_area << ", S_g=" << s_area << ", error=" << q << std::endl;
+#endif
 		error.push_back(q);
 	}
 
@@ -231,10 +233,12 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 std::pair<float,unsigned int> UndersegmentationErrorTotal(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved)
 {
 	std::vector<float> error = UndersegmentationError(labels_relevant, labels_retrieved);
+#ifdef DASP_DEBUG_GUI
 	for(float e : error) {
 		std::cout << e << " ";
 	}
 	std::cout << std::endl;
+#endif
 	return { std::accumulate(error.begin(), error.end(), 0.0f), error.size() };
 }
 
