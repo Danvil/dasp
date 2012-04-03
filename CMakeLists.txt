@@ -22,10 +22,9 @@ include_directories(
 
 project(dasp)
 add_subdirectory(libdasp)
-add_subdirectory(dasp_cmd)
-add_subdirectory(boundary_recall)
-add_subdirectory(redcarpet)
 add_subdirectory(dasp_gui)
-add_subdirectory(eval_dasp)
+add_subdirectory(dasp_cmd)
+add_subdirectory(eval_superpixels)
 add_subdirectory(eval_dasp_segments)
 add_subdirectory(eval_gPb)
+add_subdirectory(redcarpet)
