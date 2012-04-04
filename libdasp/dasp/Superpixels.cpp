@@ -565,39 +565,17 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 
 slimage::Image1f Superpixels::ComputeEdges()
 {
-	const unsigned int width = points.width();
-	const unsigned int height = points.height();
-	slimage::Image1f edges(width, height);
-
-	// compute edges strength
-	slimage::It1f p_edge_begin = edges.begin();
-	slimage::ParallelProcess(edges, [this,p_edge_begin,width,height](const slimage::It1f& p_edge) {
-		int i = p_edge - p_edge_begin;
-		int x = i % width;
-		int y = i / width;
-		float v = 0.0f;
-		if(x < 1 || int(width) <= x+1 || y < 1 || int(height) <= y+1) {
-			v = 1e6; // dont want to be here
-		}
-		else {
-			const Point& p0 = points(x, y);
-			const Point& px1 = points(x-1, y);
-			const Point& px2 = points(x+1, y);
-			const Point& py1 = points(x, y-1);
-			const Point& py2 = points(x, y+1);
-			if(p0.isInvalid() || px1.isInvalid() || px2.isInvalid() || py1.isInvalid() || py2.isInvalid()) {
-				v = 1e6; // dont want to be here
-			}
-			else {
-				float dx = Distance(px1, px2);
-				float dy = Distance(py1, py2);
-				v = dx + dy;
-			}
-		}
-		*p_edge = v;
-	}, slimage::ThreadingOptions::Single());
-
-	return edges;
+	// FIXME metric needs central place!
+	if(opt.weight_image == 0.0f) {
+		// dasp
+		MetricDASP metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
+		return dasp::ComputeEdges(points, metric);
+	}
+	else {
+		// slic
+		MetricSLIC metric(opt.weight_image, opt.weight_color);
+		return dasp::ComputeEdges(points, metric);
+	}
 }
 
 void Superpixels::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges)
@@ -635,39 +613,20 @@ void Superpixels::PurgeInvalidClusters()
 
 void Superpixels::MoveClusters()
 {
-	std::vector<float> v_dist(points.size(), 1e9);
-	std::vector<int> v_label(points.size(), -1);
-	// for each cluster check possible points
-	for(unsigned int j=0; j<cluster.size(); j++) {
-		const Cluster& c = cluster[j];
-		int cx = c.center.spatial_x();
-		int cy = c.center.spatial_y();
-		const int R = int(c.center.image_super_radius * opt.coverage);
-		const unsigned int xmin = std::max(0, cx - R);
-		const unsigned int xmax = std::min(int(points.width()-1), cx + R);
-		const unsigned int ymin = std::max(0, cy - R);
-		const unsigned int ymax = std::min(int(points.height()-1), cy + R);
-		//unsigned int pnt_index = points.index(xmin,ymin);
-		for(unsigned int y=ymin; y<=ymax; y++) {
-			for(unsigned int x=xmin; x<=xmax; x++/*, pnt_index++*/) {
-				unsigned int pnt_index = points.index(x, y);
-				const Point& p = points[pnt_index];
-				if(p.isInvalid()) {
-					// omit invalid points
-					continue;
-				}
-				float dist = Distance(p, c.center);
-				float& v_dist_best = v_dist[pnt_index];
-				if(dist < v_dist_best) {
-					v_dist_best = dist;
-					v_label[pnt_index] = j;
-				}
-			}
-			//pnt_index -= (xmax - xmin + 1);
-			//pnt_index += points.width();
-		}
+	// compute next iteration of cluster labeling
+	slimage::Image1i labels;
+	// FIXME metric needs central place!
+	if(opt.weight_image == 0.0f) {
+		// dasp
+		MetricDASP metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
+		labels = dasp::IterateClusters(cluster, points, opt, metric);
 	}
-	// delete clusters assignments
+	else {
+		// slic
+		MetricSLIC metric(opt.weight_image, opt.weight_color);
+		labels = dasp::IterateClusters(cluster, points, opt, metric);
+	}
+	// delete old clusters assignments
 	for(Cluster& c : cluster) {
 		unsigned int n = c.pixel_ids.size();
 		c.pixel_ids.clear();
@@ -675,7 +634,7 @@ void Superpixels::MoveClusters()
 	}
 	// assign points to clusters
 	for(unsigned int i=0; i<points.size(); i++) {
-		int label = v_label[i];
+		int label = labels[i];
 		if(label >= 0) {
 			cluster[label].pixel_ids.push_back(i);
 		}
@@ -683,19 +642,9 @@ void Superpixels::MoveClusters()
 	// remove invalid clusters
 	PurgeInvalidClusters();
 	// update remaining (valid) clusters
-//#ifdef CLUSTER_UPDATE_MULTITHREADING
-//	{
-//		slimage::detail::ThreadPoolManager pool(247); // arg!
-//		for(unsigned int i=0; i<clusters.size(); i++) {
-//			Cluster* c = &(clusters[i]);
-//			pool().schedule(boost::bind(&Cluster::UpdateCenter, c, points, opt.camera));
-//		}
-//	}
-//#else
 	for(Cluster& c : cluster) {
 		c.UpdateCenter(points, opt);
 	}
-//#endif
 }
 
 std::vector<int> ComputeBorderLabels(unsigned int cid, const Superpixels& spc, const slimage::Image1i& labels) {
@@ -793,21 +742,19 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 			graph::Edge edge;
 			edge.a = i;
 			edge.b = j;
-			edge.c_world = SpatialDistance<true>(cluster[i].center, cluster[j].center);
-			edge.c_color = ColorDistance<true,true>(cluster[i].center, cluster[j].center);
-			edge.c_normal = NormalDistance(cluster[i].center, cluster[j].center);
-			if(settings.cost_function == NeighborGraphSettings::SpatialNormalColor) {
-				edge.cost = opt.weight_spatial * edge.c_world + opt.weight_color * edge.c_color + opt.weight_normal * edge.c_normal;
-			}
-			else if(settings.cost_function == NeighborGraphSettings::NormalColor) {
-				edge.cost = opt.weight_color * edge.c_color + opt.weight_normal * edge.c_normal;
-			}
-			else if(settings.cost_function == NeighborGraphSettings::Color) {
-				edge.cost = opt.weight_color * edge.c_color;
+			edge.c_world = metric::SpatialDistanceRaw(cluster[i].center, cluster[j].center);
+			edge.c_color = metric::ColorDistanceRaw(cluster[i].center, cluster[j].center);
+			edge.c_normal = metric::NormalDistanceRaw(cluster[i].center, cluster[j].center);
+			// FIXME metric needs central place!
+			if(opt.weight_image == 0.0f) {
+				// dasp
+				MetricDASP fnc(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
+				edge.cost = fnc(cluster[i].center, cluster[j].center);
 			}
 			else {
-				BOOST_ASSERT(false);
-				edge.cost = 0.0f;
+				// slic
+				MetricSLIC fnc(opt.weight_image, opt.weight_color);
+				edge.cost = fnc(cluster[i].center, cluster[j].center);
 			}
 			G.edges.push_back(edge);
 		}
