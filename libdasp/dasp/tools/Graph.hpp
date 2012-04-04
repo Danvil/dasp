@@ -16,6 +16,7 @@ namespace graph {
 	struct Edge
 	{
 		unsigned int a, b;
+		float c_px;
 		float c_world;
 		float c_color;
 		float c_normal;

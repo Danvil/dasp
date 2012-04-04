@@ -742,7 +742,8 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 			graph::Edge edge;
 			edge.a = i;
 			edge.b = j;
-			edge.c_world = metric::SpatialDistanceRaw(cluster[i].center, cluster[j].center);
+			edge.c_px = metric::ImageDistanceRaw(cluster[i].center, cluster[j].center);
+			edge.c_world = metric::SpatialDistanceRaw(cluster[i].center, cluster[j].center) / (opt.base_radius * opt.base_radius); // FIXME HAAAACK
 			edge.c_color = metric::ColorDistanceRaw(cluster[i].center, cluster[j].center);
 			edge.c_normal = metric::NormalDistanceRaw(cluster[i].center, cluster[j].center);
 			// FIXME metric needs central place!
