@@ -164,12 +164,12 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 
 //------------------------------------------------------------------------------
 
-Clustering::Clustering()
+Superpixels::Superpixels()
 {
 
 }
 
-std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
+std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 {
 	std::vector<Seed> seeds(cluster.size());
 	for(std::size_t i=0; i<cluster.size(); i++) {
@@ -179,7 +179,7 @@ std::vector<Seed> Clustering::getClusterCentersAsSeeds() const
 	return seeds;
 }
 
-void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
+void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	color_raw = image.clone();
 	slimage::Image3f colf(image.width(), image.height());
@@ -196,7 +196,7 @@ void Clustering::CreatePoints(const slimage::Image3ub& image, const slimage::Ima
 	CreatePoints(colf, depth, normals);
 }
 
-void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
+void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	assert(normals.isNull());
 
@@ -281,7 +281,7 @@ void Clustering::CreatePoints(const slimage::Image3f& image, const slimage::Imag
 //	ComputeSuperpixels(seeds);
 //}
 
-void Clustering::ComputeSuperpixels(const std::vector<Seed>& seeds)
+void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
 	CreateClusters(seeds);
 //	std::cout << std::endl << " 0: n=" << cluster.size() << std::endl;
@@ -392,7 +392,7 @@ namespace SegmentExtraction
 	}
 }
 
-void Clustering::ConquerEnclaves()
+void Superpixels::ConquerEnclaves()
 {
 	// compute labels for every pixel
 	std::vector<int> labels_v = ComputePixelLabels();
@@ -449,7 +449,7 @@ void Clustering::ConquerEnclaves()
 	}
 }
 
-void Clustering::ConquerMiniEnclaves()
+void Superpixels::ConquerMiniEnclaves()
 {
 	// edge neighbors are checked later
 	int offset[4] = {
@@ -504,7 +504,7 @@ void Clustering::ConquerMiniEnclaves()
 	}
 }
 
-std::vector<int> Clustering::ComputePixelLabels() const
+std::vector<int> Superpixels::ComputePixelLabels() const
 {
 	std::vector<int> labels(points.size(), -1);
 	for(unsigned int j=0; j<cluster.size(); j++) {
@@ -515,7 +515,7 @@ std::vector<int> Clustering::ComputePixelLabels() const
 	return labels;
 }
 
-slimage::Image1i Clustering::ComputeLabels() const
+slimage::Image1i Superpixels::ComputeLabels() const
 {
 	slimage::Image1i img(width(), height(), slimage::Pixel1i{-1});
 	for(unsigned int j=0; j<cluster.size(); j++) {
@@ -525,7 +525,7 @@ slimage::Image1i Clustering::ComputeLabels() const
 	}
 	return img;
 }
-void Clustering::CreateClusters(const std::vector<Seed>& seeds)
+void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 {
 	// create clusters
 	cluster.clear();
@@ -563,7 +563,7 @@ void Clustering::CreateClusters(const std::vector<Seed>& seeds)
 	}
 }
 
-slimage::Image1f Clustering::ComputeEdges()
+slimage::Image1f Superpixels::ComputeEdges()
 {
 	const unsigned int width = points.width();
 	const unsigned int height = points.height();
@@ -600,7 +600,7 @@ slimage::Image1f Clustering::ComputeEdges()
 	return edges;
 }
 
-void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges)
+void Superpixels::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges)
 {
 	const unsigned int width = points.width();
 	const unsigned int height = points.height();
@@ -627,13 +627,13 @@ void Clustering::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& 
 	}
 }
 
-void Clustering::PurgeInvalidClusters()
+void Superpixels::PurgeInvalidClusters()
 {
 	auto it = std::remove_if(cluster.begin(), cluster.end(), [](const Cluster& c) { return !c.hasPoints(); });
 	cluster.resize(it - cluster.begin());
 }
 
-void Clustering::MoveClusters()
+void Superpixels::MoveClusters()
 {
 	std::vector<float> v_dist(points.size(), 1e9);
 	std::vector<int> v_label(points.size(), -1);
@@ -698,7 +698,7 @@ void Clustering::MoveClusters()
 //#endif
 }
 
-std::vector<int> ComputeBorderLabels(unsigned int cid, const Clustering& spc, const slimage::Image1i& labels) {
+std::vector<int> ComputeBorderLabels(unsigned int cid, const Superpixels& spc, const slimage::Image1i& labels) {
 	const int w = static_cast<int>(spc.width());
 	const int h = static_cast<int>(spc.height());
 	const int d[4] = { -1, +1, -w, +w };
@@ -719,7 +719,7 @@ std::vector<int> ComputeBorderLabels(unsigned int cid, const Clustering& spc, co
 }
 
 /** Computes a list of all pixels which are have label cid and have a face neighbor which has label cjd */
-std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Clustering& spc, const slimage::Image1i& labels) {
+std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels) {
 	const int w = static_cast<int>(spc.width());
 	const int h = static_cast<int>(spc.height());
 	const int d[4] = { -1, +1, -w, +w };
@@ -739,7 +739,7 @@ std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int
 	return border;
 }
 
-std::vector<std::vector<int> > ComputeBorders(const Clustering& spc) {
+std::vector<std::vector<int> > ComputeBorders(const Superpixels& spc) {
 	slimage::Image1i labels = spc.ComputeLabels();
 	std::vector<std::vector<int> > border_pixels(spc.cluster.size());
 	for(unsigned int cid=0; cid<spc.cluster.size(); cid++) {
@@ -748,7 +748,7 @@ std::vector<std::vector<int> > ComputeBorders(const Clustering& spc) {
 	return border_pixels;
 }
 
-std::vector<std::vector<unsigned int> > Clustering::ComputeBorderPixels(const graph::Graph& graph) const
+std::vector<std::vector<unsigned int> > Superpixels::ComputeBorderPixels(const graph::Graph& graph) const
 {
 	slimage::Image1i labels = ComputeLabels();
 	std::vector<std::vector<unsigned int> > borders(graph.edges.size());
@@ -766,7 +766,7 @@ std::vector<std::vector<unsigned int> > Clustering::ComputeBorderPixels(const gr
 	return borders;
 }
 
-graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
+graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
 {
 	std::vector<std::vector<int> > borders = ComputeBorders(*this);
 	graph::Graph G;
@@ -815,7 +815,7 @@ graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings)
 	return G;
 }
 
-ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_thick)
+ClusterGroupInfo Superpixels::ComputeClusterGroupInfo(unsigned int n, float max_thick)
 {
 	ClusterGroupInfo cgi;
 	cgi.hist_thickness = Histogram<float>(n, 0, max_thick);
@@ -832,7 +832,7 @@ ClusterGroupInfo Clustering::ComputeClusterGroupInfo(unsigned int n, float max_t
 	return cgi;
 }
 
-Eigen::Vector3f Clustering::ColorToRGB(const Eigen::Vector3f& source) const
+Eigen::Vector3f Superpixels::ColorToRGB(const Eigen::Vector3f& source) const
 {
 	Eigen::Vector3f target;
 	switch(opt.color_space) {
@@ -867,7 +867,7 @@ Eigen::Vector3f Clustering::ColorToRGB(const Eigen::Vector3f& source) const
 	return target;
 }
 
-Eigen::Vector3f Clustering::ColorFromRGB(const Eigen::Vector3f& source) const
+Eigen::Vector3f Superpixels::ColorFromRGB(const Eigen::Vector3f& source) const
 {
 	Eigen::Vector3f target;
 	switch(opt.color_space) {
@@ -904,15 +904,15 @@ Eigen::Vector3f Clustering::ColorFromRGB(const Eigen::Vector3f& source) const
 	return target;
 }
 
-Clustering ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
+Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
 {
-	Clustering clustering;
+	Superpixels clustering;
 	clustering.opt = opt;
 	ComputeSuperpixelsIncremental(clustering, color, depth);
 	return clustering;
 }
 
-void ComputeSuperpixelsIncremental(Clustering& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth)
+void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
 	if(clustering.opt.is_repair_depth) {
 		DANVIL_BENCHMARK_START(dasp_repair)

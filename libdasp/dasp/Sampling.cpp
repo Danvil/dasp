@@ -369,7 +369,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	return ok_size_seeds;
 }
 
-std::vector<Seed> Clustering::FindSeeds()
+std::vector<Seed> Superpixels::FindSeeds()
 {
 	switch(opt.seed_mode) {
 	case SeedModes::EquiDistant:
@@ -387,7 +387,7 @@ std::vector<Seed> Clustering::FindSeeds()
 	};
 }
 
-std::vector<Seed> Clustering::FindSeeds(const ImagePoints& old_points)
+std::vector<Seed> Superpixels::FindSeeds(const ImagePoints& old_points)
 {
 	if(opt.seed_mode == SeedModes::Delta) {
 		seeds_previous = getClusterCentersAsSeeds();

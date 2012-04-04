@@ -73,7 +73,7 @@ private:
 
 	std::vector<dasp::Seed> seeds;
 
-	Clustering clustering_;
+	Superpixels clustering_;
 
 	bool has_hand_gmm_model_;
 	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;

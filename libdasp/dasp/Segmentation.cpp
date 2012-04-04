@@ -30,7 +30,7 @@ namespace dasp
 
 std::vector<slimage::Image3ub> cSegmentationDebug;
 
-void Segmentation::createBoundariesFromLabels(const Clustering& clustering)
+void Segmentation::createBoundariesFromLabels(const Superpixels& clustering)
 {
 	// create segment labeling
 	slimage::Image1i labels(clustering.width(), clustering.height(), slimage::Pixel1i{-1});
@@ -42,7 +42,7 @@ void Segmentation::createBoundariesFromLabels(const Clustering& clustering)
 	dasp::plots::PlotEdges(boundaries_wt, labels, slimage::Pixel1ub{255}, 1);
 }
 
-void Segmentation::createLabelsFromBoundaries(const Clustering& clusters, float threshold)
+void Segmentation::createLabelsFromBoundaries(const Superpixels& clusters, float threshold)
 {
 	struct Vertex {
 		 // superpixel id
@@ -83,7 +83,7 @@ void Segmentation::createLabelsFromBoundaries(const Clustering& clusters, float 
 	}
 }
 
-std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Clustering& clusters) const
+std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Superpixels& clusters) const
 {
 //	return plots::CreateRandomColors(segment_count);
 	struct Pair { Eigen::Vector3f val; unsigned int cnt; };
@@ -102,7 +102,7 @@ std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Clusteri
 	return colors;
 }
 
-slimage::Image3ub Segmentation::computeLabelImage(const Clustering& clusters) const
+slimage::Image3ub Segmentation::computeLabelImage(const Superpixels& clusters) const
 {
 	std::vector<slimage::Pixel3ub> colors = computeSegmentColors(clusters);
 	slimage::Image3ub vis_img(clusters.width(), clusters.height(), slimage::Pixel3ub{{0,0,0}});
@@ -234,7 +234,7 @@ void SolveSpectral(const std::vector<Entry>& entries, unsigned int n, Vec& ew, M
 
 }
 
-Segmentation SpectralSegmentation(const Clustering& clusters)
+Segmentation SpectralSegmentation(const Superpixels& clusters)
 {
 	const bool cOnlyConcaveEdges = true;
 
@@ -257,10 +257,10 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	unsigned int n = clusters.clusterCount();
 	std::cout << "SpectralSegmentation: n = " << n << std::endl;
 	// create local neighbourhood graph
-	Clustering::NeighborGraphSettings Gnb_settings;
+	Superpixels::NeighborGraphSettings Gnb_settings;
 	Gnb_settings.cut_by_spatial = false;
 	Gnb_settings.min_border_overlap = 0.05f;
-	Gnb_settings.cost_function = Clustering::NeighborGraphSettings::SpatialNormalColor;
+	Gnb_settings.cost_function = Superpixels::NeighborGraphSettings::SpatialNormalColor;
 	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
 	BOOST_ASSERT(n == Gnb.nodes_);
 	// create W matrix from neighbourhood graph
@@ -476,7 +476,7 @@ Segmentation SpectralSegmentation(const Clustering& clusters)
 	return segs;
 }
 
-Segmentation MinCutSegmentation(const Clustering& clusters)
+Segmentation MinCutSegmentation(const Superpixels& clusters)
 {
 	graph::Graph Gn = clusters.CreateNeighborhoodGraph();
 	Segmentation seg;

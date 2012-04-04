@@ -283,7 +283,7 @@ namespace dasp
 
 	void SetRandomNumberSeed(unsigned int seed);
 
-	class Clustering
+	class Superpixels
 	{
 	public:
 		slimage::ThreadingOptions threadopt;
@@ -313,7 +313,7 @@ namespace dasp
 			return points.height();
 		}
 
-		Clustering();
+		Superpixels();
 
 		std::vector<Seed> getClusterCentersAsSeeds() const;
 
@@ -604,9 +604,9 @@ namespace dasp
 
 	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt);
 
-	Clustering ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt);
+	Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt);
 
-	void ComputeSuperpixelsIncremental(Clustering& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+	void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth);
 
 
 }

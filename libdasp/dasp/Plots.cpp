@@ -60,7 +60,7 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, con
 //	}
 }
 
-void PlotClusters(const slimage::Image3ub& img, const Clustering& clustering, const std::vector<slimage::Pixel3ub>& colors)
+void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors)
 {
 	assert(clustering.cluster.size() == colors.size());
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
@@ -259,7 +259,7 @@ namespace detail
 //	}
 
 	template<int M>
-	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const Clustering& clusters, const ClusterSelection& selection)
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl(const Superpixels& clusters, const ClusterSelection& selection)
 	{
 		std::vector<slimage::Pixel3ub> colors(clusters.cluster.size());
 		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
@@ -276,7 +276,7 @@ namespace detail
 	}
 
 	template<>
-	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl<Color>(const Clustering& clusters, const ClusterSelection& selection)
+	std::vector<slimage::Pixel3ub> ComputeClusterColorsImpl<Color>(const Superpixels& clusters, const ClusterSelection& selection)
 	{
 		std::vector<slimage::Pixel3ub> colors(clusters.cluster.size());
 		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
@@ -292,7 +292,7 @@ namespace detail
 	}
 
 	template<int M>
-	void PlotPointsImpl(const slimage::Image3ub& img, const Clustering& c)
+	void PlotPointsImpl(const slimage::Image3ub& img, const Superpixels& c)
 	{
 		for(size_t i=0; i<img.size(); i++) {
 			img[i] = ComputePointColor<M>(c.points[i]);
@@ -300,7 +300,7 @@ namespace detail
 	}
 
 	template<>
-	void PlotPointsImpl<Color>(const slimage::Image3ub& img, const Clustering& c)
+	void PlotPointsImpl<Color>(const slimage::Image3ub& img, const Superpixels& c)
 	{
 		for(size_t i=0; i<img.size(); i++) {
 //			img[i] = c.color_raw[i];
@@ -326,7 +326,7 @@ namespace detail
 
 #define ComputeClusterColors_HELPER(T) case T: return detail::ComputeClusterColorsImpl<T>(c, selection);
 
-std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
+std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	switch(ccm) {
 	ComputeClusterColors_HELPER(UniBlack)
@@ -345,7 +345,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMo
 
 #define PlotPoints_HELPER(T) case T: detail::PlotPointsImpl<T>(img, c); break;
 
-slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
+slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode cm)
 {
 	slimage::Image3ub img(c.width(), c.height());
 	img.fill({{0,0,0}});
@@ -361,7 +361,7 @@ slimage::Image3ub PlotPoints(const Clustering& c, ColorMode cm)
 	return img;
 }
 
-void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, int size, const ClusterSelection& selection)
+void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -376,7 +376,7 @@ void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, Color
 	}
 }
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterPoints(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -386,7 +386,7 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorM
 	}
 }
 
-void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterEllipses(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -396,7 +396,7 @@ void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, Colo
 	}
 }
 
-void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -406,7 +406,7 @@ void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c
 	}
 }
 
-void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
+void PlotClusters(slimage::Image3ub& img, const Superpixels& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	switch(mode) {
 	case ClusterCenter: PlotClusterCenters(img, c, cm, 1, selection); break;
@@ -416,7 +416,7 @@ void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode mode,
 	}
 }
 
-slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
+slimage::Image3ub PlotClusters(const Superpixels& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	slimage::Image3ub img(c.width(), c.height());
 	img.fill({{0,0,0}});
@@ -491,7 +491,7 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 
 #endif
 
-void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
+void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
 #if defined DASP_HAS_SIMPLEENGINE
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
@@ -505,7 +505,7 @@ void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSe
 #endif
 }
 
-void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection)
+void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
 #if defined DASP_HAS_SIMPLEENGINE
 	const float cSpacing = 4.0f * clustering.opt.base_radius;

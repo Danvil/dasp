@@ -77,7 +77,7 @@ std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt);
 
 void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color);
 
-void PlotClusters(const slimage::Image3ub& img, const Clustering& clustering, const std::vector<slimage::Pixel3ub>& colors);
+void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors);
 
 void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled);
 
@@ -109,7 +109,7 @@ enum ColorMode {
 
 //std::vector<slimage::Pixel3ub> ComputePixelColors(const Clustering& c, ColorMode ccm);
 
-slimage::Image3ub PlotPoints(const Clustering& c, ColorMode pcm);
+slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode pcm);
 
 struct ClusterSelection
 {
@@ -141,15 +141,15 @@ struct ClusterSelection
 
 };
 
-void PlotClusterCenters(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, int size, const ClusterSelection& selection);
+void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection);
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection);
+void PlotClusterPoints(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
-void PlotClusterEllipses(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection);
+void PlotClusterEllipses(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
-void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Clustering& c, ColorMode ccm, const ClusterSelection& selection);
+void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
-std::vector<slimage::Pixel3ub> ComputeClusterColors(const Clustering& c, ColorMode ccm, const ClusterSelection& selection);
+std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
 enum ClusterMode {
 	ClusterCenter,
@@ -158,13 +158,13 @@ enum ClusterMode {
 	ClusterEllipsesFilled
 };
 
-void PlotClusters(slimage::Image3ub& img, const Clustering& c, ClusterMode cm, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
+void PlotClusters(slimage::Image3ub& img, const Superpixels& c, ClusterMode cm, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
-slimage::Image3ub PlotClusters(const Clustering& c, ClusterMode cm, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
+slimage::Image3ub PlotClusters(const Superpixels& c, ClusterMode cm, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
-void RenderClusters(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
+void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
-void RenderClusterMap(const Clustering& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
+void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
 //----------------------------------------------------------------------------//
 }}
