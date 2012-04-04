@@ -362,7 +362,8 @@ namespace dasp
 			float min_border_overlap;
 			enum CostFunction {
 				SpatialNormalColor,
-				NormalColor
+				NormalColor,
+				Color
 			};
 			CostFunction cost_function;
 		};

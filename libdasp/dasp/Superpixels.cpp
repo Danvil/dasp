@@ -802,6 +802,9 @@ graph::Graph Clustering::CreateNeighborhoodGraph(NeighborGraphSettings settings)
 			else if(settings.cost_function == NeighborGraphSettings::NormalColor) {
 				edge.cost = opt.weight_color * edge.c_color + opt.weight_normal * edge.c_normal;
 			}
+			else if(settings.cost_function == NeighborGraphSettings::Color) {
+				edge.cost = opt.weight_color * edge.c_color;
+			}
 			else {
 				BOOST_ASSERT(false);
 				edge.cost = 0.0f;
