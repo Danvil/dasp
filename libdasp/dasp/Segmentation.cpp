@@ -270,29 +270,39 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 		const graph::Edge& e = Gnb.edges[i];
 		BOOST_ASSERT(e.a != e.b);
 		// compute individual edge distances
-		float w_maha_color = e.c_color / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
-		float w_maha_world = std::max(0.0f, std::min(4.0f, e.c_world/2.0f - 1.0f)); // distance of 2 indicates normal distance
+		float w_maha_color;
+		float w_maha_spatial;
 		float w_maha_normal;
-		if(cOnlyConcaveEdges) {
-			// only use concave edges
-			const Point& ca = clusters.cluster[e.a].center;
-			const Point& cb = clusters.cluster[e.b].center;
-			Eigen::Vector3f d = (cb.world - ca.world).normalized();
-			float ca1 = ca.computeNormal().dot(d);
-			float ca2 = cb.computeNormal().dot(d);
-			float w = ca1 - ca2;
-			if(w < 0.0f) {
-				w_maha_normal = 0.0f;
+		// FIXME metric needs central place!
+		if(clusters.opt.weight_image == 0.0f) {
+			w_maha_color = e.c_color / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
+			w_maha_spatial = std::max(0.0f, std::min(4.0f, e.c_world/2.0f - 1.0f)); // distance of 2 indicates normal distance
+			if(cOnlyConcaveEdges) {
+				// only use concave edges
+				const Point& ca = clusters.cluster[e.a].center;
+				const Point& cb = clusters.cluster[e.b].center;
+				Eigen::Vector3f d = (cb.world - ca.world).normalized();
+				float ca1 = ca.computeNormal().dot(d);
+				float ca2 = cb.computeNormal().dot(d);
+				float w = ca1 - ca2;
+				if(w < 0.0f) {
+					w_maha_normal = 0.0f;
+				}
+				else {
+					w_maha_normal = 3.0f*w;
+				}
 			}
 			else {
-				w_maha_normal = 3.0f*w;
+				w_maha_normal = 3.0f*e.c_normal;
 			}
 		}
 		else {
-			w_maha_normal = 3.0f*e.c_normal;
+			w_maha_color = std::min(1.0f, 4.0f * e.c_color) / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
+			w_maha_spatial = 0.0f;
+			w_maha_normal = 0.0f;
 		}
 		// compute total edge connectivity
-		float w = std::exp(-(w_maha_color + w_maha_world + w_maha_normal));
+		float w = std::exp(-(w_maha_color + w_maha_spatial + w_maha_normal));
 //		float w = std::exp(-w_maha_world);
 //		float w = std::exp(-w_maha_normal);
 //		float w = std::exp(-w_maha_color);
@@ -464,7 +474,7 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 	}
 
 #ifdef SEGS_DBG_SHOWGUI
-	slimage::gui::Show("segs", result, 0.01f);
+	slimage::gui::Show("segs", result, 0.03f);
 	slimage::gui::WaitForKeypress();
 #endif
 
