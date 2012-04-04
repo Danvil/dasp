@@ -45,7 +45,21 @@ struct Segmentation
 
 };
 
-Segmentation SpectralSegmentation(const Superpixels& clusters);
+struct SpectralSettings
+{
+	SpectralSettings() {
+		num_eigenvectors = 16;
+		w_spatial = 1;
+		w_normal = 1;
+		w_color = 1;
+	}
+	unsigned int num_eigenvectors;
+	float w_spatial;
+	float w_normal;
+	float w_color;
+};
+
+Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSettings& settings=SpectralSettings());
 
 Segmentation MinCutSegmentation(const Superpixels& clusters);
 

@@ -24,6 +24,7 @@
 //#define SEGS_DBG_SHOWGUI
 //#define SEGS_DBG_CREATE_EV_IMAGES
 //#define SEGS_DBG_PRINT
+//#define SEGS_VERBOSE
 
 namespace dasp
 {
@@ -132,12 +133,16 @@ void SolveSpectralDense(const std::vector<Entry>& entries, unsigned int n, Vec& 
 		Di[e.a] += e.w;
 		Di[e.b] += e.w;
 	}
+#ifdef SEGS_VERBOSE
 	std::cout << "SpectralSegmentation: W non zero percentage = " << static_cast<float>(2 * entries.size()) / static_cast<float>(n*n) << std::endl;
+#endif
 	// connect disconnected segments to everything -> ARGH!
 	for(unsigned int i=0; i<n; i++) {
 		float& di = Di[i];
 		if(di == 0) {
+#ifdef SEGS_VERBOSE
 			std::cout << "Cluster " << i << " has no connections! " << std::endl;
+#endif
 			// connect the disconnected cluster to all other clusters with a very small weight
 			di = 1.0f;
 			float q = di / static_cast<float>(n-1);
@@ -160,7 +165,9 @@ void SolveSpectralDense(const std::vector<Entry>& entries, unsigned int n, Vec& 
 	// solve eigensystem
 	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
 	solver.compute(A, D); // only need some eigenvectors!
+#ifdef SEGS_VERBOSE
 	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+#endif
 	// return eigenvectors and eigenvalues
 	ew = solver.eigenvalues();
 	ev = solver.eigenvectors();
@@ -234,7 +241,7 @@ void SolveSpectral(const std::vector<Entry>& entries, unsigned int n, Vec& ew, M
 
 }
 
-Segmentation SpectralSegmentation(const Superpixels& clusters)
+Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSettings& settings)
 {
 	const bool cOnlyConcaveEdges = true;
 
@@ -252,10 +259,12 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 
 #endif
 
-	const unsigned int cNEV = 16;
+	const unsigned int cNEV = settings.num_eigenvectors;
 	const float cWeightRho = 0.01f; // 640x480 clusters would yield 0.1 which is used in gPb
 	unsigned int n = clusters.clusterCount();
+#ifdef SEGS_VERBOSE
 	std::cout << "SpectralSegmentation: n = " << n << std::endl;
+#endif
 	// create local neighbourhood graph
 	Superpixels::NeighborGraphSettings Gnb_settings;
 	Gnb_settings.cut_by_spatial = false;
@@ -297,12 +306,12 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 			}
 		}
 		else {
-			w_maha_color = std::min(1.0f, 4.0f * e.c_color) / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
+			w_maha_color = 4.0f * e.c_color / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
 			w_maha_spatial = 0.0f;
 			w_maha_normal = 0.0f;
 		}
 		// compute total edge connectivity
-		float w = std::exp(-(w_maha_color + w_maha_spatial + w_maha_normal));
+		float w = std::exp(-(settings.w_spatial*w_maha_spatial + settings.w_color*w_maha_color + settings.w_normal*w_maha_normal));
 //		float w = std::exp(-w_maha_world);
 //		float w = std::exp(-w_maha_normal);
 //		float w = std::exp(-w_maha_color);
@@ -311,7 +320,9 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 		entries.push_back({e.a, e.b, w});
 	}
 
+#ifdef SEGS_VERBOSE
 	std::cout << "Edve connectivity: min=" << edge_connectivity.minCoeff() << ", max=" << edge_connectivity.maxCoeff() << std::endl;
+#endif
 
 	// compute edge border pixels
 	std::vector<std::vector<unsigned int>> border_pixels = clusters.ComputeBorderPixels(Gnb);
@@ -334,7 +345,9 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 
 
 	unsigned int n_used_ew = std::min(n - 1, cNEV);
+#ifdef SEGS_VERBOSE
 	std::cout << "Eigenvalues = " << result_ew.topRows(n_used_ew + 1).transpose() << std::endl;
+#endif
 #ifdef SEGS_DBG_CREATE_EV_IMAGES
 	{
 		cSegmentationDebug.clear();
@@ -402,7 +415,9 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 			const graph::Edge& e = Gnb.edges[eid];
 			e_k[eid] = std::abs(ev[e.a] - ev[e.b]);
 		}
+#ifdef SEGS_VERBOSE
 		std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
+#endif
 //		e_k /= e_k.maxCoeff();
 //		for(unsigned int i=0; i<e_k.rows(); i++) {
 //			e_k[i] = std::exp(-e_k[i]);
@@ -433,8 +448,10 @@ Segmentation SpectralSegmentation(const Superpixels& clusters)
 #endif
 
 
+#ifdef SEGS_VERBOSE
 	std::cout << "Edge weights: min=" << edge_weight.minCoeff() << ", max=" << edge_weight.maxCoeff() << std::endl;
 	std::cout << "Edge weights: median=" << edge_weight[edge_weight.rows()/2] << std::endl;
+#endif
 
 //	edge_weight /= edge_weight[(95*edge_weight.rows())/100];
 //	edge_weight /= edge_weight.maxCoeff();
