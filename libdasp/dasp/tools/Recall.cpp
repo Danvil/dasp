@@ -48,15 +48,21 @@ float ComputeRecallBoxImpl(const slimage::Image<slimage::Traits<K,1>>& img_exp, 
 	return cnt == 0 ? 1.0f : static_cast<float>(cnt_recalled) / static_cast<float>(cnt);
 }
 
-float ComputeRecallBox(const slimage::Image1ub& img_exp, const slimage::Image1ub& img_act, int d)
+float ComputeRecallBox(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrieved, int d)
 {
-	return ComputeRecallBoxImpl(img_exp, img_act, static_cast<unsigned char>(255), static_cast<unsigned char>(255), d);
+	float recall = ComputeRecallBoxImpl(img_relevant, img_retrieved, static_cast<unsigned char>(255), static_cast<unsigned char>(255), d);
+#ifdef DASP_DEBUG_GUI
+	std::cout << "d=" << d << ", recall=" << recall << std::endl;
+	slimage::gui::Show("recall", CreateRecallImage(img_relevant, img_retrieved, d));
+	slimage::gui::WaitForKeypress();
+#endif
+	return recall;
 }
 
 slimage::Image3ub CreateRecallImage(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrieved, int d)
 {
 	BOOST_ASSERT(img_relevant.dimensions() == img_retrieved.dimensions());
-	slimage::Image3ub vis(img_relevant.dimensions());
+	slimage::Image3ub vis(img_relevant.dimensions(), slimage::Pixel3ub{{0,0,0}});
 	for(int y=cBorder+d; y+cBorder+d<static_cast<int>(img_relevant.height()); y++) {
 		for(int x=cBorder+d; x+cBorder+d<static_cast<int>(img_relevant.width()); x++) {
 			bool is_relevant = false;
@@ -86,11 +92,17 @@ slimage::Image3ub CreateRecallImage(const slimage::Image1ub& img_relevant, const
 				}
 			}
 			slimage::Pixel3ub color{{0,0,0}};
-			if(is_relevant_and_retrieved || is_retrieved_and_relevant) {
+			if(is_relevant_and_retrieved) {
+				color = slimage::Pixel3ub{{255,255,0}};
+			}
+			else if(is_retrieved_and_relevant) {
 				color = slimage::Pixel3ub{{255,255,255}};
 			}
-			else if(is_relevant || is_retrieved) {
+			else if(is_relevant) {
 				color = slimage::Pixel3ub{{255,0,0}};
+			}
+			else if(is_retrieved) {
+				color = slimage::Pixel3ub{{128,128,128}};
 			}
 			vis(x,y) = color;
 		}
