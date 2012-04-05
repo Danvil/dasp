@@ -39,9 +39,13 @@ struct Segmentation
 	/** Creates superpixel segment labels from boundaries with a weight bigger than a threshold using connected components */
 	void createLabelsFromBoundaries(const Superpixels& clusters, float threshold);
 
+	void ucm(const Superpixels& clusters, float threshold);
+
 	std::vector<slimage::Pixel3ub> computeSegmentColors(const Superpixels& clusters) const;
 
 	slimage::Image3ub computeLabelImage(const Superpixels& clusters) const;
+
+	void relabel();
 
 };
 

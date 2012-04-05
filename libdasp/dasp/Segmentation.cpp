@@ -21,7 +21,7 @@
 #include <iostream>
 #include <set>
 
-//#define SEGS_DBG_SHOWGUI
+#define SEGS_DBG_SHOWGUI
 //#define SEGS_DBG_CREATE_EV_IMAGES
 //#define SEGS_DBG_PRINT
 //#define SEGS_VERBOSE
@@ -82,6 +82,35 @@ void Segmentation::createLabelsFromBoundaries(const Superpixels& clusters, float
 	for(unsigned int i=0; i<segmentation_graph.nodes_; i++) {
 		cluster_labels[i] = component[vids[i]];
 	}
+}
+
+void Segmentation::ucm(const Superpixels& clusters, float threshold)
+{
+	// every superpixel is one region
+	cluster_labels.resize(segmentation_graph.nodes_);
+	for(unsigned int i=0; i<cluster_labels.size(); i++) {
+		cluster_labels[i] = i;
+	}
+	// sort edges by weight
+	std::vector<graph::Edge> edges = segmentation_graph.edges;
+	std::sort(edges.begin(), edges.end(), [](const graph::Edge& x, const graph::Edge& y){ return x.cost < y.cost; });
+	// cut one edge after another
+	for(unsigned int k=0; k<edges.size(); k++) {
+		if(edges[k].cost >= threshold) {
+			break;
+		}
+		// join segments connected by edge
+		std::replace(cluster_labels.begin(), cluster_labels.end(), cluster_labels[edges[k].a], cluster_labels[edges[k].b]);
+		std::cout << "Removed edge with weight " << edges[k].cost << std::endl;
+		if(k % 10 == 0) {
+			// show ucm
+			relabel();
+			slimage::Image3ub vis = computeLabelImage(clusters);
+			slimage::gui::Show("ucm", vis);
+		}
+	}
+	// create continuous labels
+	relabel();
 }
 
 std::vector<slimage::Pixel3ub> Segmentation::computeSegmentColors(const Superpixels& clusters) const
@@ -461,29 +490,13 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	graph::Graph graph;
 	graph.nodes_ = Gnb.nodes_;
 	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
-		const graph::Edge& e = Gnb.edges[eid];
-		float w = edge_weight[eid];
-		graph.edges.push_back(graph::Edge{
-			e.a, e.b,
-			e.c_world, e.c_color, e.c_normal, w
-		});
+		graph::Edge e = Gnb.edges[eid];
+		e.cost = edge_weight[eid];
+		graph.edges.push_back(e);
 	}
 
 	// write value to border pixels
 	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
-//	for(unsigned int y=1; y<clusters.height()-1; y++) {
-//		for(unsigned int x=1; x<clusters.width()-1; x++) {
-//			if(clusters.points(x,y).isInvalid()) {
-//				continue;
-//			}
-//			if(clusters.points(x-1,y).isInvalid()
-//			|| clusters.points(x+1,y).isInvalid()
-//			|| clusters.points(x,y-1).isInvalid()
-//			|| clusters.points(x,y+1).isInvalid()) {
-//				result(x,y) = 100.0f;
-//			}
-//		}
-//	}
 	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
 		for(unsigned int pid : border_pixels[eid]) {
 			result[pid] = static_cast<float>(edge_weight[eid]);
@@ -491,15 +504,24 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	}
 
 #ifdef SEGS_DBG_SHOWGUI
-	slimage::gui::Show("segs", result, 0.03f);
-	slimage::gui::WaitForKeypress();
+	slimage::gui::Show("borders", result, 0.03f);
 #endif
-
-	// FIXME create and segmentation graph labels!
 
 	Segmentation segs;
 	segs.boundaries = result;
 	segs.segmentation_graph = graph;
+
+#ifdef SEGS_DBG_SHOWGUI
+	//segs.createLabelsFromBoundaries(clusters, 5.7f);
+	segs.ucm(clusters, 5.7f);
+	std::cout << segs.segment_count  << std::endl;
+	slimage::gui::Show("labels", segs.computeLabelImage(clusters));
+#endif
+
+#ifdef SEGS_DBG_SHOWGUI
+	slimage::gui::WaitForKeypress();
+#endif
+
 	return segs;
 }
 
@@ -510,16 +532,19 @@ Segmentation MinCutSegmentation(const Superpixels& clusters)
 	// graph segmentation
 	seg.segmentation_graph = graph::MinimalSpanningCutting(Gn, clusters.opt.segment_threshold, &seg.cluster_labels);
 	// remap labels to get a continuous interval of labels
-	std::set<unsigned int> unique_labels_set(seg.cluster_labels.begin(), seg.cluster_labels.end());
-	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
-	seg.segment_count = unique_labels.size();
-	for(unsigned int& x : seg.cluster_labels) {
-		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
-		x = it - unique_labels.begin();
-	}
+	seg.relabel();
 	return seg;
 }
 
-
+void Segmentation::relabel()
+{
+	std::set<unsigned int> unique_labels_set(cluster_labels.begin(), cluster_labels.end());
+	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
+	segment_count = unique_labels.size();
+	for(unsigned int& x : cluster_labels) {
+		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
+		x = it - unique_labels.begin();
+	}
+}
 
 }
