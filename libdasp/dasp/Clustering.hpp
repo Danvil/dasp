@@ -23,7 +23,7 @@ namespace dasp
 		}
 
 		inline float SpatialDistanceRaw(const Point& x, const Point& y) {
-			return (x.world - y.world).squaredNorm();
+			return (x.world - y.world).squaredNorm() / (y.spatial_normalizer * y.spatial_normalizer);
 		}
 
 		inline float ColorDistanceRaw(const Point& u, const Point& v) {

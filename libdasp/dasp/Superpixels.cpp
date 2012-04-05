@@ -42,6 +42,7 @@ Parameters::Parameters()
 	count = 0;
 	seed_mode = SeedModes::DepthMipmap;
 	gradient_adaptive_density = true;
+	use_density_depth = true;
 	is_conquer_enclaves = true;
 	segment_threshold = 1.0f;
 	is_repair_depth = true;
@@ -71,6 +72,13 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 
 	// FIXME change or not change? (SLIC mode does not allow change!)
 	//center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
+	if(opt.use_density_depth) {
+		center.spatial_normalizer = 1.0f;
+	}
+	else {
+		float rpx = std::sqrt(static_cast<float>(points.width()*points.height())/static_cast<float>(4*opt.count));
+		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
+	}
 
 	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
@@ -237,6 +245,10 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 			else {
 				float scala = opt.camera.scala(p.depth_i16);
 				p.image_super_radius = opt.base_radius * scala;
+
+				// TEST TEST
+//				p.image_super_radius = std::max(12.0f, p.image_super_radius);
+
 	//			p.world = opt.camera.unproject(x, y, p.depth_i16);
 	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
@@ -270,6 +282,36 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 		}
 	}
 
+	// disable depth-adaptiveness
+	if(opt.use_density_depth) {
+		for(unsigned int i=0; i<points.size(); i++) {
+			if(points[i].depth_i16 == 0) {
+				points[i].spatial_normalizer = 1.0f;
+			}
+			else {
+				float scala = opt.camera.scala(points[i].depth_i16);
+				points[i].spatial_normalizer = (points[i].image_super_radius / scala) / opt.base_radius;
+			}
+		}
+	}
+	else {
+		int cnt_non_zero = std::accumulate(density.begin(), density.end(), 0, [](int a, float v) { return a + ((v > 0.0f) ? 1 : 0); });
+		float q = static_cast<float>(opt.count) / static_cast<float>(cnt_non_zero);
+		std::for_each(density.begin(), density.end(), [q](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v = (v > 0.0f) ? q : 0.0f; });
+		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
+		// all radi should be equal and big enough to be able to cover the image
+		float rpx = std::sqrt(static_cast<float>(width*height)/static_cast<float>(4*opt.count));
+		for(unsigned int i=0; i<points.size(); i++) {
+			if(points[i].depth_i16 == 0) {
+				points[i].spatial_normalizer = 1.0f;
+			}
+			else {
+				float scala = opt.camera.scala(points[i].depth_i16);
+				points[i].spatial_normalizer = rpx / (opt.base_radius * scala) / points[i].circularity;
+			}
+		}
+	}
+
 }
 
 //void Clustering::ComputeSuperpixels(const slimage::Image1f& edges)
@@ -284,6 +326,7 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
 	CreateClusters(seeds);
+
 //	std::cout << std::endl << " 0: n=" << cluster.size() << std::endl;
 //	for(unsigned int i=0; i<cluster.size(); i++) {
 //		std::cout << cluster[i].pixel_ids.size() << " ";

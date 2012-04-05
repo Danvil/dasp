@@ -66,6 +66,7 @@ namespace dasp
 		SeedMode seed_mode;
 
 		bool gradient_adaptive_density;
+		bool use_density_depth;
 
 		bool is_conquer_enclaves;
 
