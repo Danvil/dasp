@@ -21,7 +21,7 @@
 #include <iostream>
 #include <set>
 
-#define SEGS_DBG_SHOWGUI
+//#define SEGS_DBG_SHOWGUI
 //#define SEGS_DBG_CREATE_EV_IMAGES
 //#define SEGS_DBG_PRINT
 //#define SEGS_VERBOSE
@@ -101,13 +101,15 @@ void Segmentation::ucm(const Superpixels& clusters, float threshold)
 		}
 		// join segments connected by edge
 		std::replace(cluster_labels.begin(), cluster_labels.end(), cluster_labels[edges[k].a], cluster_labels[edges[k].b]);
-		std::cout << "Removed edge with weight " << edges[k].cost << std::endl;
+#ifdef SEGS_DBG_SHOWGUI
 		if(k % 10 == 0) {
+			std::cout << "Removed edge with weight " << edges[k].cost << std::endl;
 			// show ucm
 			relabel();
 			slimage::Image3ub vis = computeLabelImage(clusters);
 			slimage::gui::Show("ucm", vis);
 		}
+#endif
 	}
 	// create continuous labels
 	relabel();
@@ -510,13 +512,6 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	Segmentation segs;
 	segs.boundaries = result;
 	segs.segmentation_graph = graph;
-
-#ifdef SEGS_DBG_SHOWGUI
-	//segs.createLabelsFromBoundaries(clusters, 5.7f);
-	segs.ucm(clusters, 5.7f);
-	std::cout << segs.segment_count  << std::endl;
-	slimage::gui::Show("labels", segs.computeLabelImage(clusters));
-#endif
 
 #ifdef SEGS_DBG_SHOWGUI
 	slimage::gui::WaitForKeypress();
