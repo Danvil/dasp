@@ -38,7 +38,7 @@ namespace dasp
 		/** estimated radius [px] on the image screen of a super pixel at point depth */
 		float image_super_radius;
 
-		float spatial_normalizer;
+//		float spatial_normalizer;
 
 		/** Invalid points have a kinect depth of 0 */
 		bool isInvalid() const {

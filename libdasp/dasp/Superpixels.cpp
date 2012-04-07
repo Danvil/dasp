@@ -70,15 +70,15 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	center.pos = opt.camera.project(center.world);
 	center.depth_i16 = opt.camera.depth(center.world);
 
-	// FIXME change or not change? (SLIC mode does not allow change!)
-	//center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
-	if(opt.use_density_depth) {
-		center.spatial_normalizer = 1.0f;
-	}
-	else {
-		float rpx = std::sqrt(static_cast<float>(points.width()*points.height())/static_cast<float>(4*opt.count));
-		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
-	}
+//	// FIXME change or not change? (SLIC mode does not allow change!)
+//	//center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
+//	if(opt.use_density_depth) {
+//		center.spatial_normalizer = 1.0f;
+//	}
+//	else {
+//		float rpx = std::sqrt(static_cast<float>(points.width()*points.height())/static_cast<float>(4*opt.count));
+//		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
+//	}
 
 	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
@@ -282,35 +282,35 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 		}
 	}
 
-	// disable depth-adaptiveness
-	if(opt.use_density_depth) {
-		for(unsigned int i=0; i<points.size(); i++) {
-			if(points[i].depth_i16 == 0) {
-				points[i].spatial_normalizer = 1.0f;
-			}
-			else {
-				float scala = opt.camera.scala(points[i].depth_i16);
-				points[i].spatial_normalizer = (points[i].image_super_radius / scala) / opt.base_radius;
-			}
-		}
-	}
-	else {
-		int cnt_non_zero = std::accumulate(density.begin(), density.end(), 0, [](int a, float v) { return a + ((v > 0.0f) ? 1 : 0); });
-		float q = static_cast<float>(opt.count) / static_cast<float>(cnt_non_zero);
-		std::for_each(density.begin(), density.end(), [q](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v = (v > 0.0f) ? q : 0.0f; });
-		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
-		// all radi should be equal and big enough to be able to cover the image
-		float rpx = std::sqrt(static_cast<float>(width*height)/static_cast<float>(4*opt.count));
-		for(unsigned int i=0; i<points.size(); i++) {
-			if(points[i].depth_i16 == 0) {
-				points[i].spatial_normalizer = 1.0f;
-			}
-			else {
-				float scala = opt.camera.scala(points[i].depth_i16);
-				points[i].spatial_normalizer = rpx / (opt.base_radius * scala) / points[i].circularity;
-			}
-		}
-	}
+//	// disable depth-adaptiveness
+//	if(opt.use_density_depth) {
+//		for(unsigned int i=0; i<points.size(); i++) {
+//			if(points[i].depth_i16 == 0) {
+//				points[i].spatial_normalizer = 1.0f;
+//			}
+//			else {
+//				float scala = opt.camera.scala(points[i].depth_i16);
+//				points[i].spatial_normalizer = (points[i].image_super_radius / scala) / opt.base_radius;
+//			}
+//		}
+//	}
+//	else {
+//		int cnt_non_zero = std::accumulate(density.begin(), density.end(), 0, [](int a, float v) { return a + ((v > 0.0f) ? 1 : 0); });
+//		float q = static_cast<float>(opt.count) / static_cast<float>(cnt_non_zero);
+//		std::for_each(density.begin(), density.end(), [q](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v = (v > 0.0f) ? q : 0.0f; });
+//		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
+//		// all radi should be equal and big enough to be able to cover the image
+//		float rpx = std::sqrt(static_cast<float>(width*height)/static_cast<float>(4*opt.count));
+//		for(unsigned int i=0; i<points.size(); i++) {
+//			if(points[i].depth_i16 == 0) {
+//				points[i].spatial_normalizer = 1.0f;
+//			}
+//			else {
+//				float scala = opt.camera.scala(points[i].depth_i16);
+//				points[i].spatial_normalizer = rpx / (opt.base_radius * scala) / points[i].circularity;
+//			}
+//		}
+//	}
 
 }
 
