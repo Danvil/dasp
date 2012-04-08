@@ -82,6 +82,10 @@ namespace dasp
 			}
 		}
 
+		bool has(const std::string& name) const {
+			return vm.count(name) > 0;
+		}
+
 		template<typename T>
 		T get(const std::string& name) const {
 			return vm[name].as<T>();

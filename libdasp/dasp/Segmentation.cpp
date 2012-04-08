@@ -31,6 +31,45 @@ namespace dasp
 
 std::vector<slimage::Image3ub> cSegmentationDebug;
 
+slimage::Image1f Segmentation::CreateBorderImage(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels)
+{
+	slimage::Image1f result(w, h, slimage::Pixel1f{0.0f});
+	for(unsigned int eid=0; eid<graph.edges.size(); eid++) {
+		float v = graph.edges[eid].cost;
+		for(unsigned int pid : border_pixels[eid]) {
+			result[pid] = v;
+		}
+	}
+	return result;
+}
+
+slimage::Image1f Segmentation::CreateBorderImageInv(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels)
+{
+	slimage::Image1f result(w, h, slimage::Pixel1f{0.0f});
+	for(unsigned int eid=0; eid<graph.edges.size(); eid++) {
+		float v = graph.edges[eid].cost;
+		for(unsigned int pid : border_pixels[eid]) {
+			result[pid] = 1.0f - v;
+		}
+	}
+	return result;
+}
+
+slimage::Image1ub Segmentation::CreateSmoothedContourImage(const slimage::Image1f& src, float scl)
+{
+	slimage::Image1f tmp(src.dimensions(), slimage::Pixel1f{1.0f});
+	for(unsigned int x=1; x<tmp.width()-1; x++) {
+		for(unsigned int y=1; y<tmp.height()-1; y++) {
+			float nb = src(x-1,y) + src(x+1,y) + src(x,y-1) + src(x,y+1);
+			float v = src(x,y) + nb / 4.0f;
+			tmp(x,y) = 1.0f - scl * v;
+		}
+	}
+	slimage::Image1ub vis(tmp.dimensions());
+	slimage::conversion::Convert(tmp, vis);
+	return vis;
+}
+
 void Segmentation::createBoundariesFromLabels(const Superpixels& clustering)
 {
 	// create segment labeling
@@ -100,7 +139,9 @@ void Segmentation::ucm(const Superpixels& clusters, float threshold)
 			break;
 		}
 		// join segments connected by edge
-		std::replace(cluster_labels.begin(), cluster_labels.end(), cluster_labels[edges[k].a], cluster_labels[edges[k].b]);
+		unsigned int l_old = cluster_labels[edges[k].a];
+		unsigned int l_new = cluster_labels[edges[k].b];
+		std::replace(cluster_labels.begin(), cluster_labels.end(), l_old, l_new);
 #ifdef SEGS_DBG_SHOWGUI
 		if(k % 10 == 0) {
 			std::cout << "Removed edge with weight " << edges[k].cost << std::endl;
@@ -299,7 +340,8 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	// create local neighbourhood graph
 	Superpixels::NeighborGraphSettings Gnb_settings;
 	Gnb_settings.cut_by_spatial = false;
-	Gnb_settings.min_border_overlap = 0.05f;
+	Gnb_settings.min_abs_border_overlap = 2;
+	Gnb_settings.min_border_overlap = 0.00f;
 	Gnb_settings.cost_function = Superpixels::NeighborGraphSettings::SpatialNormalColor;
 	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
 	BOOST_ASSERT(n == Gnb.nodes_);
@@ -307,7 +349,7 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	Vec edge_connectivity(Gnb.edges.size());
 	std::vector<Entry> entries;
 	for(unsigned int i=0; i<Gnb.edges.size(); i++) {
-		const graph::Edge& e = Gnb.edges[i];
+		graph::Edge& e = Gnb.edges[i];
 		BOOST_ASSERT(e.a != e.b);
 		// compute individual edge distances
 		float w_maha_color;
@@ -316,7 +358,7 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 		// FIXME metric needs central place!
 		if(clusters.opt.weight_image == 0.0f) {
 			w_maha_color = e.c_color / (std::sqrt(static_cast<float>(clusters.clusterCount())) * cWeightRho);
-			w_maha_spatial = std::max(0.0f, std::min(4.0f, e.c_world/2.0f - 1.0f)); // distance of 2 indicates normal distance
+			w_maha_spatial = std::max(0.0f, std::min(4.0f, e.c_world/4.0f - 1.0f)); // distance of 2 indicates normal distance
 			if(cOnlyConcaveEdges) {
 				// only use concave edges
 				const Point& ca = clusters.cluster[e.a].center;
@@ -325,11 +367,13 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 				float ca1 = ca.computeNormal().dot(d);
 				float ca2 = cb.computeNormal().dot(d);
 				float w = ca1 - ca2;
+				//float w = std::acos(ca2) - std::acos(ca1);
 				if(w < 0.0f) {
 					w_maha_normal = 0.0f;
 				}
 				else {
-					w_maha_normal = 3.0f*w;
+					w_maha_normal = 3.0f * w;
+					//w_maha_normal = 3.0f * (1 - std::cos(w));
 				}
 			}
 			else {
@@ -342,8 +386,9 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 			w_maha_normal = 0.0f;
 		}
 		// compute total edge connectivity
+//		std::cout << settings.w_spatial << " " << w_maha_spatial << " " << settings.w_color << " " << w_maha_color << " " << settings.w_normal << " " << w_maha_normal << std::endl;
 		float w = std::exp(-(settings.w_spatial*w_maha_spatial + settings.w_color*w_maha_color + settings.w_normal*w_maha_normal));
-//		float w = std::exp(-w_maha_world);
+//		float w = std::exp(-w_maha_spatial);
 //		float w = std::exp(-w_maha_normal);
 //		float w = std::exp(-w_maha_color);
 		edge_connectivity[i] = w;
@@ -488,6 +533,15 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 //	edge_weight /= edge_weight.maxCoeff();
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
 
+	// original edge connectivity graph
+	graph::Graph graph_original;
+	graph_original.nodes_ = Gnb.nodes_;
+	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
+		graph::Edge e = Gnb.edges[eid];
+		e.cost = edge_connectivity[eid];
+		graph_original.edges.push_back(e);
+	}
+
 	// create superpixel neighbourhood graph with edge strength
 	graph::Graph graph;
 	graph.nodes_ = Gnb.nodes_;
@@ -497,21 +551,15 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 		graph.edges.push_back(e);
 	}
 
-	// write value to border pixels
-	slimage::Image1f result(clusters.width(), clusters.height(), slimage::Pixel1f{0.0f});
-	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
-		for(unsigned int pid : border_pixels[eid]) {
-			result[pid] = static_cast<float>(edge_weight[eid]);
-		}
-	}
+	Segmentation segs;
+	segs.original_graph = graph_original;
+	segs.original_boundaries = Segmentation::CreateBorderImageInv(clusters.width(), clusters.height(), graph_original, border_pixels);
+	segs.boundaries = Segmentation::CreateBorderImage(clusters.width(), clusters.height(), graph, border_pixels);
+	segs.segmentation_graph = graph;
 
 #ifdef SEGS_DBG_SHOWGUI
-	slimage::gui::Show("borders", result, 0.03f);
+	slimage::gui::Show("boundaries", segs.boundaries, 0.03f);
 #endif
-
-	Segmentation segs;
-	segs.boundaries = result;
-	segs.segmentation_graph = graph;
 
 #ifdef SEGS_DBG_SHOWGUI
 	slimage::gui::WaitForKeypress();

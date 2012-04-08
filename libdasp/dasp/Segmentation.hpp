@@ -23,7 +23,11 @@ struct Segmentation
 
 	unsigned int segment_count;
 
+	graph::Graph original_graph;
+
 	graph::Graph segmentation_graph;
+
+	slimage::Image1f original_boundaries;
 
 	slimage::Image1f boundaries;
 
@@ -46,6 +50,12 @@ struct Segmentation
 	slimage::Image3ub computeLabelImage(const Superpixels& clusters) const;
 
 	void relabel();
+
+	static slimage::Image1f CreateBorderImage(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels);
+
+	static slimage::Image1f CreateBorderImageInv(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels);
+
+	static slimage::Image1ub CreateSmoothedContourImage(const slimage::Image1f& src, float scl);
 
 };
 

@@ -777,6 +777,9 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 			unsigned int cnt_j_in_i = std::count(borders[i].begin(), borders[i].end(), j);
 //			unsigned int cnt_i_in_j = std::count(borders[j].begin(), borders[j].end(), i);
 //			assert(cnt_j_in_i == cnt_i_in_j);
+			if(cnt_j_in_i < settings.min_abs_border_overlap) {
+				continue;
+			}
 			float p = static_cast<float>(cnt_j_in_i) / static_cast<float>(std::min(borders[i].size(),borders[j].size()));
 			if(p < settings.min_border_overlap) {
 				continue;

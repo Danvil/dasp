@@ -110,12 +110,14 @@ namespace dasp
 			NeighborGraphSettings() {
 				cut_by_spatial = true;
 				max_spatial_distance_mult = 5.0f;
-				min_border_overlap = 0.05f;
+				min_border_overlap = 0.00f;
+				min_abs_border_overlap = 1;
 				cost_function = NormalColor;
 			}
 			bool cut_by_spatial;
 			float max_spatial_distance_mult;
 			float min_border_overlap;
+			unsigned min_abs_border_overlap;
 			enum CostFunction {
 				SpatialNormalColor,
 				NormalColor,
