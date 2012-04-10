@@ -20,6 +20,10 @@ namespace xn {
 	class DepthMetaData;
 	class ImageMetaData;
 }
+
+slimage::Image1ub ColorizeDepth(const slimage::Image1ui16& depth);
+
+
 //----------------------------------------------------------------------------//
 namespace Romeo {
 namespace Kinect {

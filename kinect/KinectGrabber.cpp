@@ -11,6 +11,19 @@
 #include <cstring>
 #include <XnCppWrapper.h>
 using namespace std;
+
+slimage::Image1ub ColorizeDepth(const slimage::Image1ui16& depth)
+{
+	slimage::Image1ub color(depth.dimensions());
+	for(unsigned int i=0; i<depth.size(); i++) {
+		int v = depth[i];
+		int q = ((v - 500)*256) / 2500 + (v % 25);
+		unsigned char g = static_cast<unsigned char>(std::min(255, std::max(0, q)));
+		color[i] = g;
+	}
+	return color;
+}
+
 //----------------------------------------------------------------------------//
 namespace Romeo {
 namespace Kinect {
