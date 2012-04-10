@@ -30,6 +30,10 @@ std::map<std::string,slimage::ImagePtr> sDebugImages;
 
 Parameters::Parameters()
 {
+	camera.cx = 0.0f;
+	camera.cy = 0.0f;
+	camera.focal = 0.0f;
+	camera.z_slope = 0.0f;
 	color_space = ColorSpaces::RGB;
 	weight_color = 2.0f;
 	weight_spatial = 1.0f;
@@ -209,6 +213,10 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 	assert(normals.isNull());
 
 	const float cTempBaseRadius = 0.025f;
+
+	if(opt.camera.focal == 0.0f) {
+		std::cerr << "Invalid focal length!" << std::endl;
+	}
 
 	// compute base radius from desired super pixel count
 	if(opt.count > 0) {
