@@ -13,7 +13,7 @@
 #include <set>
 #include <cmath>
 
-//#define DASP_DEBUG_GUI
+#define DASP_DEBUG_GUI
 
 namespace dasp
 {
@@ -188,6 +188,7 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 	std::map<int, unsigned int> retrieved_area;
 	std::map<int, unsigned int> relevant_area;
 	std::map<int, std::set<int> > relevant_superpixel_labels;
+	std::map<int, std::map<int,unsigned int> > relevant_superpixel_labels_count;
 	for(unsigned int i=0; i<labels_relevant.size(); i++) {
 		int label_retrieved = labels_retrieved[i];
 		int label_relevant = labels_relevant[i];
@@ -198,13 +199,19 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 		retrieved_area[label_retrieved] ++;
 		relevant_area[label_relevant] ++;
 		relevant_superpixel_labels[label_relevant].insert(label_retrieved);
+		relevant_superpixel_labels_count[label_relevant][label_retrieved] ++;
 	}
 	std::vector<float> error;
 	for(auto it=relevant_superpixel_labels.begin(); it!=relevant_superpixel_labels.end(); ++it) {
+		std::cout << "Relevant label " << it->first << std::endl;
 		unsigned int g_area = relevant_area[it->first];
 		unsigned int s_area = 0;
 		for(int sid : it->second) {
-			s_area += retrieved_area[sid];
+			unsigned int part = retrieved_area[sid];
+			unsigned int count = relevant_superpixel_labels_count[it->first][sid];
+			float percentage = static_cast<float>(count)/static_cast<float>(part);
+//			std::cout << "sid=" << sid << ", count=" << count << ", size=" << part << ", percentage=" << percentage << std::endl;
+			s_area += part;
 		}
 		float q = static_cast<float>(s_area) / static_cast<float>(g_area) - 1.0f;
 #ifdef DASP_DEBUG_GUI
