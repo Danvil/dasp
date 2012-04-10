@@ -2,11 +2,9 @@ find_package(Qt4 REQUIRED)
 
 add_definitions(-DSLIMAGE_IO_QT)
 
-set(OPENNI_INCLUDE_DIR /home/david/Programs/RGBD/OpenNI/Include)
-set(OPENNI_LIB_DIR D:/Program Files/OpenNI/Lib)
-
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
+	${dasp_SOURCE_DIR}/kinect
 	${OPENNI_INCLUDE_DIR}
 )
 
@@ -43,15 +41,14 @@ ADD_DEFINITIONS(${QT_DEFINITIONS} -DQT_NO_KEYWORDS)
 
 ADD_EXECUTABLE(dasp_gui
 	${dasp_gui_SOURCES} ${dasp_gui_HEADERS_MOC} ${dasp_gui_FORMS_HEADERS}
-	KinectGrabber.cpp
 )
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 TARGET_LINK_LIBRARIES(dasp_gui
 	libdasp
+	kinect
 	${QT_LIBRARIES}
-	OpenNI
 	boost_signals
 	boost_thread
 )

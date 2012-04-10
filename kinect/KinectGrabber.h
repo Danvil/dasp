@@ -71,7 +71,6 @@ public:
 
 	bool stop_requested_;
 
-private:
 	void GrabAndNotify();
 
 	void Notify();

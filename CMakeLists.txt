@@ -7,6 +7,8 @@ option(DASP_HAS_SIMPLEENGINE "Use DanvilSimpleEngine to enable 3D rendering" ON)
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/david/git/SuperPoints/cmake/Modules/)
 #find_package(Eigen3 REQUIRED)
 
+set(OPENNI_INCLUDE_DIR /home/david/Programs/RGBD/OpenNI/Include)
+
 add_definitions(-std=c++0x -DBOOST_DISABLE_ASSERTS -O3)
 
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
@@ -29,3 +31,5 @@ add_subdirectory(eval_dasp_segments)
 add_subdirectory(eval_gPb)
 add_subdirectory(compute_labels)
 add_subdirectory(redcarpet)
+add_subdirectory(kinect)
+add_subdirectory(kinect_grabber)
