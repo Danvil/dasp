@@ -1,25 +1,26 @@
 cmake_minimum_required(VERSION 2.6)
 
-link_directories(/home/david/Danvil/lib "$ENV{DANVIL_PATH}"/lib)
-
 option(DASP_HAS_SIMPLEENGINE "Use DanvilSimpleEngine to enable 3D rendering" ON) 
+
+if (DASP_HAS_SIMPLEENGINE)
+	link_directories(/home/david/Danvil/lib "$ENV{DANVIL_PATH}"/lib)
+endif (DASP_HAS_SIMPLEENGINE)
 
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /home/david/git/SuperPoints/cmake/Modules/)
 #find_package(Eigen3 REQUIRED)
 
-set(OPENNI_INCLUDE_DIR /home/david/Programs/RGBD/OpenNI/Include)
+set(OPENNI_INCLUDE_DIR "/home/david/Programs/RGBD/OpenNI/Include" CACHE STRING "OpenNI include directory")
+set(EIGEN3_INCLUDE_DIR "/usr/local/include/eigen3" CACHE STRING "Eigen3 include directory")
+set(DANVIL_CT_INCLUDE_DIR "../DanvilTools/CT" CACHE STRING "Danvil CT main directory")
+set(SLIMAGE_INCLUDE_DIR "../slimage/src" CACHE STRING "Slimage include directory")
 
-add_definitions(-std=c++0x -DBOOST_DISABLE_ASSERTS -O3)
-
-#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-
+add_definitions(-std=c++0x -DBOOST_DISABLE_ASSERTS)
 
 include_directories(
-#	${EIGEN3_INCLUDE_DIR}
-	/usr/local/include/eigen3
+	${EIGEN3_INCLUDE_DIR}
 	${OpenCV_INCLUDE_DIRS}
-	../DanvilTools/CT/src
-	../slimage/src
+	${DANVIL_CT_INCLUDE_DIR}/src
+	${SLIMAGE_INCLUDE_DIR}
 )
 
 project(dasp)
