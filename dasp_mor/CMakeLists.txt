@@ -13,11 +13,11 @@ find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLUT REQUIRED)
 
-add_executable(register register.cpp DaspRegistration.cpp
+add_executable(dasp_mor dasp_mor.cpp DaspRegistration.cpp
 	../../DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GlutSystem.cpp
 )
 
-target_link_libraries(register
+target_link_libraries(dasp_mor
 	libdasp
 	kinect
 	DanvilSimpleEngine
