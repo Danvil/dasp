@@ -106,6 +106,11 @@ namespace dasp
 
 		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const graph::Graph& graph) const;
 
+		/** Computes points which lie on the border between segments
+		 * @param list of point indices
+		 */
+		std::vector<unsigned int> ComputeBorderPixelsComplete() const;
+
 		struct NeighborGraphSettings {
 			NeighborGraphSettings() {
 				cut_by_spatial = true;

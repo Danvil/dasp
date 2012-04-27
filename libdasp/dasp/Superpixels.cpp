@@ -576,6 +576,7 @@ slimage::Image1i Superpixels::ComputeLabels() const
 	}
 	return img;
 }
+
 void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 {
 	// create clusters
@@ -764,6 +765,25 @@ std::vector<std::vector<unsigned int> > Superpixels::ComputeBorderPixels(const g
 		borders[k] = ComputeBorderPixelsImpl(i, j, *this, labels);
 	}
 	return borders;
+}
+
+std::vector<unsigned int> Superpixels::ComputeBorderPixelsComplete() const
+{
+	slimage::Image1i labels = ComputeLabels();
+	std::set<unsigned int> u;
+	int face_neighbours[] = { -1, +1, -labels.width(), +labels.width() };
+	for(unsigned int y=1; y<labels.height()-1; y++) {
+		for(unsigned int x=1; x<labels.width()-1; x++) {
+			int q = labels.index(x,y);
+			unsigned int lc = labels[q];
+			for(unsigned int i=0; i<4; i++) {
+				if(labels[q + face_neighbours[i]] != lc) {
+					u.insert(q);
+				}
+			}
+		}
+	}
+	return std::vector<unsigned int>(u.begin(), u.end());
 }
 
 graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
