@@ -238,9 +238,9 @@ int main(int argc, char** argv)
 
 	engine->getScene()->addItem(icp_obj);
 #ifdef USE_KINECT
-	engine->getUpdater()->addUpdateable(kinect_grabber);
+	engine->getUpdater()->add(kinect_grabber);
 #endif
-	engine->getUpdater()->addUpdateable(icp_obj);
+	engine->getUpdater()->add(icp_obj);
 
 	engine->getKeyboardListener()->set('s', icp_obj, &IcpBatchObject::onStep);
 	engine->getKeyboardListener()->set('n', icp_obj, &IcpBatchObject::onNext);
