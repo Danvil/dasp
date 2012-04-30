@@ -527,6 +527,16 @@ void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const Cluste
 #endif
 }
 
+void RenderGraph(const Superpixels& clustering, const graph::Graph& graph)
+{
+	glBegin(GL_LINES);
+	for(const graph::Edge& edge : graph.edges) {
+		glVertex3fv(clustering.cluster[edge.a].center.world.data());
+		glVertex3fv(clustering.cluster[edge.b].center.world.data());
+	}
+	glEnd();
+}
+
 //----------------------------------------------------------------------------//
 }}
 //----------------------------------------------------------------------------//

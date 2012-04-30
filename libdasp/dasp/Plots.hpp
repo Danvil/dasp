@@ -166,6 +166,9 @@ void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterS
 
 void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
+/** Renders the superpixel graph in 3D */
+void RenderGraph(const Superpixels& clustering, const graph::Graph& graph);
+
 //----------------------------------------------------------------------------//
 }}
 //----------------------------------------------------------------------------//
