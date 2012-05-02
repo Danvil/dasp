@@ -16,10 +16,10 @@ namespace graph {
 
 	Graph MinimalCostEdges(const Graph& input)
 	{
-		unsigned int n = 3 * std::sqrt(input.edges.size());
-		Graph result(input.nodes_);
-		result.edges.resize(n);
-		std::partial_sort_copy(input.edges.begin(), input.edges.end(), result.edges.begin(), result.edges.end(),
+		unsigned int n = 3 * std::sqrt(input.edges_.size());
+		Graph result(input.num_nodes_);
+		result.edges_.resize(n);
+		std::partial_sort_copy(input.edges_.begin(), input.edges_.end(), result.edges_.begin(), result.edges_.end(),
 				[](const Edge& x, const Edge& y) { return x.cost < y.cost; });
 		return result;
 	}
@@ -32,7 +32,7 @@ namespace graph {
 			std::vector<unsigned int> vertices;
 		};
 
-		unsigned int nodes = input.nodes_;
+		unsigned int nodes = input.num_nodes_;
 
 		// initial segmentation each vertex on its own
 		std::map<unsigned int,Segment> S;
@@ -46,7 +46,7 @@ namespace graph {
 		}
 
 		// sort edges
-		std::vector<Edge> edges = input.edges;
+		std::vector<Edge> edges = input.edges_;
 		std::sort(edges.begin(), edges.end(),
 				[](const Edge& x, const Edge& y) { return x.cost < y.cost; });
 
@@ -59,7 +59,7 @@ namespace graph {
 			unsigned int sid2 = seg_ids[e.b];
 			// if vertices of edge in same segment -> use edge and continue
 			if(sid1 == sid2) {
-				graph.edges.push_back(e);
+				graph.add(e);
 				continue;
 			}
 			// assert that sid1 < sid2 for minimal segment ids ... probably useless
@@ -78,7 +78,7 @@ namespace graph {
 				s1.vertices.insert(s1.vertices.begin(), s2.vertices.begin(), s2.vertices.end());
 				s1.tau = cut_param / s1.vertices.size();
 				S.erase(sid2);
-				graph.edges.push_back(e);
+				graph.add(e);
 			}
 		}
 

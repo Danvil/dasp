@@ -752,11 +752,11 @@ std::vector<std::vector<int> > ComputeBorders(const Superpixels& spc) {
 std::vector<std::vector<unsigned int> > Superpixels::ComputeBorderPixels(const graph::Graph& graph) const
 {
 	slimage::Image1i labels = ComputeLabels();
-	std::vector<std::vector<unsigned int> > borders(graph.edges.size());
-	for(unsigned int k=0; k<graph.edges.size(); k++) {
+	std::vector<std::vector<unsigned int> > borders(graph.numEdges());
+	for(unsigned int k=0; k<graph.numEdges(); k++) {
 		// compute pixels which are at the border between superpixels e.a and e.b
-		unsigned int i = graph.edges[k].a;
-		unsigned int j = graph.edges[k].b;
+		unsigned int i = graph.getEdges()[k].a;
+		unsigned int j = graph.getEdges()[k].b;
 		// superpixel i should have less points than superpixel j
 		if(cluster[i].pixel_ids.size() > cluster[j].pixel_ids.size()) {
 			std::swap(i,j);
@@ -789,11 +789,10 @@ std::vector<unsigned int> Superpixels::ComputeBorderPixelsComplete() const
 graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
 {
 	std::vector<std::vector<int> > borders = ComputeBorders(*this);
-	graph::Graph G;
-	G.nodes_ = cluster.size();
+	graph::Graph G(cluster.size());
 	const float node_distance_threshold = settings.max_spatial_distance_mult * opt.base_radius;
-	for(unsigned int i=0; i<G.nodes_; i++) {
-		for(unsigned int j=i+1; j<G.nodes_; j++) {
+	for(unsigned int i=0; i<G.numNodes(); i++) {
+		for(unsigned int j=i+1; j<G.numNodes(); j++) {
 			if(settings.cut_by_spatial) {
 				float d = (cluster[i].center.world - cluster[j].center.world).norm();
 				// only test if distance is smaller than threshold
@@ -831,7 +830,7 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 				MetricSLIC fnc(opt.weight_image, opt.weight_color);
 				edge.cost = fnc(cluster[i].center, cluster[j].center);
 			}
-			G.edges.push_back(edge);
+			G.add(edge);
 		}
 	}
 	return G;

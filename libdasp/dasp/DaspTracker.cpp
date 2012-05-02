@@ -334,7 +334,7 @@ void DaspTracker::performSegmentationStep()
 						? segments.segmentation_graph
 						: clustering_.CreateNeighborhoodGraph();
 				// plot neighbourhood graph
-				for(graph::Edge& e : Gp.edges) {
+				for(const graph::Edge& e : Gp.getEdges()) {
 					const Point& a = clustering_.cluster[e.a].center;
 					const Point& b = clustering_.cluster[e.b].center;
 					slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});

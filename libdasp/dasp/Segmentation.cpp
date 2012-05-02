@@ -34,24 +34,24 @@ std::vector<slimage::Image3ub> cSegmentationDebug;
 slimage::Image1f Segmentation::CreateBorderImage(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels)
 {
 	slimage::Image1f result(w, h, slimage::Pixel1f{0.0f});
-	for(unsigned int eid=0; eid<graph.edges.size(); eid++) {
-		float v = graph.edges[eid].cost;
-		for(unsigned int pid : border_pixels[eid]) {
+	graph.foreachEdge([&border_pixels,&result](const graph::Edge& e) {
+		float v = e.cost;
+		for(unsigned int pid : border_pixels[e.id]) {
 			result[pid] = v;
 		}
-	}
+	});
 	return result;
 }
 
 slimage::Image1f Segmentation::CreateBorderImageInv(unsigned int w, unsigned int h, const graph::Graph& graph, const std::vector<std::vector<unsigned int>>& border_pixels)
 {
 	slimage::Image1f result(w, h, slimage::Pixel1f{0.0f});
-	for(unsigned int eid=0; eid<graph.edges.size(); eid++) {
-		float v = graph.edges[eid].cost;
-		for(unsigned int pid : border_pixels[eid]) {
+	graph.foreachEdge([&border_pixels,&result](const graph::Edge& e) {
+		float v = e.cost;
+		for(unsigned int pid : border_pixels[e.id]) {
 			result[pid] = 1.0f - v;
 		}
-	}
+	});
 	return result;
 }
 
@@ -95,13 +95,13 @@ void Segmentation::createLabelsFromBoundaries(const Superpixels& clusters, float
 	// create a graph will all edges with costs >= threshold
 	typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, Vertex, Edge> MyGraph;
 	MyGraph graph;
-	std::vector<MyGraph::vertex_descriptor> vids(segmentation_graph.nodes_);
-	for(unsigned int i=0; i<segmentation_graph.nodes_; i++) {
+	std::vector<MyGraph::vertex_descriptor> vids(segmentation_graph.numNodes());
+	for(unsigned int i=0; i<segmentation_graph.numNodes(); i++) {
 		MyGraph::vertex_descriptor vid = boost::add_vertex(graph);
 		graph[vid].sid = i;
 		vids[i] = vid;
 	}
-	for(const graph::Edge& e : segmentation_graph.edges) {
+	for(const graph::Edge& e : segmentation_graph.getEdges()) {
 		// take only edges with weight < threshold
 		if(e.cost > threshold) {
 			continue;
@@ -117,8 +117,8 @@ void Segmentation::createLabelsFromBoundaries(const Superpixels& clusters, float
 	component_type component;
 	boost::associative_property_map< component_type > component_map(component);
 	segment_count = boost::connected_components(graph, component_map);
-	cluster_labels.resize(segmentation_graph.nodes_);
-	for(unsigned int i=0; i<segmentation_graph.nodes_; i++) {
+	cluster_labels.resize(segmentation_graph.numNodes());
+	for(unsigned int i=0; i<segmentation_graph.numNodes(); i++) {
 		cluster_labels[i] = component[vids[i]];
 	}
 }
@@ -126,12 +126,12 @@ void Segmentation::createLabelsFromBoundaries(const Superpixels& clusters, float
 void Segmentation::ucm(const Superpixels& clusters, float threshold)
 {
 	// every superpixel is one region
-	cluster_labels.resize(segmentation_graph.nodes_);
+	cluster_labels.resize(segmentation_graph.numNodes());
 	for(unsigned int i=0; i<cluster_labels.size(); i++) {
 		cluster_labels[i] = i;
 	}
 	// sort edges by weight
-	std::vector<graph::Edge> edges = segmentation_graph.edges;
+	std::vector<graph::Edge> edges = segmentation_graph.getEdges();
 	std::sort(edges.begin(), edges.end(), [](const graph::Edge& x, const graph::Edge& y){ return x.cost < y.cost; });
 	// cut one edge after another
 	for(unsigned int k=0; k<edges.size(); k++) {
@@ -346,10 +346,10 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 	graph::Graph Gnb = clusters.CreateNeighborhoodGraph(Gnb_settings);
 	BOOST_ASSERT(n == Gnb.nodes_);
 	// create W matrix from neighbourhood graph
-	Vec edge_connectivity(Gnb.edges.size());
+	Vec edge_connectivity(Gnb.numEdges());
 	std::vector<Entry> entries;
-	for(unsigned int i=0; i<Gnb.edges.size(); i++) {
-		graph::Edge& e = Gnb.edges[i];
+	for(unsigned int i=0; i<Gnb.numEdges(); i++) {
+		graph::Edge& e = Gnb.getEdges()[i];
 		BOOST_ASSERT(e.a != e.b);
 		// compute individual edge distances
 		float w_maha_color;
@@ -450,7 +450,7 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 		}
 	}	// DEBUG
 #endif
-	Vec edge_weight = Vec::Zero(Gnb.edges.size());
+	Vec edge_weight = Vec::Zero(Gnb.numEdges());
 //	// later we weight by eigenvalues
 //	// find a positive eigenvalue (need to do this because of ugly instabilities ...
 //	Real ew_pos = -1.0f;
@@ -486,9 +486,9 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 		Vec ev = result_ev.col(k + 1);
 		ev = (ev - ev.minCoeff()*Vec::Ones(ev.rows())) / (ev.maxCoeff() - ev.minCoeff());
 		// for each edge compute difference of eigenvector values
-		Vec e_k = Vec::Zero(Gnb.edges.size());
-		for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
-			const graph::Edge& e = Gnb.edges[eid];
+		Vec e_k = Vec::Zero(Gnb.numEdges());
+		for(unsigned int eid=0; eid<Gnb.numEdges(); eid++) {
+			const graph::Edge& e = Gnb.getEdges()[eid];
 			e_k[eid] = std::abs(ev[e.a] - ev[e.b]);
 		}
 #ifdef SEGS_VERBOSE
@@ -534,21 +534,19 @@ Segmentation SpectralSegmentation(const Superpixels& clusters, const SpectralSet
 //	std::cout << "Edge weights = " << edge_weight.transpose() << std::endl;
 
 	// original edge connectivity graph
-	graph::Graph graph_original;
-	graph_original.nodes_ = Gnb.nodes_;
-	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
-		graph::Edge e = Gnb.edges[eid];
+	graph::Graph graph_original(Gnb.numNodes());
+	for(unsigned int eid=0; eid<Gnb.getEdges().size(); eid++) {
+		graph::Edge e = Gnb.getEdges()[eid];
 		e.cost = edge_connectivity[eid];
-		graph_original.edges.push_back(e);
+		graph_original.add(e);
 	}
 
 	// create superpixel neighbourhood graph with edge strength
-	graph::Graph graph;
-	graph.nodes_ = Gnb.nodes_;
-	for(unsigned int eid=0; eid<Gnb.edges.size(); eid++) {
-		graph::Edge e = Gnb.edges[eid];
+	graph::Graph graph(Gnb.numNodes());
+	for(unsigned int eid=0; eid<Gnb.getEdges().size(); eid++) {
+		graph::Edge e = Gnb.getEdges()[eid];
 		e.cost = edge_weight[eid];
-		graph.edges.push_back(e);
+		graph.add(e);
 	}
 
 	Segmentation segs;
