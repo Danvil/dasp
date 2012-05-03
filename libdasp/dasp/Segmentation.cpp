@@ -12,7 +12,6 @@
 #include <Eigen/Dense>
 //#include <Eigen/Sparse>
 #include <Eigen/Eigenvalues>
-#include <opencv2/opencv.hpp>
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
 #include <boost/graph/adjacency_list.hpp>
