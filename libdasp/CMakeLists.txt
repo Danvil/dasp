@@ -10,7 +10,7 @@ target_link_libraries(libdasp
 
 if (DASP_HAS_SIMPLEENGINE)
 	add_definitions(-DDASP_HAS_SIMPLEENGINE)
-	include_directories(../../DanvilTools/SimpleEngine/src)
+	include_directories(${DANVILTOOLS_DIR}/SimpleEngine/src)
 	target_link_libraries(libdasp DanvilSimpleEngine)
 endif (DASP_HAS_SIMPLEENGINE)
 
