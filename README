@@ -16,11 +16,10 @@ See http://opencv.willowgarage.com/wiki/
 
 - OpenNI
 See https://github.com/OpenNI/OpenNI
-OpenNI only works for me under Ubuntu if you edit the following file
+OpenNI only works for me under Ubuntu if I edit the following file
 /usr/include/ni/XnPlatform.h
 and replace line 74 with
 #include "Linux-x86/XnPlatformLinux-x86.h"
-
 
 - Misc other deps
 sudo apt-get install g++ build-essentials libloki-dev libloki0.1.7 libglew1.6-dev libxmu-dev
