@@ -86,7 +86,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 
 	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
-	solver.computeDirect(cov);
+	solver.compute(cov);
 	ew = solver.eigenvalues();
 	ev = solver.eigenvectors();
 

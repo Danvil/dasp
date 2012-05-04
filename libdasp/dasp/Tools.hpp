@@ -313,7 +313,7 @@ Eigen::Vector3f FitNormal(const std::vector<T>& points, F f)
 	Eigen::Matrix3f A = PointCovariance(points, f);
 	// compute eigenvalues/-vectors
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
-	solver.computeDirect(A);
+	solver.compute(A);
 	// take eigenvector (first eigenvalue is smallest!)
 	return solver.eigenvectors().col(0).normalized();
 }
