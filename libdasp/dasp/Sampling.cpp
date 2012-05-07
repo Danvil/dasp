@@ -167,15 +167,20 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 	return density;
 }
 
-slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target, const Parameters& opt)
+template<typename T, typename Fxi, typename Fyi, typename Fx, typename Fy>
+slimage::Image1f ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, const slimage::Image1f& target, Fxi fxi, Fyi fyi, Fx fx, Fy fy)
 {
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
 	slimage::Image1f density(target.width(), target.height());
 	density.fill(slimage::Pixel1f{0.0f});
-	for(const Seed& s : seeds) {
+	for(const T& s : seeds) {
+		int sx = fxi(s);
+		int sy = fyi(s);
+		float sxf = fx(s);
+		float syf = fy(s);
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-		float rho = target(s.x, s.y);
+		float rho = target(sx, sy);
 //		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
 //			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
 //			rho *= 0.25f;
@@ -186,19 +191,37 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, co
 		float sigma_inv_2 = norm;
 		// kernel influence range
 		int R = static_cast<int>(std::ceil(cRange * sigma));
-		int xmin = std::max<int>(s.x - R, 0);
-		int xmax = std::min<int>(s.x + R, int(target.width()) - 1);
-		int ymin = std::max<int>(s.y - R, 0);
-		int ymax = std::min<int>(s.y + R, int(target.height()) - 1);
+		int xmin = std::max<int>(sx - R, 0);
+		int xmax = std::min<int>(sx + R, int(target.width()) - 1);
+		int ymin = std::max<int>(sy - R, 0);
+		int ymax = std::min<int>(sy + R, int(target.height()) - 1);
 		for(int yi=ymin; yi<=ymax; yi++) {
 			for(int xi=xmin; xi<=xmax; xi++) {
-				float d = static_cast<float>(Square(xi - s.x) + Square(yi - s.y));
+				float d = Square(static_cast<float>(xi) - sxf) + Square(static_cast<float>(yi) - syf);
 				float delta = norm * BlueNoise::KernelFunctorSquare(d*sigma_inv_2);
 				density(xi, yi) += delta;
 			}
 		}
 	}
 	return density;
+}
+
+slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target)
+{
+	return ComputeDepthDensityFromSeeds_impl(seeds, target,
+			[](const Seed& s) { return s.x; },
+			[](const Seed& s) { return s.y; },
+			[](const Seed& s) { return static_cast<float>(s.x); },
+			[](const Seed& s) { return static_cast<float>(s.y); });
+}
+
+slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>& seeds, const slimage::Image1f& target)
+{
+	return ComputeDepthDensityFromSeeds_impl(seeds, target,
+			[](const Eigen::Vector2f& s) { return static_cast<float>(s[0] + 0.5f); }, // round to nearest integer (assuming positive)
+			[](const Eigen::Vector2f& s) { return static_cast<float>(s[1] + 0.5f); },
+			[](const Eigen::Vector2f& s) { return s[0]; },
+			[](const Eigen::Vector2f& s) { return s[1]; });
 }
 
 //slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
@@ -337,17 +360,8 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 	}
 }
 
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta)
 {
-#ifdef CREATE_DEBUG_IMAGES
-	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
-	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
-#endif
-
-	// compute old density
-	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new, opt);
-	// difference
-	slimage::Image1f density_delta = density_new - density_old;
 	// compute mipmaps
 	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
 	// we need to add and delete points!
@@ -367,6 +381,21 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 		}
 	}
 	return ok_size_seeds;
+}
+
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
+{
+#ifdef CREATE_DEBUG_IMAGES
+	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
+	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
+#endif
+
+	// compute old density
+	slimage::Image1f density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new);
+	// difference
+	slimage::Image1f density_delta = density_new - density_old;
+	// use function
+	return FindSeedsDelta(points, old_seeds, density_delta);
 }
 
 std::vector<Seed> Superpixels::FindSeeds()

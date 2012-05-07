@@ -382,7 +382,7 @@ void DaspTracker::performSegmentationStep()
 			for(unsigned int i=0; i<vis_density.size(); i++) {
 				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.1f);
 			}
-			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density, clustering_.opt);
+			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density);
 			slimage::conversion::Convert(seed_density, vis_seed_density); // FIXME * 20.0f
 			vis_density_delta.resize(density.width(), density.height());
 			for(unsigned int i=0; i<density.size(); i++) {
