@@ -193,7 +193,7 @@ namespace dasp
 
 	};
 
-	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta);
+	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta, bool delete_small_scala_seeds);
 
 	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
 

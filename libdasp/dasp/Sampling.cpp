@@ -360,7 +360,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 	}
 }
 
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta)
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta, bool delete_small_scala_seeds)
 {
 	// compute mipmaps
 	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
@@ -373,14 +373,19 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 		s.scala = points(s.x, s.y).image_super_radius;
 	}
 	// delete seeds with low scala
-	std::vector<Seed> ok_size_seeds;
-	ok_size_seeds.reserve(seeds.size());
-	for(Seed& s : seeds) {
-		if(s.scala >= 2.0f) {
-			ok_size_seeds.push_back(s);
+	if(delete_small_scala_seeds) {
+		std::vector<Seed> ok_size_seeds;
+		ok_size_seeds.reserve(seeds.size());
+		for(Seed& s : seeds) {
+			if(s.scala >= 2.0f) {
+				ok_size_seeds.push_back(s);
+			}
 		}
+		return ok_size_seeds;
 	}
-	return ok_size_seeds;
+	else {
+		return seeds;
+	}
 }
 
 std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt)
@@ -395,7 +400,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	// difference
 	slimage::Image1f density_delta = density_new - density_old;
 	// use function
-	return FindSeedsDelta(points, old_seeds, density_delta);
+	return FindSeedsDelta(points, old_seeds, density_delta, true);
 }
 
 std::vector<Seed> Superpixels::FindSeeds()

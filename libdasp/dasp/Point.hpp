@@ -132,6 +132,8 @@ namespace dasp
 		static constexpr float cPercentage = 0.95f; //0.99f;
 		static constexpr float cSigmaScale = 1.959964f; //2.575829f;
 
+		int seed_id;
+
 		Point center;
 
 		std::vector<unsigned int> pixel_ids;

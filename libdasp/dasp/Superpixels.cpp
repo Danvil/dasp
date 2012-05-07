@@ -582,8 +582,10 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 	// create clusters
 	cluster.clear();
 	cluster.reserve(seeds.size());
-	for(const Seed& p : seeds) {
+	for(unsigned int k=0; k<seeds.size(); k++) {
+		const Seed& p = seeds[k];
 		Cluster c;
+		c.seed_id = k;
 //		c.center.valid_ = true;
 		c.center.pos[0] = float(p.x);
 		c.center.pos[1] = float(p.y);
