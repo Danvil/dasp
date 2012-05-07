@@ -52,6 +52,10 @@ namespace graph {
 			return edges_;
 		}
 
+		void setEdges(const std::vector<Edge>& edges) {
+			edges_ = edges;
+		}
+
 		void add(const Edge& edge) {
 			addImpl(edge);
 		}
