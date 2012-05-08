@@ -87,6 +87,13 @@ struct Camera
 		return Eigen::Vector3f(h*(float(x) - cx), h*(float(y) - cy), z);
 	}
 
+	/** Computes a 3D point from pixel position and depth */
+	Eigen::Vector3f unproject(const Eigen::Vector2f& uv, uint16_t depth) const {
+		float z = convertKinectToMeter(depth);
+		float h = z / focal;
+		return Eigen::Vector3f(h*(uv[0] - cx), h*(uv[1] - cy), z);
+	}
+
 	/** Size of a pixel at given depth in world coordinates */
 	float scala(uint16_t depth) const {
 		return focal / convertKinectToMeter(depth);

@@ -58,21 +58,30 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 {
 	assert(hasPoints());
 
-	// compute mean
+	// update cluster means (position, color) and update screen position and depth
 	Eigen::Vector3f mean_color = Eigen::Vector3f::Zero();
 	Eigen::Vector3f mean_world = Eigen::Vector3f::Zero();
-
 	for(unsigned int i : pixel_ids) {
 		const Point& p = points[i];
 		assert(p.isValid());
 		mean_color += p.color;
 		mean_world += p.world;
 	}
-
 	center.color = mean_color / float(pixel_ids.size());
-	center.world = mean_world / float(pixel_ids.size());
-	center.pos = opt.camera.project(center.world);
-	center.depth_i16 = opt.camera.depth(center.world);
+
+	if(is_fixed) {
+		// do not move cluster on screen
+		// compute depth and world position using screen position
+		center.depth_i16 = points(center.pos).depth_i16;
+		center.world = opt.camera.unproject(center.pos, center.depth_i16);
+	}
+	else {
+		// set position to point mean position
+		center.world = mean_world / float(pixel_ids.size());
+		// compute screen position and depth by projection
+		center.pos = opt.camera.project(center.world);
+		center.depth_i16 = opt.camera.depth(center.world);
+	}
 
 //	// FIXME change or not change? (SLIC mode does not allow change!)
 //	//center.image_super_radius = opt.base_radius * opt.camera.scala(center.depth_i16);
@@ -186,7 +195,7 @@ std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 	std::vector<Seed> seeds(cluster.size());
 	for(std::size_t i=0; i<cluster.size(); i++) {
 		const Cluster& c = cluster[i];
-		seeds[i] = Seed{c.center.spatial_x(), c.center.spatial_y(), c.center.image_super_radius};
+		seeds[i] = Seed{c.center.spatial_x(), c.center.spatial_y(), c.center.image_super_radius, c.is_fixed};
 	}
 	return seeds;
 }
@@ -586,6 +595,7 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 		const Seed& p = seeds[k];
 		Cluster c;
 		c.seed_id = k;
+		c.is_fixed = p.is_fixed;
 //		c.center.valid_ = true;
 		c.center.pos[0] = float(p.x);
 		c.center.pos[1] = float(p.y);
@@ -641,6 +651,9 @@ void Superpixels::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f&
 	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 
 	for(Seed& seed : seeds) {
+		if(seed.is_fixed) {
+			continue;
+		}
 		int sx = seed.x;
 		int sy = seed.y;
 		int bestid = sy*width + sx;

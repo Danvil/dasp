@@ -51,11 +51,7 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 		unsigned int y = Hy + Dy * iy;
 		for(unsigned int ix=0; ix<Nx; ix++) {
 			unsigned int x = Hx + Dx * ix;
-			Seed p;
-			p.x = x;
-			p.y = y;
-			p.scala = S;
-			seeds.push_back(p);
+			seeds.push_back(Seed{x,y,S,Seed::moveable_t()});
 		}
 	}
 
@@ -65,6 +61,7 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
 	assert(false && "FindSeedsRandom: Not implemented!");
+	throw 0;
 //	constexpr float cCameraFocal = 25.0f;
 //	// for each pixel compute number of expected clusters
 //	std::vector<float> cdf(points.size());
@@ -134,7 +131,7 @@ void FindSeedsDepthMipmap_Walk(
 				int sx = sx0 + delta();
 				int sy = sy0 + delta();
 				if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
-					Seed s{ sx, sy, points(s.x, s.y).image_super_radius };
+					Seed s{ sx, sy, points(s.x, s.y).image_super_radius, Seed::moveable_t() };
 //					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
 					//if(s.scala >= 2.0f) {
 						seeds.push_back(s);
@@ -251,12 +248,11 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::I
 	std::vector<Seed> seeds;
 	seeds.reserve(pnts.size());
 	for(unsigned int i=0; i<pnts.size(); i++) {
-		Seed s;
-		s.x = std::round(pnts[i].x);
-		s.y = std::round(pnts[i].y);
-		if(0 <= s.x && s.x < int(points.width()) && 0 <= s.y && s.y < int(points.height())) {
-			s.scala = points(s.x, s.y).image_super_radius;
-			seeds.push_back(s);
+		int x = std::round(pnts[i].x);
+		int y = std::round(pnts[i].y);
+		if(0 <= x && x < int(points.width()) && 0 <= y && y < int(points.height())) {
+			float scala = points(x, y).image_super_radius;
+			seeds.push_back(Seed{x, y, scala, Seed::moveable_t()});
 		}
 	}
 	return seeds;
@@ -271,11 +267,7 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::
 			float v = density(x,y);
 			if(v >= 0.5f) {
 				v -= 1.0f;
-				Seed s;
-				s.x = x;
-				s.y = y;
-				s.scala = points(s.x, s.y).image_super_radius;
-				seeds.push_back(s);
+				seeds.push_back(Seed{x, y, points(x, y).image_super_radius, Seed::moveable_t()});
 			}
 			density(x+1,y  ) += 7.0f / 16.0f * v;
 			density(x-1,y+1) += 3.0f / 16.0f * v;
@@ -322,7 +314,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
 					float scala = points(sx, sy).image_super_radius;
-					Seed s{sx, sy, scala};
+					Seed s{sx, sy, scala, Seed::moveable_t()};
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					//if(s.scala >= 2.0f) {
 						seeds.push_back(s);
@@ -339,6 +331,10 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				std::size_t best_index = 0;
 				for(std::size_t i=0; i<seeds.size(); i++) {
 					const Seed& s = seeds[i];
+					// do not remove fixed seed points
+					if(s.is_fixed) {
+						continue;
+					}
 					int dist =  Square(sx - s.x) + Square(sy - s.y);
 					if(dist < best_dist) {
 						best_dist = dist;

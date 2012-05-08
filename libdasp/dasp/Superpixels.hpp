@@ -27,6 +27,9 @@ namespace dasp
 	{
 		int x, y;
 		float scala;
+		bool is_fixed;
+		struct fixed_t { operator bool() { return true; } };
+		struct moveable_t { operator bool() { return false; } };
 	};
 
 	struct ClusterGroupInfo

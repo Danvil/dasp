@@ -134,6 +134,8 @@ namespace dasp
 
 		int seed_id;
 
+		bool is_fixed;
+
 		Point center;
 
 		std::vector<unsigned int> pixel_ids;
