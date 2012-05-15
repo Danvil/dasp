@@ -527,12 +527,12 @@ void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const Cluste
 #endif
 }
 
-void RenderGraph(const Superpixels& clustering, const graph::Graph& graph)
+void RenderGraph(const Superpixels& clustering, const NeighbourhoodGraph& graph)
 {
 	glBegin(GL_LINES);
-	for(const graph::Edge& edge : graph.getEdges()) {
-		glVertex3fv(clustering.cluster[edge.a].center.world.data());
-		glVertex3fv(clustering.cluster[edge.b].center.world.data());
+	for(auto p=boost::edges(graph); p.first!=p.second; ++p.first) {
+		glVertex3fv(clustering.cluster[boost::source(*p.first)].center.world.data());
+		glVertex3fv(clustering.cluster[boost::target(*p.first)].center.world.data());
 	}
 	glEnd();
 }

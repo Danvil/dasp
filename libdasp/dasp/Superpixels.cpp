@@ -735,7 +735,7 @@ std::vector<int> ComputeBorderLabels(unsigned int cid, const Superpixels& spc, c
 }
 
 /** Computes a list of all pixels which are have label cid and have a face neighbor which has label cjd */
-std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels) {
+std::vector<unsigned int> Superpixels::ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels) {
 	const int w = static_cast<int>(spc.width());
 	const int h = static_cast<int>(spc.height());
 	const int d[4] = { -1, +1, -w, +w };
@@ -764,24 +764,6 @@ std::vector<std::vector<int> > ComputeBorders(const Superpixels& spc) {
 	return border_pixels;
 }
 
-std::vector<std::vector<unsigned int> > Superpixels::ComputeBorderPixels(const graph::Graph& graph) const
-{
-	slimage::Image1i labels = ComputeLabels();
-	std::vector<std::vector<unsigned int> > borders(graph.numEdges());
-	for(unsigned int k=0; k<graph.numEdges(); k++) {
-		// compute pixels which are at the border between superpixels e.a and e.b
-		unsigned int i = graph.getEdges()[k].a;
-		unsigned int j = graph.getEdges()[k].b;
-		// superpixel i should have less points than superpixel j
-		if(cluster[i].pixel_ids.size() > cluster[j].pixel_ids.size()) {
-			std::swap(i,j);
-		}
-		// find border pixels
-		borders[k] = ComputeBorderPixelsImpl(i, j, *this, labels);
-	}
-	return borders;
-}
-
 std::vector<unsigned int> Superpixels::ComputeBorderPixelsComplete() const
 {
 	slimage::Image1i labels = ComputeLabels();
@@ -801,13 +783,20 @@ std::vector<unsigned int> Superpixels::ComputeBorderPixelsComplete() const
 	return std::vector<unsigned int>(u.begin(), u.end());
 }
 
-graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
+NeighbourhoodGraph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings) const
 {
+	// assumes that graph node ids are consecutive integers starting with 0
+	// create one node for each superpixel
+	NeighbourhoodGraph neighbourhood_graph;
+	for(unsigned int i=0; i<cluster.size(); i++) {
+		boost::add_vertex(graph_);
+	}
+	// compute superpixel borders
 	std::vector<std::vector<int> > borders = ComputeBorders(*this);
-	graph::Graph G(cluster.size());
+	// connect superpixels
 	const float node_distance_threshold = settings.max_spatial_distance_mult * opt.base_radius;
-	for(unsigned int i=0; i<G.numNodes(); i++) {
-		for(unsigned int j=i+1; j<G.numNodes(); j++) {
+	for(unsigned int i=0; i<cluster.size(); i++) {
+		for(unsigned int j=i+1; j<cluster.size(); j++) {
 			if(settings.cut_by_spatial) {
 				float d = (cluster[i].center.world - cluster[j].center.world).norm();
 				// only test if distance is smaller than threshold
@@ -826,10 +815,12 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 			if(p < settings.min_border_overlap) {
 				continue;
 			}
+			// add edge
+			NeighbourhoodGraph::edge_descriptor eid;
+			bool ok;
+			boost::tie(eid,ok) = boost::add_edge(i, j, neighbourhood_graph);
+			NeighbourhoodGraphEdgeData& edge = neighbourhood_graph[eid];
 			// compute cost using color and normal
-			graph::Edge edge;
-			edge.a = i;
-			edge.b = j;
 			edge.c_px = metric::ImageDistanceRaw(cluster[i].center, cluster[j].center);
 			edge.c_world = metric::SpatialDistanceRaw(cluster[i].center, cluster[j].center) / (opt.base_radius * opt.base_radius); // FIXME HAAAACK
 			edge.c_color = metric::ColorDistanceRaw(cluster[i].center, cluster[j].center);
@@ -845,10 +836,9 @@ graph::Graph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings settings
 				MetricSLIC fnc(opt.weight_image, opt.weight_color);
 				edge.cost = fnc(cluster[i].center, cluster[j].center);
 			}
-			G.add(edge);
 		}
 	}
-	return G;
+	return neighbourhood_graph;
 }
 
 ClusterGroupInfo Superpixels::ComputeClusterGroupInfo(unsigned int n, float max_thick)

@@ -317,27 +317,24 @@ void DaspTracker::performSegmentationStep()
 		}
 
 		if(show_graph_ || plot_segments_) {
-			Segmentation segments;
 			if(plot_segments_) {
 				// create segmentation graph
 				//segments = MinCutSegmentation(clustering_);
-				segments = SpectralSegmentation(clustering_);
-				segments.createLabelsFromBoundaries(clustering_, clustering_.opt.segment_threshold);
-				std::cout << "Segment Count: " << segments.countSegments() << std::endl;
+				EdgeWeightGraph segments = SpectralSegmentation(clustering_);
+				ClusterLabeling labeling = CreateLabelsFromBoundaries(clustering_, segments, clustering_.opt.segment_threshold);
+				std::cout << "Segment Count: " << labeling.num_labels << std::endl;
 
 				// plot segmentation graph
-				vis_img = segments.computeLabelImage(clustering_);
-			}
+				vis_img = ComputeLabelImage(clustering_, labeling, ComputeSegmentColors(clustering_, labeling));
 
-			if(show_graph_) {
-				graph::Graph Gp = plot_segments_
-						? segments.segmentation_graph
-						: clustering_.CreateNeighborhoodGraph();
-				// plot neighbourhood graph
-				for(const graph::Edge& e : Gp.getEdges()) {
-					const Point& a = clustering_.cluster[e.a].center;
-					const Point& b = clustering_.cluster[e.b].center;
-					slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});
+				if(show_graph_) {
+					plots::PlotGraphLines(vis_img, clustering_, segments);
+				}
+			}
+			else {
+				if(show_graph_) {
+					// plot neighbourhood graph
+					plots::PlotGraphLines(vis_img, clustering_, clustering_.CreateNeighborhoodGraph());
 				}
 			}
 		}

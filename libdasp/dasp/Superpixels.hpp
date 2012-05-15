@@ -12,10 +12,11 @@
 #include "Clustering.hpp"
 #include "Tools.hpp"
 //#include "SuperpixelHistogram.hpp"
-#include "tools/Graph.hpp"
+//#include "tools/Graph.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
+#include <boost/graph/adjacency_list.hpp>
 #include <vector>
 #include <cmath>
 
@@ -39,6 +40,15 @@ namespace dasp
 		Histogram<float> hist_area_quotient;
 		Histogram<float> hist_coverage_error;
 	};
+
+	struct NeighbourhoodGraphEdgeData {
+		float c_px;
+		float c_world;
+		float c_color;
+		float c_normal;
+	};
+
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, boost::no_property, boost::property<boost::edge_weight_t, float, NeighbourhoodGraphEdgeData>> NeighbourhoodGraph;
 
 	void SetRandomNumberSeed(unsigned int seed);
 
@@ -107,7 +117,29 @@ namespace dasp
 
 		void MoveClusters();
 
-		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const graph::Graph& graph) const;
+	private:
+		static std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels);
+
+	public:
+		template<typename Graph>
+		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const Graph& graph) const {
+			slimage::Image1i labels = ComputeLabels();
+			std::vector<std::vector<unsigned int> > borders;
+			borders.reserve(boost::num_edges(graph));
+			for(auto it=boost::edges(graph); it.first!=it.second; ++it.first) {
+				typename Graph::edge_descriptor eid = *it.first;
+				// compute pixels which are at the border between superpixels e.a and e.b
+				unsigned int i = boost::source(eid, graph);
+				unsigned int j = boost::target(eid, graph);
+				// superpixel i should have less points than superpixel j
+				if(cluster[i].pixel_ids.size() > cluster[j].pixel_ids.size()) {
+					std::swap(i,j);
+				}
+				// find border pixels
+				borders.push_back( ComputeBorderPixelsImpl(i, j, *this, labels) );
+			}
+			return borders;
+		}
 
 		/** Computes points which lie on the border between segments
 		 * @param list of point indices
@@ -135,7 +167,7 @@ namespace dasp
 		};
 
 		/** Creates the superpixel neighborhood graph. Superpixels are neighbors if they share border pixels. */
-		graph::Graph CreateNeighborhoodGraph(NeighborGraphSettings settings=NeighborGraphSettings()) const;
+		NeighbourhoodGraph CreateNeighborhoodGraph(NeighborGraphSettings settings=NeighborGraphSettings()) const;
 
 		/**
 		 * Signature of F :

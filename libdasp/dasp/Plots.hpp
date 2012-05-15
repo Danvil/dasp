@@ -9,6 +9,7 @@
 #define PLOTTING_HPP_
 //----------------------------------------------------------------------------//
 #include "Superpixels.hpp"
+#include <Slimage/Paint.hpp>
 #include <Danvil/Color.h>
 #include <vector>
 //----------------------------------------------------------------------------//
@@ -167,7 +168,16 @@ void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterS
 void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
 /** Renders the superpixel graph in 3D */
-void RenderGraph(const Superpixels& clustering, const graph::Graph& graph);
+void RenderGraph(const Superpixels& clustering, const NeighbourhoodGraph& graph);
+
+template<typename Graph>
+void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph) {
+	for(auto it=boost::edges(graph); it.first!=it.second; ++it) {
+		const Point& a = clustering.cluster[boost::source(*it.first)].center;
+		const Point& b = clustering.cluster[boost::target(*it.first)].center;
+		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});
+	}
+}
 
 //----------------------------------------------------------------------------//
 }}
