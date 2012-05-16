@@ -321,11 +321,11 @@ void DaspTracker::performSegmentationStep()
 				// create segmentation graph
 				//segments = MinCutSegmentation(clustering_);
 				EdgeWeightGraph segments = SpectralSegmentation(clustering_);
-				ClusterLabeling labeling = CreateLabelsFromBoundaries(clustering_, segments, clustering_.opt.segment_threshold);
+				ClusterLabeling labeling = ComputeSegmentLabels(segments, clustering_.opt.segment_threshold);
 				std::cout << "Segment Count: " << labeling.num_labels << std::endl;
 
 				// plot segmentation graph
-				vis_img = ComputeLabelImage(clustering_, labeling, ComputeSegmentColors(clustering_, labeling));
+				vis_img = CreateLabelImage(clustering_, labeling, ComputeSegmentColors(clustering_, labeling));
 
 				if(show_graph_) {
 					plots::PlotGraphLines(vis_img, clustering_, segments);

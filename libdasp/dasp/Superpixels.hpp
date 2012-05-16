@@ -46,9 +46,10 @@ namespace dasp
 		float c_world;
 		float c_color;
 		float c_normal;
+		float weight;
 	};
 
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, boost::no_property, boost::property<boost::edge_weight_t, float, NeighbourhoodGraphEdgeData>> NeighbourhoodGraph;
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, boost::no_property, NeighbourhoodGraphEdgeData> NeighbourhoodGraph;
 
 	void SetRandomNumberSeed(unsigned int seed);
 

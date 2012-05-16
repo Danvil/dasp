@@ -1,6 +1,14 @@
-file(GLOB my_sources1 dasp/*.cpp)
-file(GLOB my_sources2 dasp/tools/*.cpp)
-add_library(libdasp SHARED ${my_sources1} ${my_sources2})
+add_library(libdasp SHARED
+	dasp/tools/BlueNoise.cpp
+	dasp/tools/Mipmaps.cpp
+	dasp/tools/Recall.cpp
+	dasp/tools/RepairDepth.cpp
+	dasp/DaspTracker.cpp
+	dasp/Plots.cpp
+	dasp/Sampling.cpp
+	dasp/Segmentation.cpp
+	dasp/Superpixels.cpp
+)
 
 set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 

@@ -6,7 +6,6 @@
  */
 
 #include "Superpixels.hpp"
-#include "tools/Graph.hpp"
 #include "tools/RepairDepth.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
@@ -789,7 +788,7 @@ NeighbourhoodGraph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings se
 	// create one node for each superpixel
 	NeighbourhoodGraph neighbourhood_graph;
 	for(unsigned int i=0; i<cluster.size(); i++) {
-		boost::add_vertex(graph_);
+		boost::add_vertex(neighbourhood_graph);
 	}
 	// compute superpixel borders
 	std::vector<std::vector<int> > borders = ComputeBorders(*this);
@@ -829,12 +828,12 @@ NeighbourhoodGraph Superpixels::CreateNeighborhoodGraph(NeighborGraphSettings se
 			if(opt.weight_image == 0.0f) {
 				// dasp
 				MetricDASP fnc(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
-				edge.cost = fnc(cluster[i].center, cluster[j].center);
+				edge.weight = fnc(cluster[i].center, cluster[j].center);
 			}
 			else {
 				// slic
 				MetricSLIC fnc(opt.weight_image, opt.weight_color);
-				edge.cost = fnc(cluster[i].center, cluster[j].center);
+				edge.weight = fnc(cluster[i].center, cluster[j].center);
 			}
 		}
 	}
