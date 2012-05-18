@@ -49,8 +49,8 @@ namespace dasp
 	{
 		EdgeWeightGraph result;
 		boost::copy_graph(graph, result, boost::edge_copy([&superpixels, &graph, &result, &metric](typename Graph::edge_descriptor src, EdgeWeightGraph::edge_descriptor dst) {
-			unsigned int ea = boost::source(src, graph);
-			unsigned int eb = boost::target(src, graph);
+			unsigned int ea = source_superpixel_id(src, graph);
+			unsigned int eb = target_superpixel_id(src, graph);
 			float w = metric(superpixels.cluster[ea].center, superpixels.cluster[eb].center);
 			boost::put(boost::edge_weight, result, dst, w);
 		}));

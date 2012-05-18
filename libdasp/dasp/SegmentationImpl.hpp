@@ -183,7 +183,7 @@ EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap wei
 		}
 	}	// DEBUG
 #endif
-	detail::Vec edge_weight = detail::Vec::Zero(num_vertices);
+	detail::Vec edge_weight = detail::Vec::Zero(boost::num_edges(graph));
 //	// later we weight by eigenvalues
 //	// find a positive eigenvalue (need to do this because of ugly instabilities ...
 //	Real ew_pos = -1.0f;
@@ -219,7 +219,7 @@ EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap wei
 		Vec ev = result_ev.col(k + 1);
 		ev = (ev - ev.minCoeff()*Vec::Ones(ev.rows())) / (ev.maxCoeff() - ev.minCoeff());
 		// for each edge compute difference of eigenvector values
-		Vec e_k = Vec::Zero(num_vertices);
+		Vec e_k = Vec::Zero(edge_weight.rows());
 		// FIXME proper edge indexing
 		unsigned int eid_index = 0;
 		for(auto eid : as_range(boost::edges(graph))) {
