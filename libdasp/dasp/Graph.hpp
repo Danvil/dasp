@@ -82,7 +82,7 @@ namespace dasp
 	 */
 	template<typename SuperpixelGraph>
 	inline SuperpixelId target_superpixel_id(const typename SuperpixelGraph::edge_descriptor& eid, const SuperpixelGraph& graph) {
-		return boost::get(superpixel_id_t(), graph, boost::source(eid, graph));
+		return boost::get(superpixel_id_t(), graph, boost::target(eid, graph));
 	}
 
 	template<typename SuperpixelGraph>

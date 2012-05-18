@@ -190,7 +190,16 @@ void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, c
 }
 
 template<typename Graph, typename F>
-void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph, F weight_to_color) {
+void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph, F edge_color) {
+	for(auto eid : as_range(boost::edges(graph))) {
+		const Point& a = clustering.cluster[source_superpixel_id(eid, graph)].center;
+		const Point& b = clustering.cluster[target_superpixel_id(eid, graph)].center;
+		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), edge_color(eid));
+	}
+}
+
+template<typename Graph, typename F>
+void PlotWeightedGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph, F weight_to_color) {
 	for(auto eid : as_range(boost::edges(graph))) {
 		const Point& a = clustering.cluster[source_superpixel_id(eid, graph)].center;
 		const Point& b = clustering.cluster[target_superpixel_id(eid, graph)].center;

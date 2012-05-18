@@ -11,81 +11,6 @@
 namespace dasp
 {
 
-//		/** Computes a list of all pixels which are have label cid and have a face neighbor which has label cjd */
-//		std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels);
-
-//		template<typename Graph>
-//		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const Superpixels& superpixels, const Graph& graph) const {
-//			slimage::Image1i labels = superpixels.ComputeLabels();
-//			std::vector<std::vector<unsigned int> > borders;
-//			borders.reserve(boost::num_edges(graph));
-//			for(auto it=boost::edges(graph); it.first!=it.second; ++it.first) {
-//				typename Graph::edge_descriptor eid = *it.first;
-//				// compute pixels which are at the border between superpixels e.a and e.b
-//				unsigned int i = boost::get( boost::source(eid, graph);
-//				unsigned int j = boost::target(eid, graph);
-//				// superpixel i should have less points than superpixel j
-//				if(superpixels.cluster[i].pixel_ids.size() > superpixels.cluster[j].pixel_ids.size()) {
-//					std::swap(i,j);
-//				}
-//				// find border pixels
-//				borders.push_back( detail::ComputeBorderPixelsImpl(i, j, *this, labels) );
-//			}
-//			return borders;
-//		}
-
-std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels)
-{
-	const int w = static_cast<int>(spc.width());
-	const int h = static_cast<int>(spc.height());
-	const int d[4] = { -1, +1, -w, +w };
-	std::vector<unsigned int> border;
-	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
-		int x = pid % w;
-		int y = pid / w;
-		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
-			for(int i=0; i<4; i++) {
-				int label = labels[pid + d[i]];
-				if(label == static_cast<int>(cjd)) {
-					border.push_back(pid);
-				}
-			}
-		}
-	}
-	return border;
-}
-
-std::vector<int> ComputeBorderLabels(unsigned int cid, const Superpixels& spc, const slimage::Image1i& labels)
-{
-	const int w = static_cast<int>(spc.width());
-	const int h = static_cast<int>(spc.height());
-	const int d[4] = { -1, +1, -w, +w };
-	std::vector<int> border;
-	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
-		int x = pid % w;
-		int y = pid / w;
-		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
-			for(int i=0; i<4; i++) {
-				int label = labels[pid + d[i]];
-				if(label != cid && label != -1) {
-					border.push_back(label);
-				}
-			}
-		}
-	}
-	return border;
-}
-
-std::vector<std::vector<int>> ComputeBorders(const Superpixels& spc)
-{
-	slimage::Image1i labels = spc.ComputeLabels();
-	std::vector<std::vector<int>> border_pixels(spc.cluster.size());
-	for(unsigned int cid=0; cid<spc.cluster.size(); cid++) {
-		border_pixels[cid] = ComputeBorderLabels(cid, spc, labels);
-	}
-	return border_pixels;
-}
-
 std::vector<unsigned int> ComputeAllBorderPixels(const Superpixels& superpixels)
 {
 	slimage::Image1i labels = superpixels.ComputeLabels();
@@ -105,12 +30,88 @@ std::vector<unsigned int> ComputeAllBorderPixels(const Superpixels& superpixels)
 	return std::vector<unsigned int>(u.begin(), u.end());
 }
 
+//std::vector<unsigned int> ComputeBorderPixels(const std::vector<unsigned int>& pixel_ids, unsigned int desired_neighbour_cid, const slimage::Image1i& labels)
+//{
+//	const int w = static_cast<int>(labels.width());
+//	const int h = static_cast<int>(labels.height());
+//	const int d[4] = { -1, +1, -w, +w };
+//	std::vector<unsigned int> border;
+//	for(unsigned int pid : pixel_ids) {
+//		int x = pid % w;
+//		int y = pid / w;
+//		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
+//			for(int i=0; i<4; i++) {
+//				int label = labels[pid + d[i]];
+//				if(label == static_cast<int>(desired_neighbour_cid)) {
+//					border.push_back(pid);
+//				}
+//			}
+//		}
+//	}
+//	return border;
+//}
+
+struct BorderPixel
+{
+	unsigned int pixel_id;
+	unsigned int label;
+};
+
+std::vector<BorderPixel> ComputeBorderLabels(unsigned int cid, const Superpixels& spc, const slimage::Image1i& labels)
+{
+	const int w = static_cast<int>(labels.width());
+	const int h = static_cast<int>(labels.height());
+	const int d[4] = { -1, +1, -w, +w };
+	std::vector<BorderPixel> border;
+	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
+		int x = pid % w;
+		int y = pid / w;
+		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
+			for(int i=0; i<4; i++) {
+				int label = labels[pid + d[i]];
+				if(label != cid && label != -1) {
+					border.push_back(BorderPixel{pid, label});
+				}
+			}
+		}
+	}
+	return border;
+}
+
+std::vector<std::vector<BorderPixel>> ComputeBorderLabels(const Superpixels& spc)
+{
+	slimage::Image1i labels = spc.ComputeLabels();
+	std::vector<std::vector<BorderPixel>> border_pixels(spc.cluster.size());
+	for(unsigned int cid=0; cid<spc.cluster.size(); cid++) {
+		border_pixels[cid] = ComputeBorderLabels(cid, spc, labels);
+	}
+	return border_pixels;
+}
+
+std::vector<unsigned int> FindCommonBorder(const std::vector<std::vector<BorderPixel>>& border, unsigned int cid, unsigned cjd) {
+	const std::vector<BorderPixel>& bi = border[cid];
+	const std::vector<BorderPixel>& bj = border[cjd];
+	std::vector<unsigned int> common;
+	common.reserve(bi.size() + bj.size());
+	for(const BorderPixel& q : bi) {
+		if(q.label == cjd) {
+			common.push_back(q.pixel_id);
+		}
+	}
+	for(const BorderPixel& q : bi) {
+		if(q.label == cjd) {
+			common.push_back(q.pixel_id);
+		}
+	}
+	return common;
+}
+
 BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings)
 {
 	// create one node for each superpixel
 	BorderPixelGraph neighbourhood_graph = detail::CreateSuperpixelGraph<BorderPixelGraph>(superpixels.clusterCount());
 	// compute superpixel borders
-	std::vector<std::vector<int> > borders = ComputeBorders(superpixels);
+	std::vector<std::vector<BorderPixel> > border = ComputeBorderLabels(superpixels);
 	// connect superpixels
 	const float node_distance_threshold = settings.max_spatial_distance_mult * superpixels.opt.base_radius;
 	for(unsigned int i=0; i<superpixels.cluster.size(); i++) {
@@ -123,15 +124,13 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 				}
 			}
 			// compute intersection of border pixels
-			std::vector<unsigned int> common_border(borders[i].size() + borders[j].size());
-			auto common_border_end = std::set_intersection(borders[i].begin(), borders[i].end(), borders[j].begin(), borders[j].end(), common_border.begin());
-			common_border.resize(common_border_end - common_border.begin());
+			std::vector<unsigned int> common_border = FindCommonBorder(border, i, j);
 			// test if superpixels have a common border
 			unsigned int common_border_size = common_border.size();
 			if(common_border_size < settings.min_abs_border_overlap) {
 				continue;
 			}
-			float p = static_cast<float>(common_border_size) / static_cast<float>(std::min(borders[i].size(),borders[j].size()));
+			float p = static_cast<float>(common_border_size) / static_cast<float>(std::min(border[i].size(), border[j].size()));
 			if(p < settings.min_border_overlap) {
 				continue;
 			}
@@ -139,24 +138,8 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 			BorderPixelGraph::edge_descriptor eid;
 			bool ok;
 			boost::tie(eid,ok) = boost::add_edge(i, j, neighbourhood_graph); // FIXME correctly convert superpixel_id to vertex descriptor
+			assert(ok);
 			boost::put(borderpixels_t(), neighbourhood_graph, eid, common_border);
-//			NeighbourhoodGraphEdgeData& edge = neighbourhood_graph[eid];
-//			// compute cost using color and normal
-//			edge.c_px = metric::ImageDistanceRaw(cluster[i].center, cluster[j].center);
-//			edge.c_world = metric::SpatialDistanceRaw(cluster[i].center, cluster[j].center) / (opt.base_radius * opt.base_radius); // F IXME HAAAACK
-//			edge.c_color = metric::ColorDistanceRaw(cluster[i].center, cluster[j].center);
-//			edge.c_normal = metric::NormalDistanceRaw(cluster[i].center, cluster[j].center);
-//			// F IXME metric needs central place!
-//			if(opt.weight_image == 0.0f) {
-//				// dasp
-//				MetricDASP fnc(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
-//				edge.weight = fnc(cluster[i].center, cluster[j].center);
-//			}
-//			else {
-//				// slic
-//				MetricSLIC fnc(opt.weight_image, opt.weight_color);
-//				edge.weight = fnc(cluster[i].center, cluster[j].center);
-//			}
 		}
 	}
 	return neighbourhood_graph;

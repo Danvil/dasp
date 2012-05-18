@@ -337,8 +337,14 @@ void DaspTracker::performSegmentationStep()
 			}
 			else {
 				if(show_graph_) {
+					// create neighbourhood graph
+					BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_);
 					// plot neighbourhood graph
-					plots::PlotGraphLines(vis_img, clustering_, CreateNeighborhoodGraph(clustering_));
+					plots::PlotGraphLines(vis_img, clustering_, Gnb);
+//					plots::PlotGraphLines(vis_img, clustering_, Gnb, [&Gnb](BorderPixelGraph::edge_descriptor eid) {
+//						unsigned int n = boost::get(borderpixels_t(), Gnb, eid).size();
+//						return plots::IntensityColor(static_cast<float>(n), 0.0f, 20.0f);
+//					});
 				}
 			}
 		}
