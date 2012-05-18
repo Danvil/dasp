@@ -25,41 +25,6 @@
 //namespace boost_graph_helpers
 //{
 
-template<class Iter>
-struct iter_pair_range
-: std::pair<Iter,Iter>
-{
-    iter_pair_range(const std::pair<Iter,Iter>& x)
-    : std::pair<Iter,Iter>(x)
-    {}
-
-    Iter begin() const {
-    	return this->first;
-    }
-
-    Iter end() const {
-    	return this->second;
-    }
-};
-
-template<class Iter>
-inline iter_pair_range<Iter> as_range(const std::pair<Iter,Iter>& x)
-{
-	return iter_pair_range<Iter>(x);
-}
-
-template<class Graph>
-inline iter_pair_range<typename Graph::edge_iterator> edges_range(const Graph& graph)
-{
-	return as_range(boost::edges(graph));
-}
-
-template<class Graph>
-inline iter_pair_range<typename Graph::vertex_iterator> vertices_range(const Graph& graph)
-{
-	return as_range(boost::vertices(graph));
-}
-
 namespace detail
 {
 template<typename T, typename IndexMap = boost::identity_property_map>

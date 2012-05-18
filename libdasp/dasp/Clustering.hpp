@@ -10,71 +10,12 @@
 
 #include "Point.hpp"
 #include "Parameters.hpp"
+#include "Metric.hpp"
 #include <Slimage/Slimage.hpp>
 #include <eigen3/Eigen/Dense>
 
 namespace dasp
 {
-
-	namespace metric
-	{
-		inline float ImageDistanceRaw(const Point& x, const Point& y) {
-			return (x.pos - y.pos).squaredNorm() / (y.image_super_radius * y.image_super_radius);
-		}
-
-		inline float SpatialDistanceRaw(const Point& x, const Point& y) {
-			return (x.world - y.world).squaredNorm();// / (y.spatial_normalizer * y.spatial_normalizer);
-		}
-
-		inline float ColorDistanceRaw(const Point& u, const Point& v) {
-			return (u.color - v.color).squaredNorm();
-		}
-
-		inline float NormalDistanceRaw(const Point& u, const Point& v) {
-			// we want to compute 1 - dot(n(u), n(v))
-			// the normal is implicitly given by the gradient
-			// multiplying with the circularity yields the required normalization
-			return 1.0f - (u.gradient.dot(v.gradient) + 1.0f) * u.circularity * v.circularity;
-		}
-	}
-
-	struct MetricDASP
-	{
-		MetricDASP(float w_r, float w_c, float w_n, float R) {
-			weights_[0] = w_r / (R * R);
-			weights_[1] = w_c;
-			weights_[2] = w_n;
-		}
-
-		float operator()(const Point& p, const Point& q) const {
-			return weights_.dot(
-					Eigen::Vector3f(
-							metric::SpatialDistanceRaw(p, q),
-							metric::ColorDistanceRaw(p, q),
-							metric::NormalDistanceRaw(p, q)));
-		}
-
-	private:
-		Eigen::Vector3f weights_;
-	};
-
-	struct MetricSLIC
-	{
-		MetricSLIC(float w_s, float w_c) {
-			weights_[0] = w_s;
-			weights_[1] = w_c;
-		}
-
-		float operator()(const Point& p, const Point& q) const {
-			return weights_.dot(
-					Eigen::Vector2f(
-							metric::ImageDistanceRaw(p, q),
-							metric::ColorDistanceRaw(p, q)));
-		}
-
-	private:
-		Eigen::Vector2f weights_;
-	};
 
 	template<typename METRIC>
 	slimage::Image1f ComputeEdges(const ImagePoints& points, const METRIC& mf)

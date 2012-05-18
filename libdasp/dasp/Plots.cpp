@@ -527,16 +527,6 @@ void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const Cluste
 #endif
 }
 
-void RenderGraph(const Superpixels& clustering, const NeighbourhoodGraph& graph)
-{
-	glBegin(GL_LINES);
-	for(auto eid : as_range(boost::edges(graph))) {
-		glVertex3fv(clustering.cluster[boost::source(eid, graph)].center.world.data());
-		glVertex3fv(clustering.cluster[boost::target(eid, graph)].center.world.data());
-	}
-	glEnd();
-}
-
 //----------------------------------------------------------------------------//
 }}
 //----------------------------------------------------------------------------//

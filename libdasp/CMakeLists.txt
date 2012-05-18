@@ -4,6 +4,7 @@ add_library(libdasp SHARED
 	dasp/tools/Recall.cpp
 	dasp/tools/RepairDepth.cpp
 	dasp/DaspTracker.cpp
+	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Sampling.cpp
 	dasp/Segmentation.cpp

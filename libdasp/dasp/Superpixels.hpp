@@ -41,16 +41,6 @@ namespace dasp
 		Histogram<float> hist_coverage_error;
 	};
 
-	struct NeighbourhoodGraphEdgeData {
-		float c_px;
-		float c_world;
-		float c_color;
-		float c_normal;
-		float weight;
-	};
-
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, boost::no_property, NeighbourhoodGraphEdgeData> NeighbourhoodGraph;
-
 	void SetRandomNumberSeed(unsigned int seed);
 
 	class Superpixels
@@ -117,58 +107,6 @@ namespace dasp
 		void PurgeInvalidClusters();
 
 		void MoveClusters();
-
-	private:
-		static std::vector<unsigned int> ComputeBorderPixelsImpl(unsigned int cid, unsigned int cjd, const Superpixels& spc, const slimage::Image1i& labels);
-
-	public:
-		template<typename Graph>
-		std::vector<std::vector<unsigned int> > ComputeBorderPixels(const Graph& graph) const {
-			slimage::Image1i labels = ComputeLabels();
-			std::vector<std::vector<unsigned int> > borders;
-			borders.reserve(boost::num_edges(graph));
-			for(auto it=boost::edges(graph); it.first!=it.second; ++it.first) {
-				typename Graph::edge_descriptor eid = *it.first;
-				// compute pixels which are at the border between superpixels e.a and e.b
-				unsigned int i = boost::source(eid, graph);
-				unsigned int j = boost::target(eid, graph);
-				// superpixel i should have less points than superpixel j
-				if(cluster[i].pixel_ids.size() > cluster[j].pixel_ids.size()) {
-					std::swap(i,j);
-				}
-				// find border pixels
-				borders.push_back( ComputeBorderPixelsImpl(i, j, *this, labels) );
-			}
-			return borders;
-		}
-
-		/** Computes points which lie on the border between segments
-		 * @param list of point indices
-		 */
-		std::vector<unsigned int> ComputeBorderPixelsComplete() const;
-
-		struct NeighborGraphSettings {
-			NeighborGraphSettings() {
-				cut_by_spatial = true;
-				max_spatial_distance_mult = 5.0f;
-				min_border_overlap = 0.00f;
-				min_abs_border_overlap = 1;
-				cost_function = NormalColor;
-			}
-			bool cut_by_spatial;
-			float max_spatial_distance_mult;
-			float min_border_overlap;
-			unsigned min_abs_border_overlap;
-			enum CostFunction {
-				SpatialNormalColor,
-				NormalColor,
-				Color
-			};
-			CostFunction cost_function;
-		};
-
-		/** Creates the superpixel neighborhood graph. Superpixels are neighbors if they share border pixels. */
-		NeighbourhoodGraph CreateNeighborhoodGraph(NeighborGraphSettings settings=NeighborGraphSettings()) const;
 
 		/**
 		 * Signature of F :

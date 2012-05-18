@@ -9,7 +9,8 @@
 #define PLOTTING_HPP_
 //----------------------------------------------------------------------------//
 #include "Superpixels.hpp"
-#include "tools/PairRange.hpp"
+#include "Graph.hpp"
+#include <GL/glew.h>
 #include <Slimage/Paint.hpp>
 #include <Danvil/Color.h>
 #include <vector>
@@ -169,13 +170,21 @@ void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterS
 void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection=ClusterSelection::All());
 
 /** Renders the superpixel graph in 3D */
-void RenderGraph(const Superpixels& clustering, const NeighbourhoodGraph& graph);
+template<typename Graph>
+void RenderGraph(const Superpixels& clustering, const Graph& graph) {
+	glBegin(GL_LINES);
+	for(auto eid : as_range(boost::edges(graph))) {
+		glVertex3fv(clustering.cluster[source_superpixel_id(eid, graph)].center.world.data());
+		glVertex3fv(clustering.cluster[target_superpixel_id(eid, graph)].center.world.data());
+	}
+	glEnd();
+}
 
 template<typename Graph>
 void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph) {
 	for(auto eid : as_range(boost::edges(graph))) {
-		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
-		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
+		const Point& a = clustering.cluster[source_superpixel_id(eid, graph)].center;
+		const Point& b = clustering.cluster[target_superpixel_id(eid, graph)].center;
 		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});
 	}
 }
@@ -183,8 +192,8 @@ void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, c
 template<typename Graph, typename F>
 void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, const Graph& graph, F weight_to_color) {
 	for(auto eid : as_range(boost::edges(graph))) {
-		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
-		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
+		const Point& a = clustering.cluster[source_superpixel_id(eid, graph)].center;
+		const Point& b = clustering.cluster[target_superpixel_id(eid, graph)].center;
 		float weight = boost::get(boost::edge_weight_t(), graph, eid);
 		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), weight_to_color(weight));
 	}

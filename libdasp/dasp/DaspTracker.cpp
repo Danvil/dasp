@@ -9,6 +9,7 @@
 #include "tools/Mipmaps.hpp"
 #include "tools/BlueNoise.hpp"
 #include "tools/AutoDepth.hpp"
+#include "Neighbourhood.hpp"
 #include "Segmentation.hpp"
 #include "Plots.hpp"
 #include <Slimage/Paint.hpp>
@@ -320,7 +321,10 @@ void DaspTracker::performSegmentationStep()
 			if(plot_segments_) {
 				// create segmentation graph
 				//segments = MinCutSegmentation(clustering_);
-				EdgeWeightGraph segments = SpectralSegmentation(clustering_);
+				BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_);
+				EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
+						ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
+				EdgeWeightGraph segments = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
 				ClusterLabeling labeling = ComputeSegmentLabels(segments, clustering_.opt.segment_threshold);
 				std::cout << "Segment Count: " << labeling.num_labels << std::endl;
 
@@ -334,7 +338,7 @@ void DaspTracker::performSegmentationStep()
 			else {
 				if(show_graph_) {
 					// plot neighbourhood graph
-					plots::PlotGraphLines(vis_img, clustering_, clustering_.CreateNeighborhoodGraph());
+					plots::PlotGraphLines(vis_img, clustering_, CreateNeighborhoodGraph(clustering_));
 				}
 			}
 		}

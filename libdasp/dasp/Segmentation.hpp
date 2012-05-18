@@ -8,36 +8,17 @@
 #ifndef SEGMENTATION_HPP_
 #define SEGMENTATION_HPP_
 
-#include <Slimage/Slimage.hpp>
 #include "Superpixels.hpp"
+#include "Graph.hpp"
+#include <Slimage/Slimage.hpp>
+#include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
 #include <vector>
-
-struct borderpixels_t {
-  typedef boost::edge_property_tag kind;
-};
 
 namespace dasp
 {
 
 extern std::vector<slimage::Image3ub> cSegmentationDebug;
-
-/** Computes a border image
- * All border pixels for each edge are set to the edge weight in the image.
- * Default value for non border pixels is 0.
- * Border pixels are given in index form x + y*w where w must be the same given as parameter.
- * @param w width of result image
- * @param h width of result image
- * @param graph a boost graph
- * @param weights an weight property map of type float
- * @param border_pixels an edge property map of type std::vector<unsigned int>
- * @param return image with painted border pixels
- */
-template<typename Graph, typename WeightMap, typename BorderPixelMap>
-slimage::Image1f CreateBorderPixelImage(unsigned int w, unsigned int h, const Graph& graph, WeightMap weights, BorderPixelMap border_pixels);
-
-/** Smoothes a contour image and converts to unsigned char */
-slimage::Image1ub CreateSmoothedContourImage(const slimage::Image1f& src, float scl);
 
 /** Node labeling using unique consecutive unsigned integers */
 struct ClusterLabeling
@@ -97,26 +78,23 @@ std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters,
 /** Creates an image where each superpixel is colored with the corresponding label color */
 slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors);
 
-/** Graph type of segmentation result */
-typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS,boost::no_property,boost::property<boost::edge_weight_t,float>> EdgeWeightGraph;
-
-/** Settings for spectral graph segmentation */
-struct SpectralSettings
+namespace detail
 {
-	SpectralSettings() {
-		num_eigenvectors = 16;
-		w_spatial = 1;
-		w_normal = 1;
-		w_color = 1;
-	}
-	unsigned int num_eigenvectors;
-	float w_spatial;
-	float w_normal;
-	float w_color;
-};
+	typedef float Real;
+	typedef Eigen::MatrixXf Mat;
+	typedef Eigen::VectorXf Vec;
+
+	struct Entry {
+		unsigned int a, b;
+		float w;
+	};
+
+	void SolveSpectral(const std::vector<Entry>& entries, unsigned int n, Vec& ew, Mat& ev);
+}
 
 /** Performs spectral graph segmentation */
-EdgeWeightGraph SpectralSegmentation(const Superpixels& clusters, const SpectralSettings& settings=SpectralSettings());
+template<typename SuperpixelGraph, typename WeightMap>
+EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int num_eigenvectors=24);
 
 /** Performs min-cut graph segmentation */
 EdgeWeightGraph MinCutSegmentation(const Superpixels& clusters);
