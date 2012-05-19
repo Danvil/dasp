@@ -78,20 +78,6 @@ std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters,
 /** Creates an image where each superpixel is colored with the corresponding label color */
 slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors);
 
-namespace detail
-{
-	typedef float Real;
-	typedef Eigen::MatrixXf Mat;
-	typedef Eigen::VectorXf Vec;
-
-	struct Entry {
-		unsigned int a, b;
-		float w;
-	};
-
-	void SolveSpectral(const std::vector<Entry>& entries, unsigned int n, Vec& ew, Mat& ev);
-}
-
 /** Performs spectral graph segmentation */
 template<typename SuperpixelGraph, typename WeightMap>
 EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int num_eigenvectors=24);

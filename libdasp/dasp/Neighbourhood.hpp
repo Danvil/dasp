@@ -24,22 +24,23 @@ namespace dasp
 
 	struct NeighborGraphSettings
 	{
-		NeighborGraphSettings() {
-			cut_by_spatial = true;
-			max_spatial_distance_mult = 5.0f;
-			min_border_overlap = 0.00f;
-			min_abs_border_overlap = 1;
-		}
 		bool cut_by_spatial;
 		float max_spatial_distance_mult;
 		float min_border_overlap;
 		unsigned min_abs_border_overlap;
+
+		static NeighborGraphSettings SpatialCut() {
+			return NeighborGraphSettings{true, 5.0f, 0.0f, 1};
+		}
+		static NeighborGraphSettings NoCut() {
+			return NeighborGraphSettings{false, 5.0f, 0.0f, 1};
+		}
 	};
 
 	/** Computes the superpixel neighborhood graph
 	 * Superpixels are neighbors if they share border pixels.
 	 */
-	BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings=NeighborGraphSettings());
+	BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings=NeighborGraphSettings::SpatialCut());
 
 	/** Computes edge weights for a superpixel graph using the given metric
 	 * Metric : Point x Point -> float (should be lightweight)

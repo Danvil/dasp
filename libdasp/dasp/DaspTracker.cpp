@@ -321,7 +321,7 @@ void DaspTracker::performSegmentationStep()
 			if(plot_segments_) {
 				// create segmentation graph
 				//segments = MinCutSegmentation(clustering_);
-				BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_);
+				BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_, NeighborGraphSettings::SpatialCut());
 				EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
 						ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
 				EdgeWeightGraph segments = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
@@ -332,7 +332,9 @@ void DaspTracker::performSegmentationStep()
 				vis_img = CreateLabelImage(clustering_, labeling, ComputeSegmentColors(clustering_, labeling));
 
 				if(show_graph_) {
-					plots::PlotGraphLines(vis_img, clustering_, segments);
+					plots::PlotWeightedGraphLines(vis_img, clustering_, segments, [](float weight) {
+						return plots::IntensityColor(weight, 0, 1);
+					});
 				}
 			}
 			else {

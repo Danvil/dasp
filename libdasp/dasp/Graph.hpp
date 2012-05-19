@@ -98,11 +98,16 @@ namespace dasp
 	namespace detail
 	{
 		template<typename SuperpixelGraph>
-		SuperpixelGraph CreateSuperpixelGraph(unsigned int num_vertices) {
-			SuperpixelGraph graph(num_vertices);
+		void SetSuperpixelIds(SuperpixelGraph& graph) {
 			for(auto vid : as_range(boost::vertices(graph))) {
 				put_superpixel_id(graph, vid, static_cast<SuperpixelId>(vid));
 			}
+		}
+
+		template<typename SuperpixelGraph>
+		SuperpixelGraph CreateSuperpixelGraph(unsigned int num_vertices) {
+			SuperpixelGraph graph(num_vertices);
+			SetSuperpixelIds(graph);
 //			// more correct but slower
 //			Graph g;
 //			for(Superpixels i=0; i<superpixels.clusterCount(); i++) {
@@ -111,6 +116,7 @@ namespace dasp
 //			}
 			return graph;
 		}
+
 	}
 }
 

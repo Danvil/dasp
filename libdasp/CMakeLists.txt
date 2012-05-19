@@ -3,6 +3,7 @@ add_library(libdasp SHARED
 	dasp/tools/Mipmaps.cpp
 	dasp/tools/Recall.cpp
 	dasp/tools/RepairDepth.cpp
+	dasp/impl/Spectral.cpp
 	dasp/DaspTracker.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
