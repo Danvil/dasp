@@ -55,27 +55,19 @@ Parameters::Parameters()
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 {
-	assert(hasPoints());
+	assert(isValid());
 
-	// update cluster means (position, color) and update screen position and depth
-	Eigen::Vector3f mean_color = Eigen::Vector3f::Zero();
-	Eigen::Vector3f mean_world = Eigen::Vector3f::Zero();
-	for(unsigned int i : pixel_ids) {
-		const Point& p = points[i];
-		assert(p.isValid());
-		mean_color += p.color;
-		mean_world += p.world;
-	}
-	center.color = mean_color / float(pixel_ids.size());
-
-	if(is_fixed) {
-		// do not move cluster on screen
-		// compute depth and world position using screen position
-		center.depth_i16 = points(center.pos).depth_i16;
-		center.world = opt.camera.unproject(center.pos, center.depth_i16);
-	}
-	else {
-		// set position to point mean position
+	if(!is_fixed) {
+		// update cluster means (position, color) and update screen position and depth
+		Eigen::Vector3f mean_color = Eigen::Vector3f::Zero();
+		Eigen::Vector3f mean_world = Eigen::Vector3f::Zero();
+		for(unsigned int i : pixel_ids) {
+			const Point& p = points[i];
+			assert(p.isValid());
+			mean_color += p.color;
+			mean_world += p.world;
+		}
+		center.color = mean_color / float(pixel_ids.size());
 		center.world = mean_world / float(pixel_ids.size());
 		// compute screen position and depth by projection
 		center.pos = opt.camera.project(center.world);
@@ -92,7 +84,14 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 //		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
 //	}
 
-	cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
+	if(points.size() >= 3) {
+		cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
+	}
+	else {
+		std::cerr << "Not enough points!" << std::endl;
+		cov = 0.01f * 0.01f * Eigen::Matrix3f::Identity();
+	}
+
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
 	solver.compute(cov);
 	ew = solver.eigenvalues();
@@ -106,8 +105,10 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		normal *= -1.0f;
 	}
 	normal.normalize();
-	center.gradient[0] = - normal[0] / normal[2];
-	center.gradient[1] = - normal[1] / normal[2];
+	if(!is_fixed) {
+		center.gradient[0] = - normal[0] / normal[2];
+		center.gradient[1] = - normal[1] / normal[2];
+	}
 	center.circularity = std::abs(normal[2]); // == 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
 
 //	center.normal = points(center.pos).normal;
@@ -595,10 +596,14 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 		Cluster c;
 		c.seed_id = k;
 		c.is_fixed = p.is_fixed;
-//		c.center.valid_ = true;
 		c.center.pos[0] = float(p.x);
 		c.center.pos[1] = float(p.y);
 		c.center.image_super_radius = p.scala;
+		if(c.is_fixed) {
+			// use fixed world position (and compute depth from it)
+			c.center.world = p.fixed_world;
+			c.center.depth_i16 = opt.camera.depth(c.center.world);
+		}
 		// assign points (use only half the radius)
 		int R = static_cast<int>(std::ceil(c.center.image_super_radius * 0.35f));
 		R = std::min(2, R);
@@ -619,7 +624,7 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 			}
 		}
 		// update center
-		if(c.hasPoints()) {
+		if(c.isValid()) {
 			c.UpdateCenter(points, opt);
 			cluster.push_back(c);
 		}
@@ -673,7 +678,7 @@ void Superpixels::ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f&
 
 void Superpixels::PurgeInvalidClusters()
 {
-	auto it = std::remove_if(cluster.begin(), cluster.end(), [](const Cluster& c) { return !c.hasPoints(); });
+	auto it = std::remove_if(cluster.begin(), cluster.end(), [](const Cluster& c) { return !c.isValid(); });
 	cluster.resize(it - cluster.begin());
 }
 

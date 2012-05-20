@@ -28,9 +28,18 @@ namespace dasp
 	{
 		int x, y;
 		float scala;
+
+		// if is_fixed is enabled the cluster 3d position is always set to fixed_world
 		bool is_fixed;
-		struct fixed_t { operator bool() { return true; } };
-		struct moveable_t { operator bool() { return false; } };
+		// only used if is_fixed equals true
+		Eigen::Vector3f fixed_world;
+
+		static Seed Dynamic(int x, int y, float scala) {
+			return Seed{x, y, scala, false, Eigen::Vector3f::Zero()};
+		}
+		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& world) {
+			return Seed{x, y, scala, true, world};
+		}
 	};
 
 	struct ClusterGroupInfo

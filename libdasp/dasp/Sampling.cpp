@@ -51,7 +51,7 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 		unsigned int y = Hy + Dy * iy;
 		for(unsigned int ix=0; ix<Nx; ix++) {
 			unsigned int x = Hx + Dx * ix;
-			seeds.push_back(Seed{x,y,S,Seed::moveable_t()});
+			seeds.push_back(Seed::Dynamic(x, y, S));
 		}
 	}
 
@@ -131,7 +131,7 @@ void FindSeedsDepthMipmap_Walk(
 				int sx = sx0 + delta();
 				int sy = sy0 + delta();
 				if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
-					Seed s{ sx, sy, points(s.x, s.y).image_super_radius, Seed::moveable_t() };
+					Seed s = Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius);
 //					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
 					//if(s.scala >= 2.0f) {
 						seeds.push_back(s);
@@ -252,7 +252,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::I
 		int y = std::round(pnts[i].y);
 		if(0 <= x && x < int(points.width()) && 0 <= y && y < int(points.height())) {
 			float scala = points(x, y).image_super_radius;
-			seeds.push_back(Seed{x, y, scala, Seed::moveable_t()});
+			seeds.push_back(Seed::Dynamic(x, y, scala));
 		}
 	}
 	return seeds;
@@ -267,7 +267,7 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::
 			float v = density(x,y);
 			if(v >= 0.5f) {
 				v -= 1.0f;
-				seeds.push_back(Seed{x, y, points(x, y).image_super_radius, Seed::moveable_t()});
+				seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
 			}
 			density(x+1,y  ) += 7.0f / 16.0f * v;
 			density(x-1,y+1) += 3.0f / 16.0f * v;
@@ -314,7 +314,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
 					float scala = points(sx, sy).image_super_radius;
-					Seed s{sx, sy, scala, Seed::moveable_t()};
+					Seed s = Seed::Dynamic(sx, sy, scala);
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					//if(s.scala >= 2.0f) {
 						seeds.push_back(s);

@@ -140,8 +140,8 @@ namespace dasp
 
 		std::vector<unsigned int> pixel_ids;
 
-		bool hasPoints() const {
-			return pixel_ids.size() > 3;
+		bool isValid() const {
+			return is_fixed || pixel_ids.size() > 3;
 		}
 
 		void addPixel(unsigned int index) {

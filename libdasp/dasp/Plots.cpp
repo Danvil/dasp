@@ -43,7 +43,7 @@ std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt)
 
 void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color)
 {
-	assert(cluster.hasPoints());
+	assert(cluster.isValid());
 	// plot all pixels belonging to the cluster in the color of the cluster center
 	for(unsigned int i : cluster.pixel_ids) {
 		const Point& p = points[i];
@@ -368,7 +368,7 @@ void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, Colo
 		if(selection[i]) {
 			const Cluster& cluster = c.cluster[i];
 			slimage::Pixel3ub color = colors[i];
-			if(!cluster.hasPoints()) {
+			if(!cluster.isValid()) {
 				color = {{255,0,0}};
 			}
 			slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), color, size);
