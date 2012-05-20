@@ -33,12 +33,16 @@ namespace dasp
 		bool is_fixed;
 		// only used if is_fixed equals true
 		Eigen::Vector3f fixed_world;
+		Eigen::Vector3f fixed_color;
+		Eigen::Vector3f fixed_normal;
 
 		static Seed Dynamic(int x, int y, float scala) {
-			return Seed{x, y, scala, false, Eigen::Vector3f::Zero()};
+			return Seed{x, y, scala, false,
+				Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
 		}
-		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& world) {
-			return Seed{x, y, scala, true, world};
+		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& world, const Eigen::Vector3f& color, const Eigen::Vector3f& normal) {
+			return Seed{x, y, scala, true,
+				world, color, normal};
 		}
 	};
 

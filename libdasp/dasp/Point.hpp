@@ -70,6 +70,11 @@ namespace dasp
 			return Eigen::Vector3f(gradient[0], gradient[1], -1.0f) * circularity;
 		}
 
+		void setGradientFromNormal(const Eigen::Vector3f& normal) {
+			gradient[0] = - normal[0] / normal[2];
+			gradient[1] = - normal[1] / normal[2];
+		}
+
 //	public:
 //		 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

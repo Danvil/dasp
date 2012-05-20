@@ -106,8 +106,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	}
 	normal.normalize();
 	if(!is_fixed) {
-		center.gradient[0] = - normal[0] / normal[2];
-		center.gradient[1] = - normal[1] / normal[2];
+		center.setGradientFromNormal(normal);
 	}
 	center.circularity = std::abs(normal[2]); // == 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
 
@@ -603,6 +602,8 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 			// use fixed world position (and compute depth from it)
 			c.center.world = p.fixed_world;
 			c.center.depth_i16 = opt.camera.depth(c.center.world);
+			c.center.color = p.fixed_color;
+			c.center.setGradientFromNormal(p.fixed_normal);
 		}
 		// assign points (use only half the radius)
 		int R = static_cast<int>(std::ceil(c.center.image_super_radius * 0.35f));
