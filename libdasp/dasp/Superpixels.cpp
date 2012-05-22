@@ -46,6 +46,7 @@ Parameters::Parameters()
 	seed_mode = SeedModes::DepthMipmap;
 	gradient_adaptive_density = true;
 	use_density_depth = true;
+	ignore_pixels_with_bad_visibility = false;
 	is_conquer_enclaves = true;
 	segment_threshold = 1.0f;
 	is_repair_depth = true;
@@ -295,6 +296,23 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 		// correct image_base_radius
 		for(unsigned int i=0; i<points.size(); i++) {
 			points[i].image_super_radius *= opt.base_radius / cTempBaseRadius;
+		}
+	}
+
+	if(opt.ignore_pixels_with_bad_visibility) {
+		// for ignore_pixels_with_bad_visibility
+		constexpr unsigned int cNmin = 5;
+		// following two lines are for the case where the normal is not used
+	//	const float cAlphaMax = 60.0f / 180.0f * boost::math::constants::pi<float>();
+	//	float threshold = std::sqrt(1 + 2.0f * std::pow(std::tan(cAlphaMax), 2)) * std::sqrt(static_cast<float>(cNmin) / boost::math::constants::pi<float>()) / opt.camera.focal;
+		float threshold = std::sqrt(static_cast<float>(cNmin) / boost::math::constants::pi<float>()) / opt.camera.focal;
+		for(unsigned int i=0; i<points.size(); i++) {
+			Point& p = points[i];
+			if(p.depth_i16 > 0) {
+				if(p.world[2] * threshold > opt.base_radius * p.circularity) {
+					p.depth_i16 = 0;
+				}
+			}
 		}
 	}
 

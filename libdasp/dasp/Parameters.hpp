@@ -68,6 +68,9 @@ namespace dasp
 		bool gradient_adaptive_density;
 		bool use_density_depth;
 
+		/** Ignores pixels which are too far away or where the depth gradient is too big */
+		bool ignore_pixels_with_bad_visibility;
+
 		bool is_conquer_enclaves;
 
 		float segment_threshold;
