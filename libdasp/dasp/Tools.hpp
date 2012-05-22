@@ -11,6 +11,7 @@
 #include <Slimage/Slimage.hpp>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
+#include <boost/math/constants/constants.hpp>
 #include <vector>
 #include <cmath>
 #include <ctype.h>
@@ -127,6 +128,10 @@ struct Camera
 	/** Convert meter to kinect depth */
 	uint16_t convertMeterToKinect(float z) const {
 		return static_cast<uint16_t>(z / z_slope);
+	}
+
+	float computeOpenGLFOV(unsigned int height) const {
+		return 2.0f * std::atan(static_cast<float>(height)/focal*0.5f) / boost::math::constants::pi<float>() * 180.0f;
 	}
 
 };
