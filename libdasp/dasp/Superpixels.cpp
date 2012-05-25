@@ -85,12 +85,12 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 //		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
 //	}
 
-	if(points.size() >= 3) {
+	if(pixel_ids.size() >= 3) {
 		cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
 	}
 	else {
-		std::cerr << "Not enough points!" << std::endl;
-		cov = 0.01f * 0.01f * Eigen::Matrix3f::Identity();
+//		std::cerr << "Not enough points!" << std::endl;
+		cov = opt.base_radius * opt.base_radius * Eigen::Matrix3f::Identity();
 	}
 
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver;
