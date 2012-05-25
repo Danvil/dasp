@@ -20,12 +20,24 @@ namespace dasp
 			return (x.pos - y.pos).squaredNorm() / (y.image_super_radius * y.image_super_radius);
 		}
 
+		inline float SpatialDistanceRaw(const Eigen::Vector3f& x, const Eigen::Vector3f& y) {
+			return (x - y).squaredNorm();// / (y.spatial_normalizer * y.spatial_normalizer);
+		}
+
 		inline float SpatialDistanceRaw(const Point& x, const Point& y) {
-			return (x.world - y.world).squaredNorm();// / (y.spatial_normalizer * y.spatial_normalizer);
+			return SpatialDistanceRaw(x.world, y.world);
+		}
+
+		inline float ColorDistanceRaw(const Eigen::Vector3f& u, const Eigen::Vector3f& v) {
+			return (u - v).squaredNorm();
 		}
 
 		inline float ColorDistanceRaw(const Point& u, const Point& v) {
-			return (u.color - v.color).squaredNorm();
+			return ColorDistanceRaw(u.color, v.color);
+		}
+
+		inline float NormalDistanceRaw(const Eigen::Vector3f& u, const Eigen::Vector3f& v) {
+			return 1.0f - u.dot(v);
 		}
 
 		inline float NormalDistanceRaw(const Point& u, const Point& v) {
@@ -34,6 +46,7 @@ namespace dasp
 			// multiplying with the circularity yields the required normalization
 			return 1.0f - (u.gradient.dot(v.gradient) + 1.0f) * u.circularity * v.circularity;
 		}
+
 	}
 
 	struct MetricDASP
@@ -108,17 +121,27 @@ namespace dasp
 		  w_normal(w_normal)
 		{}
 
+		struct Data {
+			Eigen::Vector3f position;
+			Eigen::Vector3f normal;
+			Eigen::Vector3f color;
+		};
+
 		float operator()(const Point& x, const Point& y) const {
-			float c_world = metric::SpatialDistanceRaw(x, y) / (superpixel_radius_ * superpixel_radius_); // FIXME HAAAACK
-			float c_color = metric::ColorDistanceRaw(x, y);
+			return operator()(Data{x.world, x.color, x.computeNormal()}, Data{y.world, y.color, y.computeNormal()});
+		}
+
+		float operator()(const Data& x, const Data& y) const {
+			float c_world = metric::SpatialDistanceRaw(x.position, y.position) / (superpixel_radius_ * superpixel_radius_); // FIXME HAAAACK
+			float c_color = metric::ColorDistanceRaw(x.color, y.color);
 			float w_maha_color = c_color / (std::sqrt(static_cast<float>(num_superpixels_)) * cWeightRho);
 			float w_maha_spatial= std::max(0.0f, std::min(4.0f, c_world/4.0f - 1.0f)); // distance of 2 indicates normal distance
 			float w_maha_normal;
 			if(SupressConvexEdges) {
 				// only use concave edges
-				Eigen::Vector3f d = (y.world - x.world).normalized();
-				float ca1 = x.computeNormal().dot(d);
-				float ca2 = y.computeNormal().dot(d);
+				Eigen::Vector3f d = (y.position - x.position).normalized();
+				float ca1 = x.normal.dot(d);
+				float ca2 = y.normal.dot(d);
 				float w = ca1 - ca2;
 				//float w = std::acos(ca2) - std::acos(ca1);
 				if(w < 0.0f) {
@@ -130,7 +153,7 @@ namespace dasp
 				}
 			}
 			else {
-				w_maha_normal = 3.0f*metric::NormalDistanceRaw(x, y);
+				w_maha_normal = 3.0f*metric::NormalDistanceRaw(x.normal, y.normal);
 			}
 			// compute total edge connectivity
 			return std::exp(-(w_spatial*w_maha_spatial + w_color*w_maha_color + w_normal*w_maha_normal));
