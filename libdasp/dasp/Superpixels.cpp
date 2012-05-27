@@ -98,23 +98,21 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	ew = solver.eigenvalues();
 	ev = solver.eigenvectors();
 
-	Eigen::Vector3f normal = ev.col(0);
-	if(normal[2] == 0.0f) {
-		normal[2] = -0.01f;
-	}
-	else if(normal[2] > 0.0f) {
-		normal *= -1.0f;
-	}
-	normal.normalize();
 	if(!is_fixed) {
+		Eigen::Vector3f normal = ev.col(0);
 		center.setGradientFromNormal(normal);
+		center.circularity = std::abs(normal[2]); // == 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
 	}
-	center.circularity = std::abs(normal[2]); // == 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
+	else {
+		center.circularity = 1.0f / std::sqrt(center.gradient.squaredNorm() + 1.0f);
+	}
 
 //	center.normal = points(center.pos).normal;
 //	center.gradient = points(center.pos).gradient;
 
 	// eigenvalues are the square of the standard deviation!
+
+	// FIXME all of the following code does not use the fixed normal!
 
 	thickness = cSigmaScale * std::sqrt(std::abs(ew(0))) * 2.0f;
 

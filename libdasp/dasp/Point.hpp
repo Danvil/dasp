@@ -67,7 +67,22 @@ namespace dasp
 
 		/** Computes the normal from the gradient */
 		Eigen::Vector3f computeNormal() const {
-			return Eigen::Vector3f(gradient[0], gradient[1], -1.0f) * circularity;
+			// compute (normalized) normal from gradient
+			Eigen::Vector3f normal = circularity * Eigen::Vector3f(gradient[0], gradient[1], -1.0f);
+			// force normal to look towards the camera
+			// check if point to camera direction and normal are within 90 deg
+			// enforce: normal * (cam_pos - pos) > 0
+			// do not need to normalize (cam_pos - pos) as only sign is considered
+			float q = normal.dot(-world);
+			if(q < 0) {
+				normal *= -1.0f;
+			}
+//			if(q == 0) { // FIXME
+//				// difficult to fix ...
+//				std::cerr << "FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME" << std::endl;
+//				std::cerr << "FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME" << std::endl;
+//			}
+			return normal;
 		}
 
 		void setGradientFromNormal(const Eigen::Vector3f& normal) {
