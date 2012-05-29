@@ -4,6 +4,8 @@ add_library(libdasp SHARED
 	dasp/tools/Recall.cpp
 	dasp/tools/RepairDepth.cpp
 	dasp/impl/Spectral.cpp
+	dasp/impl/SpectralEigenSolveDense.cpp
+	dasp/impl/SpectralEigenSolveSparse.cpp
 	dasp/DaspTracker.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
@@ -16,6 +18,9 @@ set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 
 target_link_libraries(libdasp
 	boost_thread
+	parpack
+	arpack
+	superlu
 )
 
 if (DASP_HAS_SIMPLEENGINE)

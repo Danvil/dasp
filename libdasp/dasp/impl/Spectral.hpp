@@ -10,6 +10,7 @@
 
 #include "../Graph.hpp"
 #include <Eigen/Dense>
+#include <vector>
 
 namespace dasp
 {
@@ -20,7 +21,28 @@ namespace dasp
 	> SpectralGraph;
 
 	/** Applies spectral graph theory fu to a weighted undirected graph */
-	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev);
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver=false);
+
+	namespace detail
+	{
+
+		typedef float Real;
+		typedef Eigen::MatrixXf Mat;
+		typedef Eigen::VectorXf Vec;
+
+		struct EigenComponent
+		{
+			float eigenvalue;
+			Vec eigenvector;
+		};
+
+		typedef std::vector<EigenComponent> PartialEigenSolution;
+
+		PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigned int num_ev);
+
+		PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsigned int num_ev);
+
+	}
 
 }
 

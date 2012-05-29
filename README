@@ -23,3 +23,4 @@ and replace line 74 with
 
 - Misc other deps
 sudo apt-get install g++ build-essentials libloki-dev libloki0.1.7 libglew1.6-dev libxmu-dev
+sudo apt-get libarpack++2-dev libsuperlu3-dev
