@@ -21,6 +21,7 @@ public Q_SLOTS:
 	void ChangeDaspRepairDepth(int state);
 	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
+	void ChangeSuperpixelSkipBad(int state);
 	void ChangeSuperpixelRadius(double val);
 	void ChangeSuperpixelCount(int val);
 	void ChangeSuperpixelIterations(int val);

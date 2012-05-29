@@ -47,6 +47,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
 	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSuperSeedType(int)));
 	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
+	QObject::connect(ui.checkBoxSkipBad, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperpixelSkipBad(int)));
 	QObject::connect(ui.doubleSpinBoxRadius, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelRadius(double)));
 	QObject::connect(ui.spinBoxSuperCount, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelCount(int)));
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
@@ -76,6 +77,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	dasp_tracker_->dasp_params->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
 	dasp_tracker_->dasp_params->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(ui.comboBoxSeedType->currentIndex()).toInt());
 	dasp_tracker_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
+	dasp_tracker_->dasp_params->ignore_pixels_with_bad_visibility = ui.checkBoxSkipBad->isChecked();
 	dasp_tracker_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
 	dasp_tracker_->dasp_params->count = ui.spinBoxSuperCount->value();
 	dasp_tracker_->dasp_params->iterations = ui.spinBoxIterations->value();
@@ -126,6 +128,12 @@ void WdgtSuperpixelParameters::OnSuperSeedType(int selection)
 void WdgtSuperpixelParameters::ChangeSuperUseGradientDensity(int state)
 {
 	dasp_tracker_->dasp_params->gradient_adaptive_density = state;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeSuperpixelSkipBad(int state)
+{
+	dasp_tracker_->dasp_params->ignore_pixels_with_bad_visibility = state;
 	*reload = true;
 }
 
