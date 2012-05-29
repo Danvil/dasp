@@ -131,6 +131,7 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		for(unsigned int j=0; j<n; j++) {
 			cmp.eigenvector[j] = p_ev[i*n + j];
 		}
+		// FIXME convert back !!!
 	}
 
 	std::cout << "Sparse Solver: returning" << std::endl;
