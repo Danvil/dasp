@@ -329,7 +329,9 @@ void DaspTracker::performSegmentationStep()
 				std::cout << "Segment Count: " << labeling.num_labels << std::endl;
 
 				// plot segmentation graph
-				vis_img = CreateLabelImage(clustering_, labeling, ComputeSegmentColors(clustering_, labeling));
+				//std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, labeling);
+				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(labeling.num_labels);
+				vis_img = CreateLabelImage(clustering_, labeling, colors);
 
 				if(show_graph_) {
 					plots::PlotWeightedGraphLines(vis_img, clustering_, segments, [](float weight) {
