@@ -26,13 +26,13 @@ namespace dasp
 	namespace detail
 	{
 
-		typedef float Real;
+		typedef double Real;
 		typedef Eigen::MatrixXf Mat;
 		typedef Eigen::VectorXf Vec;
 
 		struct EigenComponent
 		{
-			float eigenvalue;
+			Real eigenvalue;
 			Vec eigenvector;
 		};
 

@@ -5,7 +5,13 @@
  *      Author: david
  */
 
+#define SEGS_VERBOSE
+
 #include "Spectral.hpp"
+#ifdef SEGS_VERBOSE
+	#include <iostream>
+#endif
+
 
 namespace dasp { namespace detail {
 
@@ -25,6 +31,14 @@ PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigne
 		unsigned int ea = boost::source(eid, graph);
 		unsigned int eb = boost::target(eid, graph);
 		float ew = boost::get(boost::edge_weight, graph, eid);
+		if(std::isnan(ew)) {
+			std::cerr << "Weight for edge (" << ea << "," << eb << ") is nan!" << std::endl;
+			continue;
+		}
+		if(ew < 0) {
+			std::cerr << "Weight for edge (" << ea << "," << eb << ") is negative!" << std::endl;
+			continue;
+		}
 		W(ea, eb) = ew;
 		W(eb, ea) = ew;
 		Di[ea] += ew;

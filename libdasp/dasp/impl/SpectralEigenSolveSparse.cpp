@@ -35,6 +35,8 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	// Thus the EV problem is: L^{-1} (D - W) L^{-T} y = \lambda y.
 	// Eigenvectors can be transformed using x = L^{-T} y.
 
+	std::cout << "Sparse Solver: preparing problem" << std::endl;
+
 	// The dimension of the problem
 	int n = boost::num_vertices(graph);
 
@@ -42,9 +44,9 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	// In addition all diagonal entries are non-zero.
 	// Thus the number of non-zero entries in the lower triangle is equal to
 	// the number of edges plus the number of nodes.
-	int nnz = boost::num_edges(graph) + n;
-	// This vector will hold the non-zero elements of the lower triangle.
-	std::vector<Real> nzval(nnz);
+	// This is not entirely true as some connections are possibly rejected.
+	// Additionally some connections may be added to assure global connectivity.
+	int nnz_guess = boost::num_edges(graph) + n;
 
 	// collect all non-zero elements
 	struct Entry {
@@ -52,7 +54,7 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		Real value;
 	};
 	std::vector<Entry> entries;
-	entries.reserve(nnz);
+	entries.reserve(nnz_guess);
 
 	// also collect diagonal entries
 	std::vector<Real> diag(n);
@@ -62,6 +64,20 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		int ea = static_cast<int>(boost::source(eid, graph));
 		int eb = static_cast<int>(boost::target(eid, graph));
 		float ew = boost::get(boost::edge_weight, graph, eid);
+		// assure correct edge weight
+		if(std::isnan(ew)) {
+			std::cerr << "Weight for edge (" << ea << "," << eb << ") is nan!" << std::endl;
+			continue;
+		}
+		if(ew < 0) {
+			std::cerr << "Weight for edge (" << ea << "," << eb << ") is negative!" << std::endl;
+			continue;
+		}
+		// assure that no vertices is connected to self
+		if(ea == eb) {
+			std::cerr << "Vertex " << ea << " is connected to self!" << std::endl;
+			continue;
+		}
 		// In the lower triangle the row index i is bigger or equal than the column index j.
 		// The next statement fullfills this requirement.
 		if(ea < eb) {
@@ -73,14 +89,42 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	}
 
 	// do the conversion to a normal ev problem
-	for(Real& v : diag) {
-		v = static_cast<Real>(1) / std::sqrt(v);
-	}
-	for(Entry& e : entries) {
-		e.value *= (diag[e.i] * diag[e.j]);
+	// assure global connectivity
+	for(unsigned int i=0; i<diag.size(); i++) {
+		Real& v = diag[i];
+		if(v == 0) {
+			// connect the disconnected cluster to all other clusters with a very small weight
+			v = static_cast<Real>(1);
+			Real q = static_cast<Real>(1) / static_cast<Real>(n-1);
+			for(unsigned int j=0; j<i; j++) {
+				auto it = std::find_if(entries.begin(), entries.end(), [i, j](const Entry& e) { return e.i == i && e.j == j; });
+				if(it == entries.end()) {
+					entries.push_back(Entry{i, j, q});
+				}
+			}
+			for(unsigned int j=i+1; j<n; j++) {
+				auto it = std::find_if(entries.begin(), entries.end(), [j, i](const Entry& e) { return e.i == j && e.j == i; });
+				if(it == entries.end()) {
+					entries.push_back(Entry{j, i, q});
+				}
+			}
+		}
+		else {
+			v = static_cast<Real>(1) / std::sqrt(v);
+		}
 	}
 
-	// add the diagonal entries which are are all 1 (for the normal EV problem)
+	// a_ij for the transformed "normal" EV problem
+	//		A x = \lambda x
+	// is computed as follow from the diagonal matrix D and the weight
+	// matrix W of the general EV problem
+	//		(D - W) x = \lambda D x
+	// as follows:
+	//		a_ij = - w_ij / sqrt(d_i * d_j) if i != j
+	//		a_ii = 1
+	for(Entry& e : entries) {
+		e.value = - e.value * diag[e.i] * diag[e.j];
+	}
 	for(unsigned int i=0; i<n; i++) {
 		entries.push_back(Entry{i, i, static_cast<Real>(1)});
 	}
@@ -90,14 +134,18 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		return (a.j != b.j) ? (a.j < b.j) : (a.i < b.i);
 	});
 
-	// read out structure
-	// Assumes that each column has at least one non-zero element.
+	// define ARPACK matrix (see p. 119 in ARPACK++ manual)
+	std::cout << "Sparse Solver: defining matrix" << std::endl;
+	int nnz = entries.size();
+	std::vector<Real> nzval(nnz);
 	std::vector<int> irow(nnz);
 	std::vector<int> pcol;
 	pcol.reserve(n + 1);
+	// Assumes that each column has at least one non-zero element.
 	int current_col = -1;
 	for(unsigned int i=0; i<entries.size(); i++) {
 		const Entry& e = entries[i];
+		nzval[i] = e.value;
 		irow[i] = e.i;
 		if(e.j == current_col + 1) {
 			pcol.push_back(i);
@@ -105,14 +153,46 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		}
 	}
 	pcol.push_back(nnz);
-
-	// define ARPACK matrix
-	std::cout << "Sparse Solver: defining matrix" << std::endl;
+//	// check CRC
+//	{
+//		int i, j, k;
+//
+//		// Checking if pcol is in ascending order.
+//
+//		i = 0;
+//		while ((i!=n)&&(pcol[i]<=pcol[i+1])) i++;
+//		if (i!=n) {
+//		  std::cout << "Error 1" << std::endl;
+//		  std::cout << i << std::endl;
+//		  throw 0;
+//		}
+//
+//		// Checking if irow components are in order and within bounds.
+//
+//		for (i=0; i!=n; i++) {
+//		j = pcol[i];
+//		k = pcol[i+1]-1;
+//		if (j<=k) {
+//		  if ((irow[j]<i)||(irow[k]>=n)) {
+//			  std::cout << "Error 2" << std::endl;
+//			  std::cout << i << std::endl;
+//			  throw 0;
+//		  }
+//		  while ((j!=k)&&(irow[j]<irow[j+1])) j++;
+//		  if (j!=k) {
+//			  std::cout << "Error 3" << std::endl;
+//			  std::cout << i << ", " << irow[j] << " -> " << irow[j+1] << std::endl;
+//			  std::cout << j << " -> " << k << std::endl;
+//			  throw 0;
+//		  }
+//		}
+//		}
+//	}
 	ARluSymMatrix<Real> mat(n, nnz, nzval.data(), irow.data(), pcol.data());
 
-	// solve ARPACK problem
+	// solve ARPACK problem (see p. 82 in ARPACK++ manual)
 	std::cout << "Sparse Solver: solving ..." << std::flush;
-	ARluSymStdEig<Real> solv(num_ev, mat);
+	ARluSymStdEig<Real> solv(num_ev, mat, "SM");
 	std::vector<Real> v_ew(num_ev);
 	std::vector<Real> v_ev(num_ev * n);
 	Real* p_ew = v_ew.data();
@@ -129,9 +209,11 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 		std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
 		cmp.eigenvector = Vec(n);
 		for(unsigned int j=0; j<n; j++) {
-			cmp.eigenvector[j] = p_ev[i*n + j];
+			Real v = p_ev[i*n + j];
+			// convert back to generalized eigenvalue problem!
+			v *= diag[j];
+			cmp.eigenvector[j] = v;
 		}
-		// FIXME convert back !!!
 	}
 
 	std::cout << "Sparse Solver: returning" << std::endl;
