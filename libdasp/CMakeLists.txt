@@ -6,7 +6,6 @@ add_library(libdasp SHARED
 	dasp/impl/Spectral.cpp
 	dasp/impl/SpectralEigenSolveDense.cpp
 	dasp/impl/SpectralEigenSolveSparse.cpp
-	dasp/DaspTracker.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Sampling.cpp

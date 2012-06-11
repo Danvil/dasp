@@ -4,6 +4,7 @@ add_definitions(-DSLIMAGE_IO_QT)
 
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
+	${dasp_SOURCE_DIR}/dasp_tracker
 	${dasp_SOURCE_DIR}/kinect
 	${OPENNI_INCLUDE_DIR}
 )
@@ -47,6 +48,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 TARGET_LINK_LIBRARIES(dasp_gui
 	libdasp
+	dasp_tracker
 	kinect
 	${QT_LIBRARIES}
 	boost_signals

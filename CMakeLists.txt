@@ -27,6 +27,7 @@ include_directories(
 project(dasp)
 add_subdirectory(libdasp)
 add_subdirectory(dasp_gui)
+add_subdirectory(dasp_tracker)
 add_subdirectory(dasp_cmd)
 add_subdirectory(eval_superpixels)
 add_subdirectory(eval_dasp_segments)

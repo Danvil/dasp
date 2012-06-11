@@ -6,12 +6,12 @@
  */
 
 #include "DaspTracker.h"
-#include "tools/Mipmaps.hpp"
-#include "tools/BlueNoise.hpp"
-#include "tools/AutoDepth.hpp"
-#include "Neighbourhood.hpp"
-#include "Segmentation.hpp"
-#include "Plots.hpp"
+#include <dasp/tools/Mipmaps.hpp>
+#include <dasp/tools/BlueNoise.hpp>
+#include <dasp/tools/AutoDepth.hpp>
+#include <dasp/Neighbourhood.hpp>
+#include <dasp/Segmentation.hpp>
+#include <dasp/Plots.hpp>
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>
 #define DANVIL_ENABLE_BENCHMARK

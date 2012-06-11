@@ -8,8 +8,8 @@
 #ifndef DASPTRACKER_H_
 #define DASPTRACKER_H_
 //----------------------------------------------------------------------------//
-#include "Superpixels.hpp"
-#include "Plots.hpp"
+#include <dasp/Superpixels.hpp>
+#include <dasp/Plots.hpp>
 #include <Slimage/Slimage.hpp>
 #include <Danvil/Statistics/GMM.h>
 #include <boost/thread.hpp>
