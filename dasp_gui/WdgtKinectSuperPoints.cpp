@@ -106,8 +106,6 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
 	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
 	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
-//	Danvil::Images::Image3ubPtr loaded_kinect_color = Danvil::Images::ImageOps::Convert4To3(Danvil::Images::ImageIO::Load4ub(fn_color));
-//	Danvil::Images::Image1ui16Ptr loaded_kinect_depth = Danvil::Images::Convert<uint16_t,1>(Danvil::Images::ImageIO::Load(fn_depth, false));
 	if(loaded_kinect_color.width() != loaded_kinect_depth.width() || loaded_kinect_color.height() != loaded_kinect_depth.height()) {
 		std::cerr << "Size of color and depth image must match!" << std::endl;
 		return;
@@ -178,8 +176,6 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
 {
 	if(capture_next_) {
-//		Danvil::Images::ImageIO::Save(raw_kinect_color, capture_filename_ + "_color.png");
-//		Danvil::Images::ImageIO::Save(raw_kinect_depth, capture_filename_ + "_depth.gz");
 		slimage::Save(kinect_color, capture_filename_ + "_color.png");
 		slimage::Save(kinect_depth, capture_filename_ + "_depth.pgm");
 		capture_next_ = false;
