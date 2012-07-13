@@ -15,23 +15,27 @@ SET(dasp_gui_SOURCES
 	main.cpp
 	WdgtSuperpixelParameters.cpp
 	WdgtKinectSuperPoints.cpp
+	WdgtBenchmark.cpp
 )
 if (DASP_HAS_SIMPLEENGINE)
-SET(dasp_gui_HEADERS
-	WdgtKinectSuperPoints.h
-	WdgtSuperpixelParameters.h
-	../../DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GLSystemQtWindow.h
-)
+	SET(dasp_gui_HEADERS
+		WdgtKinectSuperPoints.h
+		WdgtSuperpixelParameters.h
+		WdgtBenchmark.h
+		../../DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GLSystemQtWindow.h
+	)
 else (DASP_HAS_SIMPLEENGINE)
-SET(dasp_gui_HEADERS
-	WdgtKinectSuperPoints.h
-	WdgtSuperpixelParameters.h
-)
+	SET(dasp_gui_HEADERS
+		WdgtKinectSuperPoints.h
+		WdgtSuperpixelParameters.h
+		WdgtBenchmark.h
+	)
 endif (DASP_HAS_SIMPLEENGINE)
 
 SET(dasp_gui_FORMS
 	WdgtSuperpixelParameters.ui
 	WdgtKinectSuperPoints.ui
+	WdgtBenchmark.ui
 )
 
 QT4_WRAP_CPP(dasp_gui_HEADERS_MOC ${dasp_gui_HEADERS})

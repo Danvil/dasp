@@ -101,7 +101,7 @@ void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimag
 
 	performTrackingStep();
 
-	DANVIL_BENCHMARK_PRINTALL_COUT
+//	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
 slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)

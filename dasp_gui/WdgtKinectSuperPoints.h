@@ -3,6 +3,7 @@
 
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
+#include "WdgtBenchmark.h"
 #include "KinectGrabber.h"
 #include <dasp/DaspTracker.h>
 #if defined DASP_HAS_SIMPLEENGINE
@@ -46,6 +47,7 @@ private:
 	QTimer timer_;
 
 	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;
+	boost::shared_ptr<WdgtBenchmark> gui_benchmark_;
 	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
 
 	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;

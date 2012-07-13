@@ -1,6 +1,7 @@
 #include "WdgtKinectSuperPoints.h"
 #include <Slimage/IO.hpp>
 #include <Slimage/Parallel.h>
+#include <boost/bind.hpp>
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
 
@@ -23,6 +24,10 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_));
 	gui_params_->reload = &reload;
 	gui_params_->show();
+
+	gui_benchmark_.reset(new WdgtBenchmark());
+	Danvil::Benchmark::Instance().setOnUpdate(boost::bind(&WdgtBenchmark::update, gui_benchmark_, _1, _2));
+	gui_benchmark_->show();
 
 #if defined DASP_HAS_SIMPLEENGINE
 	LOG_NOTICE << "Creating OpenGL Widget ...";
