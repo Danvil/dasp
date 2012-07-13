@@ -60,9 +60,6 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<dasp:
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
 	QObject::connect(ui.doubleSpinBoxDaspSegmentThreshold, SIGNAL(valueChanged(double)), this, SLOT(ChangeDaspSegmentThreshold(double)));
 
-	QObject::connect(ui.pushButtonColorModelTrain, SIGNAL(clicked()), this, SLOT(OnColorModelTrain()));
-	QObject::connect(ui.doubleSpinBoxColorSoftness, SIGNAL(valueChanged(double)), this, SLOT(ChangeColorModelSigmaScale(double)));
-
 	QObject::connect(ui.checkBoxPlotPoints, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotPoints(int)));
 	QObject::connect(ui.comboBoxPlotPointsColor, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotPointsColor(int)));
 	QObject::connect(ui.checkBoxPlotClusters, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotClusters(int)));
@@ -201,18 +198,6 @@ void WdgtSuperpixelParameters::ChangeSuperpixelCoverage(double val)
 void WdgtSuperpixelParameters::ChangeDaspSegmentThreshold(double val)
 {
 	dasp_tracker_->dasp_params->segment_threshold = val;
-	*reload = true;
-}
-
-void WdgtSuperpixelParameters::OnColorModelTrain()
-{
-	dasp_tracker_->training_ = true;
-	*reload = true;
-}
-
-void WdgtSuperpixelParameters::ChangeColorModelSigmaScale(double val)
-{
-	dasp_tracker_->color_model_sigma_scale_ = val;
 	*reload = true;
 }
 
