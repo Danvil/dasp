@@ -27,7 +27,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 	gui_benchmark_.reset(new WdgtBenchmark());
 	Danvil::Benchmark::Instance().setOnUpdate(boost::bind(&WdgtBenchmark::update, gui_benchmark_, _1, _2));
-	gui_benchmark_->show();
+	ui.verticalLayoutBenchmark->addWidget(gui_benchmark_.get());
 
 #if defined DASP_HAS_SIMPLEENGINE
 	LOG_NOTICE << "Creating OpenGL Widget ...";

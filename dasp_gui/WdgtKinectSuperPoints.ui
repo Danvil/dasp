@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>701</width>
-    <height>472</height>
+    <width>577</width>
+    <height>533</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -68,6 +68,52 @@
       </item>
      </layout>
     </item>
+    <item row="0" column="3" rowspan="2">
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QFrame" name="frame">
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayoutBenchmark">
+           <item>
+            <widget class="QLabel" name="label">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Benchmarks</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>410</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -75,7 +121,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>701</width>
+     <width>577</width>
      <height>25</height>
     </rect>
    </property>
