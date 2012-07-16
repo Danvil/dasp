@@ -43,18 +43,25 @@ inline slimage::Pixel3ub GradientColor(const Eigen::Vector2f& g)
 inline slimage::Pixel3ub DepthColor(uint16_t d16)
 {
 	// base gradient: blue -> red -> yellow
-	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow();
-	cm.setRange(750,2000);
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow_Green();
+	cm.setRange(750,2500);
 	if(d16 == 0) {
 		return slimage::Pixel3ub{{0,0,0}};
 	}
 	else {
-		Danvil::Colorub color = cm(d16);
-		unsigned int q = 0; // d16 % 25;
-		unsigned char r = std::max(0, int(color.r) - int(q));
-		unsigned char g = std::max(0, int(color.g) - int(q));
-		unsigned char b = std::max(0, int(color.b) - int(q));
-		return slimage::Pixel3ub{{r,g,b}};
+		if(d16 > 2500) {
+			return slimage::Pixel3ub{{0,static_cast<unsigned char>(255/((static_cast<float>(d16) - 2500)/100)),0}};
+		}
+		else {
+			Danvil::Colorub color = cm(d16);
+			return slimage::Pixel3ub{{color.r,color.g,color.b}};
+		}
+//		Danvil::Colorub color = cm(d16);
+//		unsigned int q = d16 % 25;
+//		unsigned char r = std::max(0, int(color.r) - int(q));
+//		unsigned char g = std::max(0, int(color.g) - int(q));
+//		unsigned char b = std::max(0, int(color.b) - int(q));
+//		return slimage::Pixel3ub{{r,g,b}};
 	}
 }
 
