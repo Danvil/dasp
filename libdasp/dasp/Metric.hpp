@@ -9,6 +9,8 @@
 #define DASP_METRIC_HPP_
 
 #include "Point.hpp"
+#include <Danvil/Tools/MoreMath.h>
+#include <Danvil/Tools/FunctionCache.h>
 #include <Eigen/Dense>
 
 namespace dasp
@@ -115,11 +117,12 @@ namespace dasp
 	{
 		ClassicSpectralAffinity(unsigned int num_superpixels, float superpixel_radius, float w_spatial=1.0f, float w_color=1.0f, float w_normal=1.0f)
 		: num_superpixels_(num_superpixels),
-		  superpixel_radius_(superpixel_radius),
-		  w_spatial(w_spatial),
-		  w_color(w_color),
-		  w_normal(w_normal)
-		{}
+		  superpixel_radius_(superpixel_radius)
+		{
+			scl_spatial_ = w_spatial / (4.0f * superpixel_radius_ * superpixel_radius_);
+			scl_color_ = w_color / (std::sqrt(static_cast<float>(num_superpixels_)) * cWeightRho);
+			scl_normal_ = 3.0f * w_normal;
+		}
 
 		struct Data {
 			Eigen::Vector3f position;
@@ -132,40 +135,35 @@ namespace dasp
 		}
 
 		float operator()(const Data& x, const Data& y) const {
-			float c_world = metric::SpatialDistanceRaw(x.position, y.position) / (superpixel_radius_ * superpixel_radius_); // FIXME HAAAACK
-			float c_color = metric::ColorDistanceRaw(x.color, y.color);
-			float w_maha_color = c_color / (std::sqrt(static_cast<float>(num_superpixels_)) * cWeightRho);
-			float w_maha_spatial= std::max(0.0f, std::min(4.0f, c_world/4.0f - 1.0f)); // distance of 2 indicates normal distance
-			float w_maha_normal;
+			// spatial distance
+			float d_spatial = metric::SpatialDistanceRaw(x.position, y.position);
+			d_spatial = std::max(0.0f, d_spatial - 1.0f); // distance of 1 indicates estimated distance
+			// color distance
+			float d_color = metric::ColorDistanceRaw(x.color, y.color);
+			// normal distance
+			float d_normal;
 			if(SupressConvexEdges) {
 				// only use concave edges
-				Eigen::Vector3f d = (y.position - x.position).normalized();
-				float ca1 = x.normal.dot(d);
-				float ca2 = y.normal.dot(d);
-				float w = ca1 - ca2;
-				//float w = std::acos(ca2) - std::acos(ca1);
-				if(w < 0.0f) {
-					w_maha_normal = 0.0f;
-				}
-				else {
-					w_maha_normal = 3.0f * w;
-					//w_maha_normal = 3.0f * (1 - std::cos(w));
-				}
+				Eigen::Vector3f d = y.position - x.position;
+				d_normal = (x.normal - y.normal).dot(d) * Danvil::MoreMath::FastInverseSqrt(d.squaredNorm());
+				d_normal = std::max(0.0f, d_normal);
 			}
 			else {
-				w_maha_normal = 3.0f*metric::NormalDistanceRaw(x.normal, y.normal);
+				d_normal = metric::NormalDistanceRaw(x.normal, y.normal);
 			}
 			// compute total edge connectivity
-			return std::exp(-(w_spatial*w_maha_spatial + w_color*w_maha_color + w_normal*w_maha_normal));
+			float d_combined = scl_spatial_*d_spatial + scl_color_*d_color + scl_normal_*d_normal;
+			return exp_cache_(d_combined);
 		}
 
 	private:
 		static constexpr float cWeightRho = 0.01f; // 640x480 clusters would yield 0.1 which is used in gPb
 		unsigned int num_superpixels_;
 		float superpixel_radius_;
-		float w_spatial;
-		float w_color;
-		float w_normal;
+		float scl_spatial_;
+		float scl_color_;
+		float scl_normal_;
+		Danvil::ExpNegFunctionCache<float> exp_cache_; // used for std::exp(-x)
 	};
 
 	struct ClassicSpectralAffinitySLIC
