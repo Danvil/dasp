@@ -39,7 +39,7 @@ void WdgtBenchmark::onTick()
 			x = lines_.find(name);
 		}
 		x->second.l_name->setText(QString::fromStdString(name));
-		x->second.l_mean->setText(QString("%1").arg(data.mean(),8,'f',3,' '));
+		x->second.l_mean->setText(QString("%1").arg(data.decay_mean,8,'f',3,' '));
 		x->second.l_last->setText(QString("%1").arg(data.last,8,'f',3,' '));
 		queue_.pop();
 	}
