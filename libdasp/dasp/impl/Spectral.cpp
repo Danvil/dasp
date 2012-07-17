@@ -5,14 +5,12 @@
  *      Author: david
  */
 
-#define SEGS_VERBOSE
-
 #include "Spectral.hpp"
 #include <Eigen/Eigenvalues>
 #include <boost/assert.hpp>
-#ifdef SEGS_VERBOSE
-	#include <iostream>
-#endif
+#include <iostream>
+
+bool dasp::detail::cVerbose = false;
 
 namespace dasp
 {
@@ -68,9 +66,8 @@ detail::Vec AssembleEdgeWeights(const SpectralGraph& graph, const detail::Partia
 			e_k[eid_index] = std::abs(ev[boost::source(eid, graph)] - ev[boost::target(eid, graph)]);
 			eid_index++;
 		}
-#ifdef SEGS_VERBOSE
-		std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
-#endif
+		if(cVerbose)
+			std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
 //		e_k /= e_k.maxCoeff();
 //		for(unsigned int i=0; i<e_k.rows(); i++) {
 //			e_k[i] = std::exp(-e_k[i]);

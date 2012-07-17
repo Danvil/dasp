@@ -26,6 +26,8 @@ namespace dasp
 	namespace detail
 	{
 
+		extern bool cVerbose;
+
 		typedef double Real;
 		typedef Eigen::MatrixXf Mat;
 		typedef Eigen::VectorXf Vec;

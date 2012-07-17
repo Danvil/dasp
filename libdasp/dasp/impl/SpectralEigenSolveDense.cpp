@@ -8,22 +8,19 @@
 #define SEGS_VERBOSE
 
 #include "Spectral.hpp"
-#ifdef SEGS_VERBOSE
-	#include <iostream>
-#endif
-
+#include <iostream>
 
 namespace dasp { namespace detail {
 
 PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigned int num_ev)
 {
 	unsigned int dim = boost::num_vertices(graph);
-#ifdef SEGS_VERBOSE
-	unsigned int num_edges = boost::num_edges(graph);
-	std::cout << "SpectralSegmentation: dimension=" << dim
-			<< ", num_edges=" << num_edges
-			<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
-#endif
+	if(cVerbose) {
+		unsigned int num_edges = boost::num_edges(graph);
+		std::cout << "SpectralSegmentation: dimension=" << dim
+				<< ", num_edges=" << num_edges
+				<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
+	}
 	// creating matrices
 	Mat W = Mat::Zero(dim,dim);
 	std::vector<float> Di(dim, 0.0f);
@@ -49,9 +46,8 @@ PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigne
 	for(unsigned int i=0; i<dim; i++) {
 		float& di = Di[i];
 		if(di == 0) {
-#ifdef SEGS_VERBOSE
-			std::cout << "Node " << i << " has no connections! " << std::endl;
-#endif
+			if(cVerbose)
+				std::cout << "Node " << i << " has no connections! " << std::endl;
 			// connect the disconnected cluster to all other clusters with a very small weight
 			di = 1.0f;
 			float q = di / static_cast<float>(dim-1);
@@ -74,16 +70,14 @@ PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigne
 	// solve eigensystem
 	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
 	solver.compute(A, D);
-#ifdef SEGS_VERBOSE
-	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
-#endif
+	if(cVerbose)
+		std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
 	// return eigenvectors and eigenvalues
 	PartialEigenSolution solution(std::min(dim, num_ev));
 	for(unsigned int i=0; i<solution.size(); i++) {
 		solution[i].eigenvalue = solver.eigenvalues()[i];
-#ifdef SEGS_VERBOSE
-		std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
-#endif
+		if(cVerbose)
+			std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
 		solution[i].eigenvector = solver.eigenvectors().col(i);
 	}
 	return solution;

@@ -24,7 +24,8 @@ namespace dasp { namespace detail {
 
 PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsigned int num_ev)
 {
-	std::cout << "Sparse Solver: started" << std::endl;
+	if(cVerbose)
+		std::cout << "Sparse Solver: started" << std::endl;
 
 	// We want to solve the EV problem: (D - W) x = \lamda D x.
 	// Each edge of the graph defines two entries into the symmetric matrix W.
@@ -35,7 +36,8 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	// Thus the EV problem is: L^{-1} (D - W) L^{-T} y = \lambda y.
 	// Eigenvectors can be transformed using x = L^{-T} y.
 
-	std::cout << "Sparse Solver: preparing problem" << std::endl;
+	if(cVerbose)
+		std::cout << "Sparse Solver: preparing problem" << std::endl;
 
 	// The dimension of the problem
 	int n = boost::num_vertices(graph);
@@ -135,7 +137,8 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	});
 
 	// define ARPACK matrix (see p. 119 in ARPACK++ manual)
-	std::cout << "Sparse Solver: defining matrix" << std::endl;
+	if(cVerbose)
+		std::cout << "Sparse Solver: defining matrix" << std::endl;
 	int nnz = entries.size();
 	std::vector<Real> nzval(nnz);
 	std::vector<int> irow(nnz);
@@ -191,22 +194,24 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 	ARluSymMatrix<Real> mat(n, nnz, nzval.data(), irow.data(), pcol.data());
 
 	// solve ARPACK problem (see p. 82 in ARPACK++ manual)
-	std::cout << "Sparse Solver: solving ..." << std::flush;
+	if(cVerbose)
+		std::cout << "Sparse Solver: solving ..." << std::flush;
 	ARluSymStdEig<Real> solv(num_ev, mat, "SM");
 	std::vector<Real> v_ew(num_ev);
 	std::vector<Real> v_ev(num_ev * n);
 	Real* p_ew = v_ew.data();
 	Real* p_ev = v_ev.data();
 	solv.EigenValVectors(p_ev, p_ew, false);
-	std::cout << " finished." << std::endl;
-
-	std::cout << "Sparse Solver: collecting results" << std::endl;
-
+	if(cVerbose)
+		std::cout << " finished." << std::endl;
+	if(cVerbose)
+		std::cout << "Sparse Solver: collecting results" << std::endl;
 	PartialEigenSolution solution(num_ev);
 	for(unsigned int i=0; i<num_ev; i++) {
 		EigenComponent& cmp = solution[i];
 		cmp.eigenvalue = p_ew[i];
-		std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
+		if(cVerbose)
+			std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
 		cmp.eigenvector = Vec(n);
 		for(unsigned int j=0; j<n; j++) {
 			Real v = p_ev[i*n + j];
@@ -215,8 +220,8 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 			cmp.eigenvector[j] = v;
 		}
 	}
-
-	std::cout << "Sparse Solver: returning" << std::endl;
+	if(cVerbose)
+		std::cout << "Sparse Solver: returning" << std::endl;
 	return solution;
 
 	//return SpectralDenseEigenSolve(graph, num_ev);
