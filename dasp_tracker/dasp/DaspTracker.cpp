@@ -180,7 +180,7 @@ void DaspTracker::performSegmentationStep()
 //	}
 //	DANVIL_BENCHMARK_STOP(clusters)
 
-	DANVIL_BENCHMARK_START(segmentation)
+	DANVIL_BENCHMARK_START(mog)
 
 	slimage::Image1f probability;
 	slimage::Image1f probability_2;
@@ -261,6 +261,20 @@ void DaspTracker::performSegmentationStep()
 		result_.fill({0});
 	}
 
+	DANVIL_BENCHMARK_STOP(mog)
+
+	DANVIL_BENCHMARK_START(segmentation)
+	ClusterLabeling dasp_segment_labeling;
+	EdgeWeightGraph dasp_segment_graph;
+	if(plot_segments_) {
+		// create segmentation graph
+		//segments = MinCutSegmentation(clustering_);
+		BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_, NeighborGraphSettings::SpatialCut());
+		EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
+				ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
+		dasp_segment_graph = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
+		dasp_segment_labeling = ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
+	}
 	DANVIL_BENCHMARK_STOP(segmentation)
 
 	DANVIL_BENCHMARK_START(plotting)
@@ -319,22 +333,13 @@ void DaspTracker::performSegmentationStep()
 
 		if(show_graph_ || plot_segments_) {
 			if(plot_segments_) {
-				// create segmentation graph
-				//segments = MinCutSegmentation(clustering_);
-				BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_, NeighborGraphSettings::SpatialCut());
-				EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
-						ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
-				EdgeWeightGraph segments = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
-				ClusterLabeling labeling = ComputeSegmentLabels(segments, clustering_.opt.segment_threshold);
-				std::cout << "Segment Count: " << labeling.num_labels << std::endl;
-
 				// plot segmentation graph
 				//std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, labeling);
-				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(labeling.num_labels);
-				vis_img = CreateLabelImage(clustering_, labeling, colors);
+				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(dasp_segment_labeling.num_labels);
+				vis_img = CreateLabelImage(clustering_, dasp_segment_labeling, colors);
 
 				if(show_graph_) {
-					plots::PlotWeightedGraphLines(vis_img, clustering_, segments, [](float weight) {
+					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph, [](float weight) {
 						return plots::IntensityColor(weight, 0, 1);
 					});
 				}
