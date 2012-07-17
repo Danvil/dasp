@@ -50,7 +50,7 @@ inline slimage::Pixel3ub DepthColor(uint16_t d16)
 	}
 	else {
 		if(d16 > 2500) {
-			return slimage::Pixel3ub{{0,static_cast<unsigned char>(255/((static_cast<float>(d16) - 2500)/100)),0}};
+			return slimage::Pixel3ub{{0,static_cast<unsigned char>(255/(1 + (static_cast<float>(d16) - 2500)/500)),0}};
 		}
 		else {
 			Danvil::Colorub color = cm(d16);
