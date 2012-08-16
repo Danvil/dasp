@@ -37,13 +37,15 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light1(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
 	light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
-	view_->getScene()->addLight(light1);
+	scene_->addLight(light1);
 	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light2(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
 	light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
-	view_->getScene()->addLight(light2);
+	scene_->addLight(light2);
 
 	engine_.reset(new Danvil::SimpleEngine::Engine(view_));
 	engine_->setClearColor(Danvil::Color::Grey);
+
+	scene_->setShowCoordinateCross(false);
 
 	gl_wdgt_ = new Danvil::SimpleEngine::GLSystemQtWindow(0, engine_);
 	ui.tabs->addTab(gl_wdgt_, "3D");
