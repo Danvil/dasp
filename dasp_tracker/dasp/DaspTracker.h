@@ -11,7 +11,7 @@
 #include <dasp/Superpixels.hpp>
 #include <dasp/Plots.hpp>
 #include <Slimage/Slimage.hpp>
-#include <Danvil/Statistics/GMM.h>
+//#include <Danvil/Statistics/GMM.h>
 #include <boost/thread.hpp>
 #include <vector>
 //----------------------------------------------------------------------------//
@@ -76,7 +76,7 @@ private:
 	Superpixels clustering_;
 
 	bool has_hand_gmm_model_;
-	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;
+//	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;
 
     plots::ClusterSelection selection_;
 

@@ -186,80 +186,80 @@ void DaspTracker::performSegmentationStep()
 	slimage::Image1f probability_2;
 	slimage::Image3ub plot_labels;
 
-	if(has_hand_gmm_model_) {
+// 	if(has_hand_gmm_model_) {
 
-		auto scaled_model = hand_gmm_model_;
-		scaled_model.ScaleDeviation(color_model_sigma_scale_); // FIXME get parameter from Gui
+// 		auto scaled_model = hand_gmm_model_;
+// 		scaled_model.ScaleDeviation(color_model_sigma_scale_); // FIXME get parameter from Gui
 
-		// classify color with gmm
-		std::vector<float> cluster_probability = clustering_.ForClusterCenters(
-				[&scaled_model](const dasp::Point& center) {
-					Danvil::ctLinAlg::Vec3f v(center.color[0], center.color[1], center.color[2]);
-					return scaled_model(v);
-//					// detect red
-//					return v.x / (v.x + v.y + v.z);
-				});
+// 		// classify color with gmm
+// 		std::vector<float> cluster_probability = clustering_.ForClusterCenters(
+// 				[&scaled_model](const dasp::Point& center) {
+// 					Danvil::ctLinAlg::Vec3f v(center.color[0], center.color[1], center.color[2]);
+// 					return scaled_model(v);
+// //					// detect red
+// //					return v.x / (v.x + v.y + v.z);
+// 				});
 
-		unsigned int cnt_over_active = 0;
-		for(float& v : cluster_probability) {
-			if(v > 0.50) {
-				cnt_over_active ++;
-				v = 1.0f;
-			}
-			else {
-				v = 0.0f;
-			}
-		}
-		coverage(cnt_over_active);
-		std::cout << "Active cluster: " << cnt_over_active << std::endl;
+// 		unsigned int cnt_over_active = 0;
+// 		for(float& v : cluster_probability) {
+// 			if(v > 0.50) {
+// 				cnt_over_active ++;
+// 				v = 1.0f;
+// 			}
+// 			else {
+// 				v = 0.0f;
+// 			}
+// 		}
+// 		coverage(cnt_over_active);
+// 		std::cout << "Active cluster: " << cnt_over_active << std::endl;
 
-		{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
-			selection_ = plots::ClusterSelection::Empty(clustering_.clusterCount());
-			for(unsigned int i=0; i<cluster_probability.size(); i++) {
-				selection_[i] = (cluster_probability[i] > 0.80f);
-			}
-		}
+// 		{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
+// 			selection_ = plots::ClusterSelection::Empty(clustering_.clusterCount());
+// 			for(unsigned int i=0; i<cluster_probability.size(); i++) {
+// 				selection_[i] = (cluster_probability[i] > 0.80f);
+// 			}
+// 		}
 
-		// paint cluster probabilities
-		probability.resize(clustering_.width(), clustering_.height());
-		probability.fill({0.0f});
-		clustering_.ForPixelClusters([&probability,&cluster_probability](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-			probability(p.spatial_x(), p.spatial_y()) = cluster_probability[cid];
-		});
+// 		// paint cluster probabilities
+// 		probability.resize(clustering_.width(), clustering_.height());
+// 		probability.fill({0.0f});
+// 		clustering_.ForPixelClusters([&probability,&cluster_probability](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+// 			probability(p.spatial_x(), p.spatial_y()) = cluster_probability[cid];
+// 		});
 
-//		// histogram color model
-//		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
-//		std::vector<float> cluster_probability_2 = model_->evaluate(G);
-//
-//		probability_2.resize(clustering_.width(), clustering_.height());
-//		probability_2.fill(-1.0f);
-//		clustering_.ForPixelClusters([&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-//			float p_base = cluster_probability_2[cid];
-//			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
-//		});
-//
-//		// plot model gaussian cluster id for each superpixel
-//		std::vector<unsigned int> labels = model_->label(G);
-//		plot_labels.resize(kinect_color.width(), kinect_color.height());
-//		plot_labels.fill(0);
-//		std::vector<Eigen::Vector3f> model_colors = model_->getClusterColors();
-//		clustering_.ForPixelClusters([&plot_labels,&labels,&model_colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
-//			unsigned int l = labels[cid];
-//			Eigen::Vector3f color = model_colors[l];
-//			plot_labels(p.spatial_x(), p.spatial_y()) = slimage::Pixel3ub{
-//				{(unsigned char)(255.0f*color[0]), (unsigned char)(255.0f*color[1]), (unsigned char)(255.0f*color[2])}
-//			};
-//		});
+// //		// histogram color model
+// //		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+// //		std::vector<float> cluster_probability_2 = model_->evaluate(G);
+// //
+// //		probability_2.resize(clustering_.width(), clustering_.height());
+// //		probability_2.fill(-1.0f);
+// //		clustering_.ForPixelClusters([&probability_2,&cluster_probability_2](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+// //			float p_base = cluster_probability_2[cid];
+// //			probability_2(p.spatial_x(), p.spatial_y()) = p_base;
+// //		});
+// //
+// //		// plot model gaussian cluster id for each superpixel
+// //		std::vector<unsigned int> labels = model_->label(G);
+// //		plot_labels.resize(kinect_color.width(), kinect_color.height());
+// //		plot_labels.fill(0);
+// //		std::vector<Eigen::Vector3f> model_colors = model_->getClusterColors();
+// //		clustering_.ForPixelClusters([&plot_labels,&labels,&model_colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
+// //			unsigned int l = labels[cid];
+// //			Eigen::Vector3f color = model_colors[l];
+// //			plot_labels(p.spatial_x(), p.spatial_y()) = slimage::Pixel3ub{
+// //				{(unsigned char)(255.0f*color[0]), (unsigned char)(255.0f*color[1]), (unsigned char)(255.0f*color[2])}
+// //			};
+// //		});
 
-	}
+// 	}
 
 	result_.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
-	if(has_hand_gmm_model_) {
-		slimage::conversion::Convert(probability, result_);
-	}
-	else {
+//	if(has_hand_gmm_model_) {
+//		slimage::conversion::Convert(probability, result_);
+//	}
+//	else {
 		result_.fill({0});
-	}
+//	}
 
 	DANVIL_BENCHMARK_STOP(mog)
 
@@ -430,125 +430,125 @@ void DaspTracker::performSegmentationStep()
 
 void DaspTracker::trainInitialColorModel()
 {
-	const unsigned int cWidth = 640;
-	const unsigned int cHeight = 480;
+// 	const unsigned int cWidth = 640;
+// 	const unsigned int cHeight = 480;
 
-	if(boost::accumulators::count(coverage) > 0) {
-		std::ofstream fs("coverage.txt", std::ios_base::app);
-		double mean = boost::accumulators::mean(coverage);
-		double var = boost::accumulators::variance(coverage);
+// 	if(boost::accumulators::count(coverage) > 0) {
+// 		std::ofstream fs("coverage.txt", std::ios_base::app);
+// 		double mean = boost::accumulators::mean(coverage);
+// 		double var = boost::accumulators::variance(coverage);
 
-		fs << mean << "\t" << std::sqrt(var) << std::endl;
-		std::cout << "Mean=" << mean << ", sqrt(variance)=" << std::sqrt(var) << std::endl;
-	}
-	coverage = CoverageAccType();
+// 		fs << mean << "\t" << std::sqrt(var) << std::endl;
+// 		std::cout << "Mean=" << mean << ", sqrt(variance)=" << std::sqrt(var) << std::endl;
+// 	}
+// 	coverage = CoverageAccType();
 
-	// capture all super pixels which are in the ROI and near to the camera
-	LOG_NOTICE << "Initializing Appearance model --- STARTED";
+// 	// capture all super pixels which are in the ROI and near to the camera
+// 	LOG_NOTICE << "Initializing Appearance model --- STARTED";
 
-	slimage::Image3ub initial_(cWidth, cHeight);
-	initial_.fill({{128,128,128}});
+// 	slimage::Image3ub initial_(cWidth, cHeight);
+// 	initial_.fill({{128,128,128}});
 
-	DANVIL_BENCHMARK_START(Hand_V3_Init)
+// 	DANVIL_BENCHMARK_START(Hand_V3_Init)
 
-	// find all clusters where the center is inside the roi
-	const unsigned int R = 80;
-	const unsigned int cRoiDepthBins = 100;
-	const uint16_t cRoiDepthMin = 400;
-	const uint16_t cRoiDepthMax = 2400;
-	dasp::AutoFindDepthRange::DepthHistogram depth_hist(cRoiDepthMin, cRoiDepthMax, cRoiDepthBins);
+// 	// find all clusters where the center is inside the roi
+// 	const unsigned int R = 80;
+// 	const unsigned int cRoiDepthBins = 100;
+// 	const uint16_t cRoiDepthMin = 400;
+// 	const uint16_t cRoiDepthMax = 2400;
+// 	dasp::AutoFindDepthRange::DepthHistogram depth_hist(cRoiDepthMin, cRoiDepthMax, cRoiDepthBins);
 
-	int roi_x1 = int(cWidth)/2 - R;
-	int roi_x2 = int(cWidth)/2 + R;
-	int roi_y1 = int(cHeight)/2 - R;
-	int roi_y2 = int(cHeight)/2 + R;
+// 	int roi_x1 = int(cWidth)/2 - R;
+// 	int roi_x2 = int(cWidth)/2 + R;
+// 	int roi_y1 = int(cHeight)/2 - R;
+// 	int roi_y2 = int(cHeight)/2 + R;
 
-	std::vector<dasp::Cluster> clusters_in_roi;
-	std::vector<unsigned int> clusters_in_roi_ids;
+// 	std::vector<dasp::Cluster> clusters_in_roi;
+// 	std::vector<unsigned int> clusters_in_roi_ids;
 
-	for(unsigned int k=0; k<clustering_.cluster.size(); k++) {
-		const dasp::Cluster& cluster = clustering_.cluster[k];
-		unsigned int in_roi_cnt = 0;
-		for(unsigned int i : cluster.pixel_ids) {
-			const dasp::Point& p = clustering_.points[i];
-			if(roi_x1 <= p.spatial_x() && p.spatial_x() <= roi_x2
-				&& roi_y1 <= p.spatial_y() && p.spatial_y() <= roi_y2) {
-				in_roi_cnt ++;
-			}
-		}
-		if(in_roi_cnt > cluster.pixel_ids.size()/2) {
-			for(unsigned int i : cluster.pixel_ids) {
-				const dasp::Point& p = clustering_.points[i];
-				depth_hist.add(p.depth_i16);
-			}
-			clusters_in_roi.push_back(cluster);
-			clusters_in_roi_ids.push_back(k);
-		}
-	}
+// 	for(unsigned int k=0; k<clustering_.cluster.size(); k++) {
+// 		const dasp::Cluster& cluster = clustering_.cluster[k];
+// 		unsigned int in_roi_cnt = 0;
+// 		for(unsigned int i : cluster.pixel_ids) {
+// 			const dasp::Point& p = clustering_.points[i];
+// 			if(roi_x1 <= p.spatial_x() && p.spatial_x() <= roi_x2
+// 				&& roi_y1 <= p.spatial_y() && p.spatial_y() <= roi_y2) {
+// 				in_roi_cnt ++;
+// 			}
+// 		}
+// 		if(in_roi_cnt > cluster.pixel_ids.size()/2) {
+// 			for(unsigned int i : cluster.pixel_ids) {
+// 				const dasp::Point& p = clustering_.points[i];
+// 				depth_hist.add(p.depth_i16);
+// 			}
+// 			clusters_in_roi.push_back(cluster);
+// 			clusters_in_roi_ids.push_back(k);
+// 		}
+// 	}
 
-	// find cut-off
-	uint16_t depth_min;
-	uint16_t depth_max;
-	dasp::AutoFindDepthRange::Find(depth_hist, depth_min, depth_max);
+// 	// find cut-off
+// 	uint16_t depth_min;
+// 	uint16_t depth_max;
+// 	dasp::AutoFindDepthRange::Find(depth_hist, depth_min, depth_max);
 
-	std::vector<dasp::Cluster> clusters_selected;
-	std::vector<unsigned int> clusters_selected_id;
-	for(unsigned int i=0; i<clusters_in_roi.size(); i++) {
-		const dasp::Cluster& cluster = clusters_in_roi[i];
-		uint16_t d = cluster.center.depth_i16;
-		if(depth_min <= d && d <= depth_max) {
-			clusters_selected.push_back(cluster);
-			clusters_selected_id.push_back(clusters_in_roi_ids[i]);
-		}
-	}
+// 	std::vector<dasp::Cluster> clusters_selected;
+// 	std::vector<unsigned int> clusters_selected_id;
+// 	for(unsigned int i=0; i<clusters_in_roi.size(); i++) {
+// 		const dasp::Cluster& cluster = clusters_in_roi[i];
+// 		uint16_t d = cluster.center.depth_i16;
+// 		if(depth_min <= d && d <= depth_max) {
+// 			clusters_selected.push_back(cluster);
+// 			clusters_selected_id.push_back(clusters_in_roi_ids[i]);
+// 		}
+// 	}
 
-	{
-		// render all super pixel in range
-		for(const dasp::Cluster& cluster : clusters_selected) {
-			plots::PlotClusterPoints(initial_, cluster, clustering_.points, plots::RgbColor(cluster.center));
-		}
+// 	{
+// 		// render all super pixel in range
+// 		for(const dasp::Cluster& cluster : clusters_selected) {
+// 			plots::PlotClusterPoints(initial_, cluster, clustering_.points, plots::RgbColor(cluster.center));
+// 		}
 
-//		// render roi
-//		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y1, roi_x2, roi_y1, Danvil::Images::Pixel3ub(255,0,0));
-//		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y2, roi_x2, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
-//		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y1, roi_x1, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
-//		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x2, roi_y1, roi_x2, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
-	}
+// //		// render roi
+// //		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y1, roi_x2, roi_y1, Danvil::Images::Pixel3ub(255,0,0));
+// //		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y2, roi_x2, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
+// //		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x1, roi_y1, roi_x1, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
+// //		Danvil::Images::ImagePaint::PaintLine(initial_, roi_x2, roi_y1, roi_x2, roi_y2, Danvil::Images::Pixel3ub(255,0,0));
+// 	}
 
-	// learn gmm from contents of selected super pixels
-	if(clusters_selected.size() >= 5) {
-		std::vector<Danvil::ctLinAlg::Vec3f> gmm_training;
-//		Superpixels6D::ForPixelClusters(clusters_selected, points,
-//				[&gmm_training](unsigned int, const Superpixels6D::Cluster&, unsigned int, const Superpixels6D::Point& p) {
-//			gmm_training.push_back(Danvil::ctLinAlg::Vec3f(p.color[0], p.color[1], p.color[2]));
-//		});
-		for(const dasp::Cluster& cluster : clusters_selected) {
-//			gmm_training.push_back(Danvil::ctLinAlg::Vec3f(cluster.center.color[0], cluster.center.color[1], cluster.center.color[2]));
-			for(unsigned int i : cluster.pixel_ids) {
-				const dasp::Point& p = clustering_.points[i];
-				gmm_training.push_back(Danvil::ctLinAlg::Vec3f(p.color[0], p.color[1], p.color[2]));
-			}
-		}
-		hand_gmm_model_ = Danvil::GMM::GmmExpectationMaximization<2,3,float>(gmm_training);
-		std::cout << hand_gmm_model_ << std::endl;
-		std::cout << std::sqrt(std::abs(Danvil::ctLinAlg::Det(hand_gmm_model_.gaussians_[0].sigma()))) << std::endl;
-		has_hand_gmm_model_ = true;
+// 	// learn gmm from contents of selected super pixels
+// 	if(clusters_selected.size() >= 5) {
+// 		std::vector<Danvil::ctLinAlg::Vec3f> gmm_training;
+// //		Superpixels6D::ForPixelClusters(clusters_selected, points,
+// //				[&gmm_training](unsigned int, const Superpixels6D::Cluster&, unsigned int, const Superpixels6D::Point& p) {
+// //			gmm_training.push_back(Danvil::ctLinAlg::Vec3f(p.color[0], p.color[1], p.color[2]));
+// //		});
+// 		for(const dasp::Cluster& cluster : clusters_selected) {
+// //			gmm_training.push_back(Danvil::ctLinAlg::Vec3f(cluster.center.color[0], cluster.center.color[1], cluster.center.color[2]));
+// 			for(unsigned int i : cluster.pixel_ids) {
+// 				const dasp::Point& p = clustering_.points[i];
+// 				gmm_training.push_back(Danvil::ctLinAlg::Vec3f(p.color[0], p.color[1], p.color[2]));
+// 			}
+// 		}
+// 		hand_gmm_model_ = Danvil::GMM::GmmExpectationMaximization<2,3,float>(gmm_training);
+// 		std::cout << hand_gmm_model_ << std::endl;
+// 		std::cout << std::sqrt(std::abs(Danvil::ctLinAlg::Det(hand_gmm_model_.gaussians_[0].sigma()))) << std::endl;
+// 		has_hand_gmm_model_ = true;
 
-//		// collect histograms for superpixels
-//		model_.reset(new SuperpixelHistogramModel());
-//		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
-//		model_->train(G, clusters_selected_id);
-	}
+// //		// collect histograms for superpixels
+// //		model_.reset(new SuperpixelHistogramModel());
+// //		SuperpixelGraph G = clustering_.CreateNeighborhoodGraph();
+// //		model_->train(G, clusters_selected_id);
+// 	}
 
-	DANVIL_BENCHMARK_STOP(Hand_V3_Init)
+// 	DANVIL_BENCHMARK_STOP(Hand_V3_Init)
 
-	{
-		boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
+// 	{
+// 		boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-		images_["train"] = slimage::Ptr(initial_);
-	}
+// 		images_["train"] = slimage::Ptr(initial_);
+// 	}
 
-	LOG_NOTICE << "Initializing Appearance model --- FINISHED";
+// 	LOG_NOTICE << "Initializing Appearance model --- FINISHED";
 }
 
 void DaspTracker::performTrackingStep()

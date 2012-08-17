@@ -23,25 +23,20 @@ David Weikersdorfer, David Gossow, Michael Beetz. **Depth-Adaptive Superpixels**
 
 Installation
 ----
-1. `git clone git://github.com/Danvil/dasp.git`
-2. `cd dasp; mkdir build; cd build`
-3. `cmake ..`
-4. `make`
 
 Required libraries and programs:
 
-* Boost
-Need version 1.46.1 or higher.
+* slimage
+[Download](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and place for example into the dasp root directory.
+
+* Boost - version 1.46.1 or higher.
 sudo apt-get install libboost-all-dev
 
-* Eigen 3
+* Eigen 3.x
 sudo apt-get install libeigen3-dev
 
-* Qt 4
+* Qt 4.x
 sudo apt-get install libqt4-dev
-
-* OpenCv
-See http://opencv.willowgarage.com/wiki/
 
 * OpenNI
 See https://github.com/OpenNI/OpenNI
@@ -53,6 +48,11 @@ and replace line 74 with
 * Misc other deps
 sudo apt-get install g++ build-essentials cmake libloki-dev libloki0.1.7 libglew1.6-dev libxmu-dev
 sudo apt-get install libarpack++2-dev libsuperlu3-dev
+
+1. `git clone git://github.com/Danvil/dasp.git`
+2. `cd dasp; mkdir build; cd build`
+3. `cmake ..`
+4. `make`
 
 
 Getting started

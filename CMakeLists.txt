@@ -5,7 +5,7 @@ option(DASP_HAS_OPENNI "Use OpenNI for Kinect live mode" OFF)
 
 set(OPENNI_INCLUDE_DIR "/home/david/Programs/RGBD/OpenNI/Include" CACHE STRING "OpenNI include directory")
 set(EIGEN3_INCLUDE_DIR "/usr/local/include/eigen3" CACHE STRING "Eigen3 include directory")
-set(SLIMAGE_INCLUDE_DIR "/home/david/git/slimage/src" CACHE STRING "Slimage include directory")
+set(SLIMAGE_INCLUDE_DIR "slimage" CACHE STRING "Slimage include directory")
 set(DANVILTOOLS_DIR "/home/david/git/DanvilTools" CACHE STRING "Danvil CT main directory")
 
 add_definitions(-std=c++0x -DBOOST_DISABLE_ASSERTS)
@@ -16,7 +16,8 @@ endif (DASP_HAS_SIMPLEENGINE)
 
 include_directories(
 	${EIGEN3_INCLUDE_DIR}
-	${DANVILTOOLS_DIR}/CT/src
+#	${DANVILTOOLS_DIR}/CT/src
+	.
 	${SLIMAGE_INCLUDE_DIR}
 )
 

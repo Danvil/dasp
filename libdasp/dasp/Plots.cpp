@@ -10,10 +10,10 @@
 #if defined DASP_HAS_SIMPLEENGINE
 #include <Danvil/SimpleEngine/Primitives.h>
 #include <Danvil/SimpleEngine/GlHelpers.h>
+#include <Danvil/LinAlg/Eigen.hpp>
 #endif
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>
-#include <Danvil/LinAlg/Eigen.hpp>
 #include <Danvil/Color.h>
 #include <Danvil/Color/LAB.h>
 #include <Danvil/Color/HSV.h>

@@ -36,7 +36,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.verticalLayoutBenchmark->addWidget(gui_benchmark_.get());
 
 #if defined DASP_HAS_SIMPLEENGINE
-	LOG_NOTICE << "Creating OpenGL Widget ...";
+	std::cout << "Creating OpenGL Widget ..." << std::endl;
 
 	view_ = Danvil::SimpleEngine::View::FactorDefaultPerspectiveView();
 	scene_ = view_->getScene();
@@ -153,7 +153,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	kinect_thread_.join();
 	kinect_grabber_.reset();
 
-	LOG_NOTICE << "Opening oni file: " << fn.toStdString();
+	std::cout << "Opening oni file: " << fn.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenFile(fn.toStdString());
@@ -171,7 +171,7 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_.reset();
 
 	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
-	LOG_NOTICE << "Opening kinect config file: " << config.toStdString();
+	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenConfig(config.toStdString());
