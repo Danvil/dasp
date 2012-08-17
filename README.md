@@ -24,35 +24,41 @@ David Weikersdorfer, David Gossow, Michael Beetz. **Depth-Adaptive Superpixels**
 Installation
 ----
 
-Required libraries and programs:
+Dasp was tested under Ubuntu 11.10 and Ubuntu 12.04.
 
-* slimage
-[Download](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and place for example into the dasp root directory.
+Dasp uses C++11 and requires at least GCC 4.6. Due to the poor support of the new C++ standard by Microsoft, it is probably not possible to use dasp with MSVC.
 
-* Boost - version 1.46.1 or higher.
-sudo apt-get install libboost-all-dev
+### Requirements
 
-* Eigen 3.x
-sudo apt-get install libeigen3-dev
+[Download slimage](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and unzip for example into the dasp root directory.
 
-* Qt 4.x
-sudo apt-get install libqt4-dev
+* [Boost](http://www.boost.org/) 1.46.1 or higher: `sudo apt-get install libboost-all-dev`
+* [Eigen](http://eigen.tuxfamily.org) 3.x: `sudo apt-get install libeigen3-dev`
+* [Qt](http://qt.nokia.com/) 4.x: `sudo apt-get install libqt4-dev`
+* arpack and superlu: `sudo apt-get install libarpack++2-dev libsuperlu3-dev`
+* [loki](http://sourceforge.net/projects/loki-lib/): `sudo apt-get libloki-dev libloki0.1.7`
+* Build essentials: `sudo apt-get install g++ build-essentials cmake cmake-qt-gui`
+* Misc: `sudo apt-get install libglew1.6-dev libxmu-dev`
 
-* OpenNI
-See https://github.com/OpenNI/OpenNI
-OpenNI only works for me under Ubuntu if I edit the following file
-/usr/include/ni/XnPlatform.h
-and replace line 74 with
-#include "Linux-x86/XnPlatformLinux-x86.h"
+All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libarpack++2-dev libsuperlu3-dev libloki-dev libloki0.1.7 g++ build-essentials cmake cmake-qt-gui libglew1.6-dev libxmu-dev*
 
-* Misc other deps
-sudo apt-get install g++ build-essentials cmake libloki-dev libloki0.1.7 libglew1.6-dev libxmu-dev
-sudo apt-get install libarpack++2-dev libsuperlu3-dev
+### Installation Instructions
 
 1. `git clone git://github.com/Danvil/dasp.git`
 2. `cd dasp; mkdir build; cd build`
 3. `cmake ..`
 4. `make`
+5. `dasp_gui/dasp_gui` to run the Qt gui for dasp
+
+### Kinect Live Mode
+
+Required if you want to process data from the Kinect in the live mode.
+
+Download and install [OpenNI](https://github.com/OpenNI/OpenNI) and the Microsoft Kinect driver.
+
+To enable OpenNI you have to enable the CMake flag `DASP_HAS_OPENNI` and set the CMake variable `OPENNI_INCLUDE_DIR` to the OpenNI include directory (normally `/path/to/OpenNI/Include`).
+
+OpenNI only works for me under Ubuntu/Linux, if I edit the file `/usr/include/ni/XnPlatform.h` and replace line 74 with `#include "Linux-x86/XnPlatformLinux-x86.h"`
 
 
 Getting started
