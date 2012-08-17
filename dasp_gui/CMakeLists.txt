@@ -2,11 +2,13 @@ find_package(Qt4 REQUIRED)
 
 add_definitions(-DSLIMAGE_IO_QT)
 
+if (DASP_HAS_OPENNI)
+	add_definitions(-DDASP_HAS_OPENNI)
+endif (DASP_HAS_OPENNI)
+
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
 	${dasp_SOURCE_DIR}/dasp_tracker
-	${dasp_SOURCE_DIR}/kinect
-	${OPENNI_INCLUDE_DIR}
 )
 
 SET(QT_USE_QTOPENGL TRUE)
@@ -53,7 +55,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 TARGET_LINK_LIBRARIES(dasp_gui
 	libdasp
 	dasp_tracker
-	kinect
 	${QT_LIBRARIES}
 	boost_signals
 	boost_thread
@@ -65,3 +66,8 @@ if (DASP_HAS_SIMPLEENGINE)
 	target_link_libraries(dasp_gui DanvilSimpleEngine)
 endif (DASP_HAS_SIMPLEENGINE)
 
+if (DASP_HAS_OPENNI)
+	add_definitions(-DDASP_HAS_OPENNI)
+	include_directories(${dasp_SOURCE_DIR}/kinect ${OPENNI_INCLUDE_DIR})
+	target_link_libraries(dasp_gui kinect)
+endif (DASP_HAS_OPENNI)

@@ -4,11 +4,13 @@
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
 #include "WdgtBenchmark.h"
-#include "KinectGrabber.h"
+#if defined DASP_HAS_OPENNI
+#	include "KinectGrabber.h"
+#endif
 #include <dasp/DaspTracker.h>
 #if defined DASP_HAS_SIMPLEENGINE
-#include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
-#include <Danvil/SimpleEngine.h>
+#	include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
+#	include <Danvil/SimpleEngine.h>
 #endif
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
@@ -30,10 +32,12 @@ private:
 
 public Q_SLOTS:
 	void OnUpdateImages();
-	void OnCaptureOne();
 	void OnLoadOne();
+#if defined DASP_HAS_OPENNI
+	void OnCaptureOne();
 	void OnLoadOni();
 	void OnLive();
+#endif
 	void OnSaveDebugImages();
 
 private:
@@ -48,7 +52,10 @@ private:
 
 	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;
 	boost::shared_ptr<WdgtBenchmark> gui_benchmark_;
+
+#if defined DASP_HAS_OPENNI
 	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
+#endif
 
 	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;
 

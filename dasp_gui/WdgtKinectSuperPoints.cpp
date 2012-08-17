@@ -13,10 +13,16 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	save_debug_next_ = false;
 	capture_next_ = false;
 
-	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
+#if defined DASP_HAS_OPENNI
+	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
 	QObject::connect(ui.pushButtonLoadOni, SIGNAL(clicked()), this, SLOT(OnLoadOni()));
 	QObject::connect(ui.pushButtonLive, SIGNAL(clicked()), this, SLOT(OnLive()));
+#else
+	ui.pushButtonSaveOne->setEnabled(false);
+	ui.pushButtonLoadOni->setEnabled(false);
+	ui.pushButtonLive->setEnabled(false);
+#endif
 	QObject::connect(ui.pushButtonSaveDebug, SIGNAL(clicked()), this, SLOT(OnSaveDebugImages()));
 
 	dasp_tracker_.reset(new dasp::DaspTracker());
@@ -55,15 +61,6 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	scene_->addItem(dasp_renderling);
 #endif
 
-	LOG_NOTICE << "Starting Kinect ...";
-
-//	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-//	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
-//	kinect_grabber_->OpenFile("/home/david/WualaDrive/Danvil/DataSets/2012-01-12 Kinect Hand Motions/01_UpDown_Move.oni");
-//	kinect_grabber_->OpenFile("/home/david/Desktop/Kinect/2012-02-25 Stuff On Table.oni");
-//	kinect_grabber_->OpenConfig("/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml");
-//	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-
 	QObject::connect(&timer_, SIGNAL(timeout()), this, SLOT(OnUpdateImages()));
 	timer_.setInterval(20);
 	timer_.start();
@@ -72,12 +69,16 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
+#if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
 		kinect_grabber_->stop_requested_ = true;
 	}
+#endif
 	interrupt_loaded_thread_ = true;
 	kinect_thread_.join();
 }
+
+#if defined DASP_HAS_OPENNI
 
 void WdgtKinectSuperPoints::OnCaptureOne()
 {
@@ -93,20 +94,24 @@ void WdgtKinectSuperPoints::OnCaptureOne()
 	capture_next_ = true;
 }
 
+#endif
+
 void WdgtKinectSuperPoints::OnLoadOne()
 {
-	QString fn = QFileDialog::getSaveFileName(this, "Open ONI file", "/home/david");
+	QString fn = QFileDialog::getSaveFileName(this, "Open Color/Depth files", "/home/david");
 	if(fn.isEmpty()) {
 		return;
 	}
 	capture_filename_ = fn.toStdString();
 
+#if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
 		kinect_grabber_->stop_requested_ = true;
 	}
+	kinect_grabber_.reset();
+#endif
 	interrupt_loaded_thread_ = true;
 	kinect_thread_.join();
-	kinect_grabber_.reset();
 
 	std::string fn_color = fn.toStdString() + "_color.png";
 	std::string fn_depth = fn.toStdString() + "_depth.pgm";
@@ -131,6 +136,8 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	});
 
 }
+
+#if defined DASP_HAS_OPENNI
 
 void WdgtKinectSuperPoints::OnLoadOni()
 {
@@ -171,6 +178,8 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
+
+#endif
 
 void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
