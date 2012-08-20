@@ -7,7 +7,6 @@
 
 #include "Plots.hpp"
 #include "impl/Spectral.hpp"
-#include <Slimage/Gui.hpp>
 #include <Eigen/Dense>
 //#include <Eigen/Sparse>
 #include <boost/format.hpp>
@@ -23,6 +22,10 @@
 //#define SEGS_DBG_PRINT
 //#define SEGS_VERBOSE
 
+#ifdef SEGS_DBG_SHOWGUI
+#	include <Slimage/Gui.hpp>
+#endif
+ 
 namespace dasp
 {
 

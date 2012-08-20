@@ -1,5 +1,6 @@
 #include "Segmentation.hpp"
 #include "Neighbourhood.hpp"
+#include <Slimage/Convert.hpp>
 #include <boost/graph/property_iter_range.hpp>
 
 namespace dasp
