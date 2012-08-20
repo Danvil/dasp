@@ -7,7 +7,7 @@
 #if defined DASP_HAS_OPENNI
 #	include "KinectGrabber.h"
 #endif
-#include <dasp/DaspTracker.h>
+#include "DaspTracker.h"
 #if defined DASP_HAS_SIMPLEENGINE
 #	include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
 #	include <Danvil/SimpleEngine.h>

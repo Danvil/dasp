@@ -8,7 +8,6 @@ endif (DASP_HAS_OPENNI)
 
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
-	${dasp_SOURCE_DIR}/dasp_tracker
 )
 
 SET(QT_USE_QTOPENGL TRUE)
@@ -18,6 +17,7 @@ SET(dasp_gui_SOURCES
 	WdgtSuperpixelParameters.cpp
 	WdgtKinectSuperPoints.cpp
 	WdgtBenchmark.cpp
+	DaspTracker.cpp
 )
 if (DASP_HAS_SIMPLEENGINE)
 	SET(dasp_gui_HEADERS
@@ -54,7 +54,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 TARGET_LINK_LIBRARIES(dasp_gui
 	libdasp
-	dasp_tracker
 	${QT_LIBRARIES}
 	boost_signals
 	boost_thread

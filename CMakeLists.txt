@@ -25,7 +25,6 @@ project(dasp)
 
 add_subdirectory(libdasp)
 add_subdirectory(dasp_gui)
-add_subdirectory(dasp_tracker)
 
 if (DASP_HAS_OPENNI)
 	add_subdirectory(kinect)
