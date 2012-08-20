@@ -11,8 +11,6 @@
 #include "Point.hpp"
 #include "Clustering.hpp"
 #include "Tools.hpp"
-//#include "SuperpixelHistogram.hpp"
-//#include "tools/Graph.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
