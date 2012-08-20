@@ -39,23 +39,11 @@ public:
 
 	void OpenFile(const std::string& fn_oni);
 
-	void update(double dt, double current_time) {
-		GrabAndNotify();
-	}
-
-	bool Grab();
-
-	void Run();
-
 	boost::signal<void(slimage::Image3ub)> on_color_;
 
 	boost::signal<void(slimage::Image1ui16)> on_depth_;
 
 	boost::signal<void(slimage::Image1ui16, slimage::Image3ub)> on_depth_and_color_;
-
-	std::string save_color_fn_;
-	std::string save_depth_fn_;
-	std::string save_points_fn_;
 
 	GrabOptions& options() {
 		return options_;
@@ -73,14 +61,21 @@ public:
 		return last_depth_;
 	}
 
-	bool stop_requested_;
-
 	void GrabAndNotify();
 
-	void Notify();
+	void Run();
+
+	void Stop() {
+		stop_requested_ = true;
+	}
 
 private:
 	void Init();
+	
+	bool Grab();
+
+	void Notify();
+
 	bool has_depth_;
 	bool has_image_;
 	bool can_grab_;
@@ -90,6 +85,8 @@ private:
 
 	slimage::Image3ub last_color_;
 	slimage::Image1ui16 last_depth_;
+
+	bool stop_requested_;
 
 private:
 	xn::Context context_;

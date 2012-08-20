@@ -95,12 +95,6 @@ void KinectGrabber::Init()
 		cout << "Image node: " << imageMD_.FullXRes() << "x" << imageMD_.FullYRes() << endl;
 	}
 	// set color viewport to depth
-//	if(!image_.IsCapabilitySupported(XN_CAPABILITY_ALTERNATIVE_VIEW_POINT)) {
-//		cerr << "Can not change image node viewport to depth image!" << endl;
-//	}
-//	else {
-//		image_.GetAlternativeViewPointCap().SetViewPoint(depth_);
-//	}
 	if(!depth_.IsCapabilitySupported(XN_CAPABILITY_ALTERNATIVE_VIEW_POINT)) {
 		cerr << "Can not change image node viewport to depth image!" << endl;
 	}
@@ -152,32 +146,17 @@ bool KinectGrabber::Grab()
 		return true;
 	}
 
-	// convert color image to slimage
+	// store color image
 	image_.GetMetaData(imageMD_);
 	const XnUInt8* pImage = imageMD_.Data();
 	last_color_.resize(imageMD_.FullXRes(), imageMD_.FullYRes());
 	memcpy(last_color_.begin().pointer(), pImage, last_color_.size() * 3 * sizeof(unsigned char));
 
-	// convert depth image to slimage
+	// store depth image
 	depth_.GetMetaData(depthMD_);
 	const XnDepthPixel* pDepth = depthMD_.Data();
 	last_depth_.resize(depthMD_.FullXRes(), depthMD_.FullYRes());
 	memcpy(last_depth_.begin().pointer(), pDepth, last_depth_.size() * sizeof(uint16_t));
-
-	if(!save_color_fn_.empty()) {
-		throw "Not implemented";
-//		Danvil::Images::ImageIO::Save(last_color_, save_color_fn_);
-		save_color_fn_ = "";
-	}
-
-	if(!save_depth_fn_.empty()) {
-		throw "Not implemented";
-		// convert depth to ub1 image for saving as 8bit image
-//		Danvil::Images::Image1ubPtr img_save = Danvil::Images::ImageFactory::FactorSimpleImage1ub(depthMD_.FullXRes(), depthMD_.FullYRes());
-//		Danvil::memops::convert_uint16_to_uint8<4>(pDepth, img_save->elementCount(), img_save->begin());
-//		Danvil::Images::ImageIO::Save(img_save, save_depth_fn_);
-		save_depth_fn_ = "";
-	}
 
 	frame_current_++;
 	return true;

@@ -71,7 +71,7 @@ WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
 #if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
-		kinect_grabber_->stop_requested_ = true;
+		kinect_grabber_->Stop();
 	}
 #endif
 	interrupt_loaded_thread_ = true;
@@ -106,12 +106,14 @@ void WdgtKinectSuperPoints::OnLoadOne()
 
 #if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
-		kinect_grabber_->stop_requested_ = true;
+		kinect_grabber_->Stop();
 	}
-	kinect_grabber_.reset();
 #endif
 	interrupt_loaded_thread_ = true;
 	kinect_thread_.join();
+#if defined DASP_HAS_OPENNI
+	kinect_grabber_.reset();
+#endif
 
 	std::string fn_color = fn.toStdString() + "_color.png";
 	std::string fn_depth = fn.toStdString() + "_depth.pgm";
@@ -147,7 +149,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	}
 
 	if(kinect_grabber_) {
-		kinect_grabber_->stop_requested_ = true;
+		kinect_grabber_->Stop();
 	}
 	interrupt_loaded_thread_ = true;
 	kinect_thread_.join();
@@ -155,7 +157,6 @@ void WdgtKinectSuperPoints::OnLoadOni()
 
 	std::cout << "Opening oni file: " << fn.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenFile(fn.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
@@ -164,7 +165,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 void WdgtKinectSuperPoints::OnLive()
 {
 	if(kinect_grabber_) {
-		kinect_grabber_->stop_requested_ = true;
+		kinect_grabber_->Stop();
 	}
 	interrupt_loaded_thread_ = true;
 	kinect_thread_.join();
@@ -173,7 +174,6 @@ void WdgtKinectSuperPoints::OnLive()
 	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
 	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->options().EnableDepthRange(0.4, 2.4);
 	kinect_grabber_->OpenConfig(config.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
