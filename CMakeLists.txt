@@ -16,8 +16,8 @@ endif (DASP_HAS_SIMPLEENGINE)
 
 include_directories(
 	${EIGEN3_INCLUDE_DIR}
-#	${DANVILTOOLS_DIR}/CT/src
 	.
+	${DANVILTOOLS_DIR}/CT/src
 	${SLIMAGE_INCLUDE_DIR}
 )
 
