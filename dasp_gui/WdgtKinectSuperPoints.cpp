@@ -10,7 +10,6 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 {
 	ui.setupUi(this);
 
-	save_debug_next_ = false;
 	capture_next_ = false;
 
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
@@ -69,28 +68,42 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 
 WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 {
+	StopProcessingThread();
+}
+
+void WdgtKinectSuperPoints::StopProcessingThread()
+{
+	// stops the processing thread and the kinect if it is running
 #if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
 		kinect_grabber_->Stop();
 	}
 #endif
 	interrupt_loaded_thread_ = true;
-	kinect_thread_.join();
+	processing_thread_.join();
+#if defined DASP_HAS_OPENNI
+	kinect_grabber_.reset();
+#endif
 }
 
 #if defined DASP_HAS_OPENNI
 
 void WdgtKinectSuperPoints::OnCaptureOne()
 {
+	// this is only possible with a running kinect (ONI or live)
 	if(!kinect_grabber_) {
 		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
 		return;
 	}
+
+	// user shall give rgbd image base name to save captured RGBD image
 	QString fn = QFileDialog::getSaveFileName(this, "Open ONI file", "/home/david");
 	if(fn.isEmpty()) {
 		return;
 	}
 	capture_filename_ = fn.toStdString();
+
+	// instruct to save the next image
 	capture_next_ = true;
 }
 
@@ -98,23 +111,18 @@ void WdgtKinectSuperPoints::OnCaptureOne()
 
 void WdgtKinectSuperPoints::OnLoadOne()
 {
+	// user shall select rgbd image base name
+	// NOTE: Images are required to have the form BASE_color.png and BASE_depth.pgm,
+	// NOTE: where BASE is the path and string selected in the dialog.
 	QString fn = QFileDialog::getSaveFileName(this, "Open Color/Depth files", "/home/david");
 	if(fn.isEmpty()) {
 		return;
 	}
 	capture_filename_ = fn.toStdString();
 
-#if defined DASP_HAS_OPENNI
-	if(kinect_grabber_) {
-		kinect_grabber_->Stop();
-	}
-#endif
-	interrupt_loaded_thread_ = true;
-	kinect_thread_.join();
-#if defined DASP_HAS_OPENNI
-	kinect_grabber_.reset();
-#endif
+	StopProcessingThread();
 
+	// load selected images
 	std::string fn_color = fn.toStdString() + "_color.png";
 	std::string fn_depth = fn.toStdString() + "_depth.pgm";
 	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
@@ -124,16 +132,18 @@ void WdgtKinectSuperPoints::OnLoadOne()
 		std::cerr << "Size of color and depth image must match!" << std::endl;
 		return;
 	}
-	interrupt_loaded_thread_ = false;
-	kinect_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
-		while(!interrupt_loaded_thread_) {
+
+	// processing thread repeats loaded image (only updated if requested)
+	processing_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
+		this->interrupt_loaded_thread_ = false;
+		while(!this->interrupt_loaded_thread_) {
 			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
 			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
 			this->OnImages(cpy_depth, cpy_color);
-			while(!reload && !interrupt_loaded_thread_) {
+			while(!this->reload && !this->interrupt_loaded_thread_) {
 				usleep(1000);
 			}
-			reload = false;
+			this->reload = false;
 		}
 	});
 
@@ -143,82 +153,64 @@ void WdgtKinectSuperPoints::OnLoadOne()
 
 void WdgtKinectSuperPoints::OnLoadOni()
 {
+	// the user shall select an ONI file
 	QString fn = QFileDialog::getOpenFileName(this, "Open ONI file", "/home/david", tr("ONI files (*.oni)"));
 	if(fn.isEmpty()) {
 		return;
 	}
 
-	if(kinect_grabber_) {
-		kinect_grabber_->Stop();
-	}
-	interrupt_loaded_thread_ = true;
-	kinect_thread_.join();
-	kinect_grabber_.reset();
+	StopProcessingThread();
 
+	// open Kinect OpenNI ONI file
 	std::cout << "Opening oni file: " << fn.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->OpenFile(fn.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+
+	// processing thread polls kinect
+	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
 void WdgtKinectSuperPoints::OnLive()
 {
-	if(kinect_grabber_) {
-		kinect_grabber_->Stop();
-	}
-	interrupt_loaded_thread_ = true;
-	kinect_thread_.join();
-	kinect_grabber_.reset();
+	StopProcessingThread();
 
+	// open Kinect in live mode
 	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
 	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
 	kinect_grabber_->OpenConfig(config.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-	kinect_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+
+	// processing thread polls kinect
+	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
 #endif
 
 void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
+	// save all generated dasp images
 	for(auto p : dasp_processing_->getImages()) {
 		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
 	}
-//	save_debug_next_ = true;
 }
 
 void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
 {
+	// save RGBD image if requested
 	if(capture_next_) {
 		slimage::Save(kinect_color, capture_filename_ + "_color.png");
 		slimage::Save(kinect_depth, capture_filename_ + "_depth.pgm");
 		capture_next_ = false;
 	}
-
-//	for(unsigned int i=0; i<kinect_depth.size(); i++) {
-//		uint16_t d = (*raw_kinect_depth)[i];
-//		if(d > 3000) {
-//			d = 0;
-//		}
-//		kinect_depth[i] = d;
-//	}
-
+	// process image
 	dasp::SetRandomNumberSeed(0);
 	dasp_processing_->step(kinect_depth, kinect_color);
-
-//	if(save_debug_next_) {
-//		save_debug_next_ = false;
-//	}
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
-	images_mutex_.lock();
-	std::map<std::string, slimage::ImagePtr> images_tmp = dasp_processing_->getImages();
-	images_mutex_.unlock();
-
 	std::map<std::string, bool> tabs_usage;
 	std::map<std::string, QWidget*> tabs_labels;
 	// prepare tabs
@@ -227,26 +219,19 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		tabs_usage[text] = (text == "3D");
 		tabs_labels[text] = ui.tabs->widget(i);
 	}
-	// add / renew tabs
-	for(auto p : images_tmp) {
+	// add tabs if necessary and display generated dasp images
+	for(auto p : dasp_processing_->getImages()) {
+		// image to display
 		slimage::ImagePtr ref_img = p.second;
 		if(!ref_img) {
 			continue;
 		}
-
+		// convert to Qt image
 		QImage* qimg = slimage::qt::ConvertToQt(ref_img);
 		if(qimg == 0) {
 			continue;
 		}
-
-		QImage qimgscl;
-//		if(qimg->width() > cFeedbackVisualSize || qimg->height() > cFeedbackVisualSize) {
-//			qimgscl = qimg->scaled(QSize(cFeedbackVisualSize,cFeedbackVisualSize), Qt::KeepAspectRatio);
-//		}
-//		else {
-			qimgscl = *qimg;
-//		}
-//		qimgscl = qimgscl.mirrored(false, true);
+		// find label and create new if none exists
 		QLabel* qlabel;
 		std::string text = p.first;
 		if(tabs_labels.find(text) != tabs_labels.end()) {
@@ -257,8 +242,9 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 			ui.tabs->addTab(qlabel, QString::fromStdString(text));
 		}
 		tabs_usage[text] = true;
-//		qlabel->setScaledContents(true);
-		qlabel->setPixmap(QPixmap::fromImage(qimgscl));
+		// display image in label
+		qlabel->setPixmap(QPixmap::fromImage(*qimg));
+		// cleanup
 		delete qimg;
 	}
 	// delete unused tabs

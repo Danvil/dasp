@@ -28,7 +28,7 @@ public:
 private:
 	void OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color);
 
-	void ComputeBlueNoiseImpl();
+	void StopProcessingThread();
 
 public Q_SLOTS:
 	void OnUpdateImages();
@@ -59,14 +59,11 @@ private:
 
 	boost::shared_ptr<DaspProcessing> dasp_processing_;
 
-	QMutex images_mutex_;
-
-	boost::thread kinect_thread_;
+	boost::thread processing_thread_;
 
 	bool capture_next_;
 	std::string capture_filename_;
 	bool interrupt_loaded_thread_;
-	bool save_debug_next_;
 	bool reload;
 
 private:
