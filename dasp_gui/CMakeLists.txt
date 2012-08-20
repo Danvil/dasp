@@ -17,7 +17,7 @@ SET(dasp_gui_SOURCES
 	WdgtSuperpixelParameters.cpp
 	WdgtKinectSuperPoints.cpp
 	WdgtBenchmark.cpp
-	DaspTracker.cpp
+	DaspProcessing.cpp
 )
 if (DASP_HAS_SIMPLEENGINE)
 	SET(dasp_gui_HEADERS

@@ -7,7 +7,7 @@
 #if defined DASP_HAS_OPENNI
 #	include "KinectGrabber.h"
 #endif
-#include "DaspTracker.h"
+#include "DaspProcessing.h"
 #if defined DASP_HAS_SIMPLEENGINE
 #	include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
 #	include <Danvil/SimpleEngine.h>
@@ -57,7 +57,7 @@ private:
 	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
 #endif
 
-	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;
+	boost::shared_ptr<DaspProcessing> dasp_processing_;
 
 	QMutex images_mutex_;
 

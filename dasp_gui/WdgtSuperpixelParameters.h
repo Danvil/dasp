@@ -3,7 +3,7 @@
 
 #include <QtGui/QWidget>
 #include "ui_WdgtSuperpixelParameters.h"
-#include "DaspTracker.h"
+#include "DaspProcessing.h"
 #include <functional>
 
 class WdgtSuperpixelParameters : public QWidget
@@ -11,7 +11,7 @@ class WdgtSuperpixelParameters : public QWidget
     Q_OBJECT
 
 public:
-	WdgtSuperpixelParameters(const boost::shared_ptr<dasp::DaspTracker>& dasp_tracker, QWidget *parent = 0);
+	WdgtSuperpixelParameters(const boost::shared_ptr<DaspProcessing>& dasp_processing, QWidget *parent = 0);
 	~WdgtSuperpixelParameters();
 
 	bool* reload;
@@ -44,7 +44,7 @@ public Q_SLOTS:
 	void ChangePlotSegments(int state);
 
 private:
-	boost::shared_ptr<dasp::DaspTracker> dasp_tracker_;
+	boost::shared_ptr<DaspProcessing> dasp_processing_;
 
 private:
     Ui::WdgtSuperpixelParametersClass ui;

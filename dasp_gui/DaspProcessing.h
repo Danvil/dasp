@@ -1,29 +1,26 @@
 /*
- * DaspTracker.h
+ * DaspProcessing.h
  *
  *  Created on: Feb 14, 2012
  *      Author: david
  */
 
-#ifndef DASPTRACKER_H_
-#define DASPTRACKER_H_
+#ifndef DASPGUI_DASPPROCESSING_H_
+#define DASPGUI_DASPPROCESSING_H_
 //----------------------------------------------------------------------------//
 #include <dasp/Superpixels.hpp>
 #include <dasp/Plots.hpp>
 #include <Slimage/Slimage.hpp>
-//#include <Danvil/Statistics/GMM.h>
 #include <boost/thread.hpp>
 #include <vector>
 //----------------------------------------------------------------------------//
-namespace dasp {
-//----------------------------------------------------------------------------//
 
-class DaspTracker
+class DaspProcessing
 {
 public:
-	DaspTracker();
+	DaspProcessing();
 
-	virtual ~DaspTracker();
+	virtual ~DaspProcessing();
 
 	/**
 	 * Memory contents for raw_kinect_depth and raw_kinect_color must not be
@@ -46,9 +43,9 @@ public:
 	bool show_points_;
 	bool show_clusters_;
 	bool show_cluster_borders_;
-	plots::ColorMode point_color_mode_;
-	plots::ColorMode cluster_color_mode_;
-	plots::ClusterMode cluster_mode_;
+	dasp::plots::ColorMode point_color_mode_;
+	dasp::plots::ColorMode cluster_color_mode_;
+	dasp::plots::ClusterMode cluster_mode_;
 	bool show_graph_;
 	bool plot_density_;
 	bool plot_segments_;
@@ -67,9 +64,9 @@ private:
 
 	std::vector<dasp::Seed> seeds;
 
-	Superpixels clustering_;
+	dasp::Superpixels clustering_;
 
-    plots::ClusterSelection selection_;
+	dasp:: plots::ClusterSelection selection_;
 
 	std::map<std::string, slimage::ImagePtr> images_;
 
@@ -79,7 +76,5 @@ private:
 
 };
 
-//----------------------------------------------------------------------------//
-}
 //----------------------------------------------------------------------------//
 #endif

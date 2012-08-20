@@ -1,11 +1,11 @@
 /*
- * DaspTracker.cpp
+ * DaspProcessing.cpp
  *
  *  Created on: Feb 14, 2012
  *      Author: david
  */
 
-#include "DaspTracker.h"
+#include "DaspProcessing.h"
 #include <dasp/tools/Mipmaps.hpp>
 #include <dasp/tools/BlueNoise.hpp>
 #include <dasp/tools/AutoDepth.hpp>
@@ -23,11 +23,10 @@
 #include <stdexcept>
 #include <fstream>
 using namespace std;
-//----------------------------------------------------------------------------//
-namespace dasp {
+using namespace dasp;
 //----------------------------------------------------------------------------//
 
-DaspTracker::DaspTracker()
+DaspProcessing::DaspProcessing()
 {
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->camera = Camera{318.39f, 271.99f, 528.01f, 0.001f};
@@ -50,11 +49,11 @@ DaspTracker::DaspTracker()
 
 }
 
-DaspTracker::~DaspTracker()
+DaspProcessing::~DaspProcessing()
 {
 }
 
-void DaspTracker::step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color)
+void DaspProcessing::step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color)
 {
 	DANVIL_BENCHMARK_START(step)
 
@@ -89,7 +88,7 @@ typedef boost::accumulators::accumulator_set<
 > CoverageAccType;
 CoverageAccType coverage;
 
-void DaspTracker::performSegmentationStep()
+void DaspProcessing::performSegmentationStep()
 {
 	// superpixel parameters
 	clustering_.opt = *dasp_params;
@@ -231,32 +230,30 @@ void DaspTracker::performSegmentationStep()
 	DANVIL_BENCHMARK_STOP(plotting)
 }
 
-std::map<std::string, slimage::ImagePtr> DaspTracker::getImages() const
+std::map<std::string, slimage::ImagePtr> DaspProcessing::getImages() const
 {
 	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 	return images_;
 }
 
-slimage::Image1ub DaspTracker::getResultImage() const
+slimage::Image1ub DaspProcessing::getResultImage() const
 {
 	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 	return result_;
 }
 
-void DaspTracker::Render() const
+void DaspProcessing::Render() const
 {
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 		plots::RenderClusters(clustering_, cluster_color_mode_, selection_);
 	}
 }
 
-void DaspTracker::RenderClusterMap() const
+void DaspProcessing::RenderClusterMap() const
 {
 	{	boost::interprocess::scoped_lock<boost::mutex> lock(render_mutex_);
 		plots::RenderClusterMap(clustering_, cluster_color_mode_, selection_);
 	}
 }
 
-//----------------------------------------------------------------------------//
-}
 //----------------------------------------------------------------------------//

@@ -25,9 +25,9 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 #endif
 	QObject::connect(ui.pushButtonSaveDebug, SIGNAL(clicked()), this, SLOT(OnSaveDebugImages()));
 
-	dasp_tracker_.reset(new dasp::DaspTracker());
+	dasp_processing_.reset(new DaspProcessing());
 
-	gui_params_.reset(new WdgtSuperpixelParameters(dasp_tracker_));
+	gui_params_.reset(new WdgtSuperpixelParameters(dasp_processing_));
 	gui_params_->reload = &reload;
 	gui_params_->show();
 
@@ -57,7 +57,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.tabs->addTab(gl_wdgt_, "3D");
 
 	boost::shared_ptr<Danvil::SimpleEngine::IRenderable> dasp_renderling(
-			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_tracker_->Render(); }));
+			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_processing_->Render(); }));
 	scene_->addItem(dasp_renderling);
 #endif
 
@@ -183,7 +183,7 @@ void WdgtKinectSuperPoints::OnLive()
 
 void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
-	for(auto p : dasp_tracker_->getImages()) {
+	for(auto p : dasp_processing_->getImages()) {
 		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
 	}
 //	save_debug_next_ = true;
@@ -206,7 +206,7 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 //	}
 
 	dasp::SetRandomNumberSeed(0);
-	dasp_tracker_->step(kinect_depth, kinect_color);
+	dasp_processing_->step(kinect_depth, kinect_color);
 
 //	if(save_debug_next_) {
 //		save_debug_next_ = false;
@@ -216,7 +216,7 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
 	images_mutex_.lock();
-	std::map<std::string, slimage::ImagePtr> images_tmp = dasp_tracker_->getImages();
+	std::map<std::string, slimage::ImagePtr> images_tmp = dasp_processing_->getImages();
 	images_mutex_.unlock();
 
 	std::map<std::string, bool> tabs_usage;
