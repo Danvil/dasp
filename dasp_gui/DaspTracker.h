@@ -42,13 +42,7 @@ public:
 private:
 	void performSegmentationStep();
 
-	void trainInitialColorModel();
-
-	void performTrackingStep();
-
 public:
-	bool training_;
-
 	bool show_points_;
 	bool show_clusters_;
 	bool show_cluster_borders_;
@@ -74,9 +68,6 @@ private:
 	std::vector<dasp::Seed> seeds;
 
 	Superpixels clustering_;
-
-	bool has_hand_gmm_model_;
-//	Danvil::GMM::GaussianMixtureModel<2,3,float> hand_gmm_model_;
 
     plots::ClusterSelection selection_;
 
