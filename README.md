@@ -58,8 +58,6 @@ Download and install [OpenNI](https://github.com/OpenNI/OpenNI) and the Microsof
 
 To enable OpenNI you have to enable the CMake flag `DASP_HAS_OPENNI` and set the CMake variable `OPENNI_INCLUDE_DIR` to the OpenNI include directory (normally `/path/to/OpenNI/Include`).
 
-OpenNI only works for me under Ubuntu/Linux, if I edit the file `/usr/include/ni/XnPlatform.h` and replace line 74 with `#include "Linux-x86/XnPlatformLinux-x86.h"`
-
 
 Getting started
 ----
@@ -80,6 +78,22 @@ For each scene (ID = 001 - 011) there are the following images in the dataset:
 * ID.png - same as ID_labels.pgm but stored as a color PNG image.
 
 The full dataset can be downloaded [here](https://content.wuala.com/contents/Danvil/Public/dasp/dasp_rgbd_dataset.7z).
+
+
+Issues
+----
+
+1. Compiler errors with arpack++:
+
+`/usr/include/arpack++/arrssym.h:278:7: error: ‘class ARrcSymStdEig<double>’ has no member named ‘EigVecp’`
+This looks like a bug in arpack++. Open the file `/usr/include/arpack++/arrssym.h` and go to the function `template<class ARFLOAT> int ARrcSymStdEig<ARFLOAT>::EigenValVectors(ARFLOAT* &EigVecp, ARFLOAT* &EigValp, bool ischur)`. Replace all occurrences of `this->EigVecp` with `EigVecp` and all occurrences of `this->EigValp` with `EigValp`.
+
+2. Compiler errors with OpenNI:
+
+There seems to be an error where the operating system platform is not correctly identified.
+
+OpenNI only works for me under Ubuntu/Linux, if I edit the file `/usr/include/ni/XnPlatform.h` and replace line 74 with `#include "Linux-x86/XnPlatformLinux-x86.h"`
+
 
 Links
 ----
