@@ -34,29 +34,29 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	Danvil::Benchmark::Instance().setOnUpdate(boost::bind(&WdgtBenchmark::update, gui_benchmark_, _1, _2));
 	ui.verticalLayoutBenchmark->addWidget(gui_benchmark_.get());
 
-#if defined DASP_HAS_SIMPLEENGINE
+#if defined DASP_HAS_CANDY
 	std::cout << "Creating OpenGL Widget ..." << std::endl;
 
-	view_ = Danvil::SimpleEngine::View::FactorDefaultPerspectiveView();
+	view_ = Candy::View::FactorDefaultPerspectiveView();
 	scene_ = view_->getScene();
 
-	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light1(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
+	boost::shared_ptr<Candy::DirectionalLight> light1(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
 	light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
 	scene_->addLight(light1);
-	boost::shared_ptr<Danvil::SimpleEngine::DirectionalLight> light2(new Danvil::SimpleEngine::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
+	boost::shared_ptr<Candy::DirectionalLight> light2(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
 	light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
 	scene_->addLight(light2);
 
-	engine_.reset(new Danvil::SimpleEngine::Engine(view_));
+	engine_.reset(new Candy::Engine(view_));
 	engine_->setClearColor(Danvil::Color::Grey);
 
 	scene_->setShowCoordinateCross(false);
 
-	gl_wdgt_ = new Danvil::SimpleEngine::GLSystemQtWindow(0, engine_);
+	gl_wdgt_ = new Candy::GLSystemQtWindow(0, engine_);
 	ui.tabs->addTab(gl_wdgt_, "3D");
 
-	boost::shared_ptr<Danvil::SimpleEngine::IRenderable> dasp_renderling(
-			new Danvil::SimpleEngine::ObjectRenderling([this](){ dasp_processing_->Render(); }));
+	boost::shared_ptr<Candy::IRenderable> dasp_renderling(
+			new Candy::ObjectRenderling([this](){ dasp_processing_->Render(); }));
 	scene_->addItem(dasp_renderling);
 #endif
 

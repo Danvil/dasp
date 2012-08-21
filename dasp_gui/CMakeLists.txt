@@ -2,6 +2,10 @@ find_package(Qt4 REQUIRED)
 
 add_definitions(-DSLIMAGE_IO_QT)
 
+if (DASP_HAS_CANDY)
+	add_definitions(-DDASP_HAS_CANDY)
+endif (DASP_HAS_CANDY)
+
 if (DASP_HAS_OPENNI)
 	add_definitions(-DDASP_HAS_OPENNI)
 endif (DASP_HAS_OPENNI)
@@ -19,20 +23,20 @@ SET(dasp_gui_SOURCES
 	WdgtBenchmark.cpp
 	DaspProcessing.cpp
 )
-if (DASP_HAS_SIMPLEENGINE)
+if (DASP_HAS_CANDY)
 	SET(dasp_gui_HEADERS
 		WdgtKinectSuperPoints.h
 		WdgtSuperpixelParameters.h
 		WdgtBenchmark.h
-		../../DanvilTools/SimpleEngine/src/Danvil/SimpleEngine/System/GLSystemQtWindow.h
+		${CANDY_DIR}/libcandy/src/Candy/System/GLSystemQtWindow.h
 	)
-else (DASP_HAS_SIMPLEENGINE)
+else (DASP_HAS_CANDY)
 	SET(dasp_gui_HEADERS
 		WdgtKinectSuperPoints.h
 		WdgtSuperpixelParameters.h
 		WdgtBenchmark.h
 	)
-endif (DASP_HAS_SIMPLEENGINE)
+endif (DASP_HAS_CANDY)
 
 SET(dasp_gui_FORMS
 	WdgtSuperpixelParameters.ui
@@ -59,11 +63,14 @@ TARGET_LINK_LIBRARIES(dasp_gui
 	boost_thread
 )
 
-if (DASP_HAS_SIMPLEENGINE)
-	add_definitions(-DDASP_HAS_SIMPLEENGINE)
-	include_directories(../../DanvilTools/SimpleEngine/src)
-	target_link_libraries(dasp_gui DanvilSimpleEngine)
-endif (DASP_HAS_SIMPLEENGINE)
+if (DASP_HAS_CANDY)
+	add_definitions(-DDASP_HAS_CANDY)
+	include_directories(
+		${DT_DIR}/CT/src
+		${CANDY_DIR}/libcandy/src
+	)
+	target_link_libraries(dasp_gui candy)
+endif (DASP_HAS_CANDY)
 
 if (DASP_HAS_OPENNI)
 	add_definitions(-DDASP_HAS_OPENNI)

@@ -7,10 +7,10 @@
 
 #include "Superpixels.hpp"
 #include "Plots.hpp"
-#if defined DASP_HAS_SIMPLEENGINE
-#include <Danvil/SimpleEngine/Primitives.h>
-#include <Danvil/SimpleEngine/GlHelpers.h>
-#include <Danvil/LinAlg/Eigen.hpp>
+#if defined DASP_HAS_CANDY
+#	include <Candy/Primitives.h>
+#	include <Candy/GlHelpers.h>
+#	include <Danvil/LinAlg/Eigen.hpp>
 #endif
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>
@@ -424,7 +424,7 @@ slimage::Image3ub PlotClusters(const Superpixels& c, ClusterMode mode, ColorMode
 	return img;
 }
 
-#if defined DASP_HAS_SIMPLEENGINE
+#if defined DASP_HAS_CANDY
 
 void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub& color)
 {
@@ -439,9 +439,9 @@ void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub&
 	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);
 	Danvil::ctLinAlg::Vec3f minor = r * Danvil::ctLinAlg::Convert(u);
 	glColor3ub(color[0], color[1], color[2]);
-	Danvil::SimpleEngine::Primitives::RenderEllipseCap(pos, major, minor);
+	Candy::Primitives::RenderEllipseCap(pos, major, minor);
 	glColor3f(0.9f, 0.9f, 0.9f);
-	Danvil::SimpleEngine::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(n));
+	Candy::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(n));
 }
 
 void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float r, const slimage::Pixel3ub& color)
@@ -457,10 +457,10 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 //	Eigen::Vector3f ec = Eigen::Vector3f::Zero();
 //	Eigen::Vector3f ea = cluster.cSigmaScale * le3) * Eigen::Vector3f::Unit(0);
 //	Eigen::Vector3f eb = cluster.cSigmaScale * le2) * Eigen::Vector3f::Unit(1);
-//	Danvil::SimpleEngine::Primitives::RenderCircle(r);
-//	Danvil::SimpleEngine::Primitives::RenderEllipse(
+//	Candy::Primitives::RenderCircle(r);
+//	Candy::Primitives::RenderEllipse(
 //			Danvil::ctLinAlg::Convert(ec), Danvil::ctLinAlg::Convert(ea), Danvil::ctLinAlg::Convert(eb));
-	Danvil::SimpleEngine::Primitives::RenderEllipsoid(le3, le2, le1);
+	Candy::Primitives::RenderEllipsoid(le3, le2, le1);
 	// construct local transformation
 //	Eigen::Vector3f n = cluster.center.normal.normalized();
 //	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
@@ -493,7 +493,7 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 
 void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
-#if defined DASP_HAS_SIMPLEENGINE
+#if defined DASP_HAS_CANDY
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
 		if(selection[i]) {
@@ -501,13 +501,13 @@ void RenderClusters(const Superpixels& clustering, ColorMode ccm, const ClusterS
 		}
 	}
 #else
-	std::cerr << "RenderClusters requires DanvilSimpleEngine" << std::endl;
+	std::cerr << "RenderClusters requires Candy 3D engine" << std::endl;
 #endif
 }
 
 void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const ClusterSelection& selection)
 {
-#if defined DASP_HAS_SIMPLEENGINE
+#if defined DASP_HAS_CANDY
 	const float cSpacing = 4.0f * clustering.opt.base_radius;
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(clustering, ccm, selection);
 	unsigned int grid_size = std::ceil(std::sqrt(clustering.cluster.size()));
@@ -523,7 +523,7 @@ void RenderClusterMap(const Superpixels& clustering, ColorMode ccm, const Cluste
 		glPopMatrix();
 	}
 #else
-	std::cerr << "RenderClusters requires DanvilSimpleEngine" << std::endl;
+	std::cerr << "RenderClusters requires Candy 3D engine" << std::endl;
 #endif
 }
 

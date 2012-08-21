@@ -22,11 +22,14 @@ target_link_libraries(libdasp
 	superlu
 )
 
-if (DASP_HAS_SIMPLEENGINE)
-	add_definitions(-DDASP_HAS_SIMPLEENGINE)
-	include_directories(${DANVILTOOLS_DIR}/SimpleEngine/src)
-	target_link_libraries(libdasp DanvilSimpleEngine)
-endif (DASP_HAS_SIMPLEENGINE)
+if (DASP_HAS_CANDY)
+	add_definitions(-DDASP_HAS_CANDY)
+	include_directories(
+		${DT_DIR}/CT/src
+		${CANDY_DIR}/libcandy/src
+	)
+	target_link_libraries(libdasp candy)
+endif (DASP_HAS_CANDY)
 
 # add opencv (used in Segmentation.cpp)
 add_definitions(-DSLIMAGE_IO_OPENCV)

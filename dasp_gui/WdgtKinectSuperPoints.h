@@ -8,9 +8,9 @@
 #	include "KinectGrabber.h"
 #endif
 #include "DaspProcessing.h"
-#if defined DASP_HAS_SIMPLEENGINE
-#	include <Danvil/SimpleEngine/System/GLSystemQtWindow.h>
-#	include <Danvil/SimpleEngine.h>
+#if defined DASP_HAS_CANDY
+#	include <Candy/System/GLSystemQtWindow.h>
+#	include <Candy.h>
 #endif
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
@@ -41,11 +41,11 @@ public Q_SLOTS:
 	void OnSaveDebugImages();
 
 private:
-#if defined DASP_HAS_SIMPLEENGINE
- 	PTR(Danvil::SimpleEngine::View) view_;
-	PTR(Danvil::SimpleEngine::Scene) scene_;
-	PTR(Danvil::SimpleEngine::Engine) engine_;
-	Danvil::SimpleEngine::GLSystemQtWindow* gl_wdgt_;
+#if defined DASP_HAS_CANDY
+ 	PTR(Candy::View) view_;
+	PTR(Candy::Scene) scene_;
+	PTR(Candy::Engine) engine_;
+	Candy::GLSystemQtWindow* gl_wdgt_;
 #endif
 
 	QTimer timer_;
