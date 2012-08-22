@@ -37,10 +37,10 @@ Dasp uses C++11 and requires at least GCC 4.6. Due to the poor support of the ne
 * [Qt](http://qt.nokia.com/) 4.x: `sudo apt-get install libqt4-dev`
 * arpack and superlu: `sudo apt-get install libarpack++2-dev libsuperlu3-dev`
 * [loki](http://sourceforge.net/projects/loki-lib/): `sudo apt-get libloki-dev libloki0.1.7`
-* Build essentials: `sudo apt-get install g++ build-essentials cmake cmake-qt-gui`
+* Build essentials: `sudo apt-get install g++ build-essential cmake cmake-qt-gui`
 * Misc: `sudo apt-get install libglew1.6-dev libxmu-dev`
 
-All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libarpack++2-dev libsuperlu3-dev libloki-dev libloki0.1.7 g++ build-essentials cmake cmake-qt-gui libglew1.6-dev libxmu-dev*
+All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libarpack++2-dev libsuperlu3-dev libloki-dev libloki0.1.7 g++ build-essential cmake cmake-qt-gui libglew1.6-dev libxmu-dev*
 
 ### Installation Instructions
 
@@ -58,6 +58,11 @@ Download and install [OpenNI](https://github.com/OpenNI/OpenNI) and the Microsof
 
 To enable OpenNI you have to enable the CMake flag `DASP_HAS_OPENNI` and set the CMake variable `OPENNI_INCLUDE_DIR` to the OpenNI include directory (normally `/path/to/OpenNI/Include`).
 
+### cmake flags
+
+* EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
+* CMAKE_BUILT_TYPE - Set to Release to compile with optimizations and get a huge speed increase
+* DASP_HAS_OPENNI and OPENNI_INCLUDE_DIR - See Kinect Live Mode
 
 Getting started
 ----
