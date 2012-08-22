@@ -50,6 +50,12 @@ All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev lib
 4. `make`
 5. `dasp_gui/dasp_gui` to run the Qt gui for dasp
 
+### cmake flags
+
+* EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
+* CMAKE_BUILT_TYPE - Set to Release to compile with optimizations and get a huge speed increase
+* DASP_HAS_OPENNI and OPENNI_INCLUDE_DIR - See *Kinect Live Mode* below
+
 ### Kinect Live Mode
 
 Required if you want to process data from the Kinect in the live mode.
@@ -58,11 +64,6 @@ Download and install [OpenNI](https://github.com/OpenNI/OpenNI) and the Microsof
 
 To enable OpenNI you have to enable the CMake flag `DASP_HAS_OPENNI` and set the CMake variable `OPENNI_INCLUDE_DIR` to the OpenNI include directory (normally `/path/to/OpenNI/Include`).
 
-### cmake flags
-
-* EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
-* CMAKE_BUILT_TYPE - Set to Release to compile with optimizations and get a huge speed increase
-* DASP_HAS_OPENNI and OPENNI_INCLUDE_DIR - See Kinect Live Mode
 
 Getting started
 ----
