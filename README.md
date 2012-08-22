@@ -37,7 +37,6 @@ Dasp uses C++11 and requires at least GCC 4.6. Due to the poor support of the ne
 * [Qt](http://qt.nokia.com/) 4.x: `sudo apt-get install libqt4-dev`
 * arpack and superlu: `sudo apt-get install libarpack++2-dev libsuperlu3-dev`
 * Build essentials: `sudo apt-get install g++ build-essential cmake cmake-qt-gui`
-* Misc: `sudo apt-get install libglew1.6-dev libxmu-dev`
 
 All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libarpack++2-dev libsuperlu3-dev g++ build-essential cmake cmake-qt-gui libglew1.6-dev libxmu-dev*
 
