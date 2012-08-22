@@ -44,14 +44,14 @@ All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev lib
 
 1. `git clone git://github.com/Danvil/dasp.git`
 2. `cd dasp; mkdir build; cd build`
-3. `cmake ..`
+3. `cmake -DCMAKE_BUILD_TYPE=Release ..`
 4. `make`
 5. `dasp_gui/dasp_gui` to run the Qt gui for dasp
 
 ### cmake flags
 
 * EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
-* CMAKE_BUILT_TYPE - Set to Release to compile with optimizations and get a huge speed increase
+* CMAKE_BUILD_TYPE - Set to Release to compile with optimizations and get a huge speed increase
 * DASP_HAS_OPENNI and OPENNI_INCLUDE_DIR - See *Kinect Live Mode* below
 
 ### Kinect Live Mode
