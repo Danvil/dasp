@@ -322,33 +322,67 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::
 // Variante von Floyd-Steinberg. Vorteil: Keine Schlangenlinien in dünn besetzten Bereichen.
 std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
+	// Fehler der nächsten 8 Zeilen in Ringpuffer speichern
+	slimage::Image1f ringbuffer( 16 + density.width(), 8 );
+	ringbuffer.fill( {0.0f} );
+
+	// Eine schnelle Zufallszahl
+	unsigned int crc32 = 0xffffffff;
+
+	// Bild abtasten
 	std::vector<Seed> seeds;
-	for(unsigned int y=0; y<density.height() - 9; y++)	// Ein Bildrand von 8 Pixeln wird nicht gefiltert
+	for(unsigned int y=0; y < density.height(); y++)
 	{
-		for(unsigned int x = 8; x < density.width() - 9; x++)
+		float *pRingBuf = ringbuffer.pointer( 8, y % 8 );
+		unsigned int x = 0;
+		while( x < density.width() )
 		{
+			// Dichte an dieser Koordinate
 			float v = density(x,y);
-			if(v >= 0.5f) {
-				v -= 1.0f;
+
+			// Zielwert einschließlich diffundiertem Fehler
+			float err = v + pRingBuf[ x ];
+			if( err >= 0.5f) {
+				err-= 1.0f;
 				seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
 			}
+
+			// Diffundierten Fehler aus dem Ringpuffer löschen,
+			// damit die Speicherstelle bei einem erneuten Durchlauf durch den Ringpuffer leer ist.
+			pRingBuf[ x ] = 0.0f;
 
 			// Bei Dichte unter 7% den Fehler über Radius 2 diffundieren.
 			// Bei Dichte unter 4% den Fehler über Radius 4 diffundieren.
 			// Bei Dichte unter 1% den Fehler über Radius 8 diffundieren.
-			int radius = 1 << std::max( 0, std::min( 2, static_cast< int >( 33.33 * ( fabs( v ) - 0.01 ) ) ) );
+			unsigned int radius = 1 << std::max( 0, std::min( 3, 3 - static_cast< int >( 33.33 * ( fabs( v ) + 0.01 ) ) ) );
 
 			// Dafür sorgen daß die Fehler aller Punkte innerhalb des Radius auf die
 			// gleiche Koordinate diffundieren. Sonst akkumuliert sich der Fehler nie.
 			int DiffusionX = radius * ( x / radius );
 			int DiffusionY = radius * ( y / radius );
 
-			density( DiffusionX + radius, DiffusionY          ) += 7.0f / 16.0f * v;
-			density( DiffusionX - radius, DiffusionY + radius ) += 3.0f / 16.0f * v;
-			density( DiffusionX         , DiffusionY + radius ) += 5.0f / 16.0f * v;
-			density( DiffusionX + radius, DiffusionY + radius ) += 1.0f / 16.0f * v;
-		}
-	}
+			// Zufällig in die eine oder andere Richtung diffundieren,
+			// um Spuren zu verwischen.
+			if( ( crc32 ^ radius ) & 1 )
+			{
+				ringbuffer( 8 + DiffusionX + radius, ( DiffusionY          ) % 8 ) += 7.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX - radius, ( DiffusionY + radius ) % 8 ) += 3.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX         , ( DiffusionY + radius ) % 8 ) += 5.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX + radius, ( DiffusionY + radius ) % 8 ) += 1.0f / 16.0f * err;
+				crc32 = ( crc32 >> 1 ) ^ 0xedb88320;	// Zufallszahl aktualisieren
+			}
+			else
+			{
+				ringbuffer( 8 + DiffusionX + radius, ( DiffusionY          ) % 8 ) += 2.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX - radius, ( DiffusionY + radius ) % 8 ) += 6.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX         , ( DiffusionY + radius ) % 8 ) += 2.0f / 16.0f * err;
+				ringbuffer( 8 + DiffusionX + radius, ( DiffusionY + radius ) % 8 ) += 6.0f / 16.0f * err;
+				crc32 >>= 1;	// Zufallszahl aktualisieren
+			}
+
+			++x;
+		} // for x
+	} // for y
 	return seeds;
 }
 
