@@ -9,6 +9,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 
 	ui.comboBoxSeedType->addItem("Grid", dasp::SeedModes::Grid);
 	ui.comboBoxSeedType->addItem("DepthMipmap", dasp::SeedModes::DepthMipmap);
+	ui.comboBoxSeedType->addItem("DepthMipmapFS", dasp::SeedModes::DepthMipmapFS);
 	ui.comboBoxSeedType->addItem("DepthBlueNoise", dasp::SeedModes::DepthBlueNoise);
 	ui.comboBoxSeedType->addItem("DepthFloyd", dasp::SeedModes::DepthFloyd);
 	ui.comboBoxSeedType->addItem("DepthFloydExpo", dasp::SeedModes::DepthFloydExpo);

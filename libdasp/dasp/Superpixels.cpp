@@ -588,6 +588,8 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return FindSeedsGrid(points, opt);
 	case SeedModes::DepthMipmap:
 		return FindSeedsDepthMipmap(points, density, opt);
+	case SeedModes::DepthMipmapFS:
+		return FindSeedsDepthMipmapFS(points, density, opt);
 	case SeedModes::DepthBlueNoise:
 		return FindSeedsDepthBlue(points, density, opt);
 	case SeedModes::DepthFloyd:

@@ -27,6 +27,8 @@ namespace dasp
 
 	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt);
 
+	std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt);
+
 	std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt);
 
 	std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt);

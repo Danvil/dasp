@@ -19,6 +19,7 @@ namespace dasp
 		enum Type {
 			Grid,
 			DepthMipmap,
+			DepthMipmapFS,
 			DepthBlueNoise,
 			DepthFloyd,
 			DepthFloydExpo,
