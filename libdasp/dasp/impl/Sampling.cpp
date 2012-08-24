@@ -139,43 +139,6 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	assert(false && "FindSeedsRandom: Not implemented!");
-	throw 0;
-//	constexpr float cCameraFocal = 25.0f;
-//	// for each pixel compute number of expected clusters
-//	std::vector<float> cdf(points.size());
-//	for(unsigned int i=0; i<points.size(); i++) {
-//		uint16_t zi = *(depth->begin() + i);
-//		float z = 0.001f * float(zi);
-//		float v = z * z;
-//		cdf[i] = (i == 0) ? v : (v + cdf[i-1]);
-//	}
-//	float sum = cdf[cdf.size() - 1];
-//	boost::uniform_real<float> rnd(0.0f, sum);
-//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-//	// randomly pick clusters based on probability
-//	std::vector<Seed> seeds;
-//	seeds.reserve(opt.cluster_count);
-//	while(seeds.size() < opt.cluster_count) {
-//		Seed s;
-//		float rnd = die();
-//		auto it = std::lower_bound(cdf.begin(), cdf.end(), rnd);
-//		unsigned int index = it - cdf.begin() - 1;
-//		uint16_t zi = *(depth->begin() + index);
-//		if(zi == 0) {
-//			continue;
-//		}
-//		float z = 0.001f * float(zi);
-//		s.x = index % opt.width;
-//		s.y = index / opt.width;
-//		s.radius = cCameraFocal / z;
-//		seeds.push_back(s);
-//	}
-//	return seeds;
-}
-
 void FindSeedsDepthMipmap_Walk(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
