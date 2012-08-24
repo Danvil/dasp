@@ -61,6 +61,8 @@ public:
 		return last_depth_;
 	}
 
+	bool Grab();
+
 	void GrabAndNotify();
 
 	void Run();
@@ -72,8 +74,6 @@ public:
 private:
 	void Init();
 	
-	bool Grab();
-
 	void Notify();
 
 	bool has_depth_;
