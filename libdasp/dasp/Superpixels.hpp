@@ -9,7 +9,6 @@
 #define SUPERPIXELS_HPP_
 
 #include "Point.hpp"
-#include "Clustering.hpp"
 #include "Tools.hpp"
 #include "Seed.hpp"
 #include <Slimage/Slimage.hpp>

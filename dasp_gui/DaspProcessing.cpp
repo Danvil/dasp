@@ -9,6 +9,7 @@
 #include <dasp/Neighbourhood.hpp>
 #include <dasp/Segmentation.hpp>
 #include <dasp/Plots.hpp>
+#include <dasp/Metric.hpp>
 #include <dasp/impl/Sampling.hpp>
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>

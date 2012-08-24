@@ -8,6 +8,7 @@
 #include "Superpixels.hpp"
 #include "impl/RepairDepth.hpp"
 #include "impl/Sampling.hpp"
+#include "impl/Clustering.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
