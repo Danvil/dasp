@@ -22,6 +22,7 @@ namespace dasp
 			DepthMipmap,
 			DepthBlueNoise,
 			DepthFloyd,
+			DepthFloydExpo,
 			Delta
 		};
 	}

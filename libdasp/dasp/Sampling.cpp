@@ -280,6 +280,39 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const slimage::
 	return seeds;
 }
 
+// Variante von Floyd-Steinberg. Vorteil: Keine Schlangenlinien in dünn besetzten Bereichen.
+std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
+{
+	std::vector<Seed> seeds;
+	for(unsigned int y=0; y<density.height() - 9; y++)	// Ein Bildrand von 8 Pixeln wird nicht gefiltert
+	{
+		for(unsigned int x = 8; x < density.width() - 9; x++)
+		{
+			float v = density(x,y);
+			if(v >= 0.5f) {
+				v -= 1.0f;
+				seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
+			}
+
+			// Bei Dichte unter 7% den Fehler über Radius 2 diffundieren.
+			// Bei Dichte unter 4% den Fehler über Radius 4 diffundieren.
+			// Bei Dichte unter 1% den Fehler über Radius 8 diffundieren.
+			int radius = 1 << std::max( 0, std::min( 2, static_cast< int >( 33.33 * ( fabs( v ) - 0.01 ) ) ) );
+
+			// Dafür sorgen daß die Fehler aller Punkte innerhalb des Radius auf die
+			// gleiche Koordinate diffundieren. Sonst akkumuliert sich der Fehler nie.
+			int DiffusionX = radius * ( x / radius );
+			int DiffusionY = radius * ( y / radius );
+
+			density( DiffusionX + radius, DiffusionY          ) += 7.0f / 16.0f * v;
+			density( DiffusionX - radius, DiffusionY + radius ) += 3.0f / 16.0f * v;
+			density( DiffusionX         , DiffusionY + radius ) += 5.0f / 16.0f * v;
+			density( DiffusionX + radius, DiffusionY + radius ) += 1.0f / 16.0f * v;
+		}
+	}
+	return seeds;
+}
+
 void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
 {
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
@@ -412,6 +445,8 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return FindSeedsDepthBlue(points, density, opt);
 	case SeedModes::DepthFloyd:
 		return FindSeedsDepthFloyd(points, density, opt);
+	case SeedModes::DepthFloydExpo:
+		return FindSeedsDepthFloydExpo(points, density, opt);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
