@@ -1,8 +1,7 @@
 add_library(libdasp SHARED
-	dasp/tools/BlueNoise.cpp
-	dasp/tools/Mipmaps.cpp
-	dasp/tools/Recall.cpp
-	dasp/tools/RepairDepth.cpp
+	dasp/impl/BlueNoise.cpp
+	dasp/impl/Mipmaps.cpp
+	dasp/impl/RepairDepth.cpp
 	dasp/impl/Spectral.cpp
 	dasp/impl/SpectralEigenSolveDense.cpp
 	dasp/impl/SpectralEigenSolveSparse.cpp

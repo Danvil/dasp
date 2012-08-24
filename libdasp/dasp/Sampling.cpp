@@ -7,8 +7,8 @@
 
 //------------------------------------------------------------------------------
 #include "Superpixels.hpp"
-#include "tools/BlueNoise.hpp"
-#include "tools/Mipmaps.hpp"
+#include "impl/BlueNoise.hpp"
+#include "impl/Mipmaps.hpp"
 #include <boost/random.hpp>
 //------------------------------------------------------------------------------
 namespace dasp {

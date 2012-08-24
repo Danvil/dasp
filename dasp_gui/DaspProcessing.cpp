@@ -6,9 +6,6 @@
  */
 
 #include "DaspProcessing.h"
-#include <dasp/tools/Mipmaps.hpp>
-#include <dasp/tools/BlueNoise.hpp>
-#include <dasp/tools/AutoDepth.hpp>
 #include <dasp/Neighbourhood.hpp>
 #include <dasp/Segmentation.hpp>
 #include <dasp/Plots.hpp>

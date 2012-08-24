@@ -6,7 +6,7 @@
  */
 
 #include "Superpixels.hpp"
-#include "tools/RepairDepth.hpp"
+#include "impl/RepairDepth.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
