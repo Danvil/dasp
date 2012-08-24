@@ -11,6 +11,7 @@
 #include "Point.hpp"
 #include "Clustering.hpp"
 #include "Tools.hpp"
+#include "Seed.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Slimage/Parallel.h>
 #include <eigen3/Eigen/Dense>
@@ -21,28 +22,6 @@
 namespace dasp
 {
 	extern std::map<std::string,slimage::ImagePtr> sDebugImages;
-
-	struct Seed
-	{
-		int x, y;
-		float scala;
-
-		// if is_fixed is enabled the cluster 3d position is always set to fixed_world
-		bool is_fixed;
-		// only used if is_fixed equals true
-		Eigen::Vector3f fixed_world;
-		Eigen::Vector3f fixed_color;
-		Eigen::Vector3f fixed_normal;
-
-		static Seed Dynamic(int x, int y, float scala) {
-			return Seed{x, y, scala, false,
-				Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
-		}
-		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& world, const Eigen::Vector3f& color, const Eigen::Vector3f& normal) {
-			return Seed{x, y, scala, true,
-				world, color, normal};
-		}
-	};
 
 	struct ClusterGroupInfo
 	{
@@ -107,7 +86,7 @@ namespace dasp
 
 		std::vector<Seed> FindSeeds();
 
-		std::vector<Seed> FindSeeds(const ImagePoints& old_points);
+		std::vector<Seed> FindSeedsDelta(const ImagePoints& old_points);
 
 		slimage::Image1f ComputeEdges();
 
@@ -177,14 +156,6 @@ namespace dasp
 
 
 	};
-
-	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta, bool delete_small_scala_seeds);
-
-	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
-
-	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target);
-
-	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>& seeds, const slimage::Image1f& target);
 
 	Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt);
 

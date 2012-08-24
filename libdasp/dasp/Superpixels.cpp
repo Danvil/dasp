@@ -7,6 +7,7 @@
 
 #include "Superpixels.hpp"
 #include "impl/RepairDepth.hpp"
+#include "impl/Sampling.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
@@ -579,6 +580,37 @@ void Superpixels::ConquerMiniEnclaves()
 	}
 }
 
+std::vector<Seed> Superpixels::FindSeeds()
+{
+	switch(opt.seed_mode) {
+	case SeedModes::EquiDistant:
+		return FindSeedsGrid(points, opt);
+	case SeedModes::DepthShooting:
+		return FindSeedsDepthRandom(points, density, opt);
+	case SeedModes::DepthMipmap:
+		return FindSeedsDepthMipmap(points, density, opt);
+	case SeedModes::DepthBlueNoise:
+		return FindSeedsDepthBlue(points, density, opt);
+	case SeedModes::DepthFloyd:
+		return FindSeedsDepthFloyd(points, density, opt);
+	case SeedModes::DepthFloydExpo:
+		return FindSeedsDepthFloydExpo(points, density, opt);
+	default:
+		assert(false && "FindSeeds: Unkown mode!");
+	};
+}
+
+std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
+{
+	if(opt.seed_mode == SeedModes::Delta) {
+		seeds_previous = getClusterCentersAsSeeds();
+		return dasp::FindSeedsDelta(points, seeds_previous, old_points, density, opt);
+	}
+	else {
+		return FindSeeds();
+	}
+}
+
 std::vector<int> Superpixels::ComputePixelLabels() const
 {
 	std::vector<int> labels(points.size(), -1);
@@ -864,7 +896,7 @@ void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image
 
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(dasp_seeds)
-	clustering.seeds = clustering.FindSeeds(old_points);
+	clustering.seeds = clustering.FindSeedsDelta(old_points);
 //	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(dasp_seeds)
 

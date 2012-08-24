@@ -2,12 +2,12 @@ add_library(libdasp SHARED
 	dasp/impl/BlueNoise.cpp
 	dasp/impl/Mipmaps.cpp
 	dasp/impl/RepairDepth.cpp
+	dasp/impl/Sampling.cpp
 	dasp/impl/Spectral.cpp
 	dasp/impl/SpectralEigenSolveDense.cpp
 	dasp/impl/SpectralEigenSolveSparse.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
-	dasp/Sampling.cpp
 	dasp/Segmentation.cpp
 	dasp/Superpixels.cpp
 )
