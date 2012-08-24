@@ -17,8 +17,7 @@ namespace dasp
 	namespace SeedModes
 	{
 		enum Type {
-			EquiDistant,
-			DepthShooting,
+			Grid,
 			DepthMipmap,
 			DepthBlueNoise,
 			DepthFloyd,

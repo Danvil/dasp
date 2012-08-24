@@ -584,10 +584,8 @@ void Superpixels::ConquerMiniEnclaves()
 std::vector<Seed> Superpixels::FindSeeds()
 {
 	switch(opt.seed_mode) {
-	case SeedModes::EquiDistant:
+	case SeedModes::Grid:
 		return FindSeedsGrid(points, opt);
-	case SeedModes::DepthShooting:
-		return FindSeedsDepthRandom(points, density, opt);
 	case SeedModes::DepthMipmap:
 		return FindSeedsDepthMipmap(points, density, opt);
 	case SeedModes::DepthBlueNoise:

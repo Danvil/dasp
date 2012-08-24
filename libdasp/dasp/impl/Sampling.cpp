@@ -60,43 +60,6 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
-{
-	assert(false && "FindSeedsRandom: Not implemented!");
-	throw 0;
-//	constexpr float cCameraFocal = 25.0f;
-//	// for each pixel compute number of expected clusters
-//	std::vector<float> cdf(points.size());
-//	for(unsigned int i=0; i<points.size(); i++) {
-//		uint16_t zi = *(depth->begin() + i);
-//		float z = 0.001f * float(zi);
-//		float v = z * z;
-//		cdf[i] = (i == 0) ? v : (v + cdf[i-1]);
-//	}
-//	float sum = cdf[cdf.size() - 1];
-//	boost::uniform_real<float> rnd(0.0f, sum);
-//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-//	// randomly pick clusters based on probability
-//	std::vector<Seed> seeds;
-//	seeds.reserve(opt.cluster_count);
-//	while(seeds.size() < opt.cluster_count) {
-//		Seed s;
-//		float rnd = die();
-//		auto it = std::lower_bound(cdf.begin(), cdf.end(), rnd);
-//		unsigned int index = it - cdf.begin() - 1;
-//		uint16_t zi = *(depth->begin() + index);
-//		if(zi == 0) {
-//			continue;
-//		}
-//		float z = 0.001f * float(zi);
-//		s.x = index % opt.width;
-//		s.y = index / opt.width;
-//		s.radius = cCameraFocal / z;
-//		seeds.push_back(s);
-//	}
-//	return seeds;
-}
-
 void FindSeedsDepthMipmap_Walk(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
@@ -125,7 +88,6 @@ void FindSeedsDepthMipmap_Walk(
 			int sx0 = static_cast<int>((x << level) + half);
 			int sy0 = static_cast<int>((y << level) + half);
 			// add random offset to add noise
-
 			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
 					cGlobalRndRng, boost::uniform_int<>(-int(half), +int(half)));
 			unsigned int trials = 0;
@@ -135,9 +97,7 @@ void FindSeedsDepthMipmap_Walk(
 				if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
 					Seed s = Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius);
 //					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
-					//if(s.scala >= 2.0f) {
-						seeds.push_back(s);
-					//}
+					seeds.push_back(s);
 					break;
 				}
 				trials++;
@@ -223,15 +183,6 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>
 			[](const Eigen::Vector2f& s) { return s[1]; });
 }
 
-//slimage::Image1d ComputeDepthDensityDouble(const ImagePoints& points)
-//{
-//	slimage::Image1d num(points.width(), points.height());
-//	for(unsigned int i=0; i<points.size(); i++) {
-//		num[i] = double(points[i].estimatedCount());
-//	}
-//	return num;
-//}
-
 std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
 {
 	// compute mipmaps
@@ -253,8 +204,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const slimage::I
 		int x = std::round(pnts[i].x);
 		int y = std::round(pnts[i].y);
 		if(0 <= x && x < int(points.width()) && 0 <= y && y < int(points.height())) {
-			float scala = points(x, y).image_super_radius;
-			seeds.push_back(Seed::Dynamic(x, y, scala));
+			seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
 		}
 	}
 	return seeds;
@@ -351,13 +301,11 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 					float scala = points(sx, sy).image_super_radius;
 					Seed s = Seed::Dynamic(sx, sy, scala);
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
-					//if(s.scala >= 2.0f) {
-						seeds.push_back(s);
+					seeds.push_back(s);
 #ifdef CREATE_DEBUG_IMAGES
-						slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
-						debug(sx, sy) = slimage::Pixel3ub{{255,0,0}};
+					slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+					debug(sx, sy) = slimage::Pixel3ub{{255,0,0}};
 #endif
-					//}
 				}
 			}
 			else {
