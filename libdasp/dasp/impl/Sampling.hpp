@@ -17,6 +17,12 @@
 namespace dasp
 {
 
+	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
+
+	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target);
+
+	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>& seeds, const slimage::Image1f& target);
+
 	std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt);
 
 	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt);
@@ -30,12 +36,6 @@ namespace dasp
 	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const slimage::Image1f& density_delta, bool delete_small_scala_seeds);
 
 	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const slimage::Image1f& density_new, const Parameters& opt);
-
-	slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
-
-	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const slimage::Image1f& target);
-
-	slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>& seeds, const slimage::Image1f& target);
 
 }
 

@@ -16,96 +16,6 @@
 namespace dasp {
 //------------------------------------------------------------------------------
 
-boost::mt19937 cGlobalRndRng;
-
-void SetRandomNumberSeed(unsigned int x)
-{
-	cGlobalRndRng.seed(x);
-}
-
-std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
-{
-	unsigned int width = points.width();
-	unsigned int height = points.height();
-	const float d = std::sqrt(float(width*height) / float(opt.count));
-	const unsigned int Nx = (unsigned int)std::ceil(float(width) / d);
-	const unsigned int Ny = (unsigned int)std::ceil(float(height) / d);
-	const unsigned int Dx = (unsigned int)std::floor(float(width) / float(Nx));
-	const unsigned int Dy = (unsigned int)std::floor(float(height) / float(Ny));
-	const unsigned int Hx = Dx/2;
-	const unsigned int Hy = Dy/2;
-	const float S = float(std::max(Dx, Dy));
-
-//	// assume that everything has a distance of 1.5 meters
-//	const float cAssumedDistance = 1.5f;
-//	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
-//	unsigned int Dx = R;
-//	unsigned int Dy = R;
-//	unsigned int Hx = Dx/2;
-//	unsigned int Hy = Dy/2;
-//	unsigned int Nx = points.width() / Dx;
-//	unsigned int Ny = points.height() / Dy;
-
-	// space seeds evently
-	std::vector<Seed> seeds;
-	seeds.reserve(Nx*Ny);
-	for(unsigned int iy=0; iy<Ny; iy++) {
-		unsigned int y = Hy + Dy * iy;
-		for(unsigned int ix=0; ix<Nx; ix++) {
-			unsigned int x = Hx + Dx * ix;
-			seeds.push_back(Seed::Dynamic(x, y, S));
-		}
-	}
-
-	return seeds;
-}
-
-void FindSeedsDepthMipmap_Walk(
-		const ImagePoints& points,
-		std::vector<Seed>& seeds,
-		const std::vector<slimage::Image1f>& mipmaps,
-		int level, unsigned int x, unsigned int y)
-{
-	static boost::uniform_real<float> rnd(0.0f, 1.0f);
-	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
-
-	const slimage::Image1f& mm = mipmaps[level];
-
-	float v = 1.03f * mm(x, y); // TODO nice magic constant
-
-	if(v > 1.0f && level > 1) { // do not access mipmap 0!
-		// go down
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
-	}
-	else {
-		if(die() <= v)
-		{
-			unsigned int half = (1 << (level - 1));
-			// create seed in the middle
-			int sx0 = static_cast<int>((x << level) + half);
-			int sy0 = static_cast<int>((y << level) + half);
-			// add random offset to add noise
-			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
-					cGlobalRndRng, boost::uniform_int<>(-int(half), +int(half)));
-			unsigned int trials = 0;
-			while(trials < 100) {
-				int sx = sx0 + delta();
-				int sy = sy0 + delta();
-				if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
-					Seed s = Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius);
-//					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
-					seeds.push_back(s);
-					break;
-				}
-				trials++;
-			}
-		}
-	}
-}
-
 slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters& opt)
 {
 	slimage::Image1f density(points.width(), points.height());
@@ -181,6 +91,135 @@ slimage::Image1f ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>
 			[](const Eigen::Vector2f& s) { return static_cast<float>(s[1] + 0.5f); },
 			[](const Eigen::Vector2f& s) { return s[0]; },
 			[](const Eigen::Vector2f& s) { return s[1]; });
+}
+
+//------------------------------------------------------------------------------
+
+boost::mt19937 cGlobalRndRng;
+
+void SetRandomNumberSeed(unsigned int x)
+{
+	cGlobalRndRng.seed(x);
+}
+
+std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
+{
+	unsigned int width = points.width();
+	unsigned int height = points.height();
+	const float d = std::sqrt(float(width*height) / float(opt.count));
+	const unsigned int Nx = (unsigned int)std::ceil(float(width) / d);
+	const unsigned int Ny = (unsigned int)std::ceil(float(height) / d);
+	const unsigned int Dx = (unsigned int)std::floor(float(width) / float(Nx));
+	const unsigned int Dy = (unsigned int)std::floor(float(height) / float(Ny));
+	const unsigned int Hx = Dx/2;
+	const unsigned int Hy = Dy/2;
+	const float S = float(std::max(Dx, Dy));
+
+//	// assume that everything has a distance of 1.5 meters
+//	const float cAssumedDistance = 1.5f;
+//	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
+//	unsigned int Dx = R;
+//	unsigned int Dy = R;
+//	unsigned int Hx = Dx/2;
+//	unsigned int Hy = Dy/2;
+//	unsigned int Nx = points.width() / Dx;
+//	unsigned int Ny = points.height() / Dy;
+
+	// space seeds evently
+	std::vector<Seed> seeds;
+	seeds.reserve(Nx*Ny);
+	for(unsigned int iy=0; iy<Ny; iy++) {
+		unsigned int y = Hy + Dy * iy;
+		for(unsigned int ix=0; ix<Nx; ix++) {
+			unsigned int x = Hx + Dx * ix;
+			seeds.push_back(Seed::Dynamic(x, y, S));
+		}
+	}
+
+	return seeds;
+}
+
+std::vector<Seed> FindSeedsDepthRandom(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
+{
+	assert(false && "FindSeedsRandom: Not implemented!");
+	throw 0;
+//	constexpr float cCameraFocal = 25.0f;
+//	// for each pixel compute number of expected clusters
+//	std::vector<float> cdf(points.size());
+//	for(unsigned int i=0; i<points.size(); i++) {
+//		uint16_t zi = *(depth->begin() + i);
+//		float z = 0.001f * float(zi);
+//		float v = z * z;
+//		cdf[i] = (i == 0) ? v : (v + cdf[i-1]);
+//	}
+//	float sum = cdf[cdf.size() - 1];
+//	boost::uniform_real<float> rnd(0.0f, sum);
+//	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
+//	// randomly pick clusters based on probability
+//	std::vector<Seed> seeds;
+//	seeds.reserve(opt.cluster_count);
+//	while(seeds.size() < opt.cluster_count) {
+//		Seed s;
+//		float rnd = die();
+//		auto it = std::lower_bound(cdf.begin(), cdf.end(), rnd);
+//		unsigned int index = it - cdf.begin() - 1;
+//		uint16_t zi = *(depth->begin() + index);
+//		if(zi == 0) {
+//			continue;
+//		}
+//		float z = 0.001f * float(zi);
+//		s.x = index % opt.width;
+//		s.y = index / opt.width;
+//		s.radius = cCameraFocal / z;
+//		seeds.push_back(s);
+//	}
+//	return seeds;
+}
+
+void FindSeedsDepthMipmap_Walk(
+		const ImagePoints& points,
+		std::vector<Seed>& seeds,
+		const std::vector<slimage::Image1f>& mipmaps,
+		int level, unsigned int x, unsigned int y)
+{
+	static boost::uniform_real<float> rnd(0.0f, 1.0f);
+	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
+
+	const slimage::Image1f& mm = mipmaps[level];
+
+	float v = 1.03f * mm(x, y); // TODO nice magic constant
+
+	if(v > 1.0f && level > 1) { // do not access mipmap 0!
+		// go down
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
+		FindSeedsDepthMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
+	}
+	else {
+		if(die() <= v)
+		{
+			unsigned int half = (1 << (level - 1));
+			// create seed in the middle
+			int sx0 = static_cast<int>((x << level) + half);
+			int sy0 = static_cast<int>((y << level) + half);
+			// add random offset to add noise
+			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
+					cGlobalRndRng, boost::uniform_int<>(-int(half), +int(half)));
+			unsigned int trials = 0;
+			while(trials < 100) {
+				int sx = sx0 + delta();
+				int sy = sy0 + delta();
+				if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
+					Seed s = Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius);
+//					std::cout << s.x << " " << s.y << " " << s.radius << " " << points(s.x, s.y).scala << " " << points(s.x, s.y).depth << std::endl;
+					seeds.push_back(s);
+					break;
+				}
+				trials++;
+			}
+		}
+	}
 }
 
 std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const slimage::Image1f& density, const Parameters& opt)
