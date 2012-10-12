@@ -90,6 +90,7 @@ private:
 
 private:
 	xn::Context context_;
+	bool is_oni_;
 	xn::DepthGenerator depth_;
 	xn::ImageGenerator image_;
 	xn::DepthMetaData depthMD_;

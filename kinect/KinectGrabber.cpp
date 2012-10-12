@@ -54,6 +54,7 @@ void KinectGrabber::OpenConfig(const std::string& fn_config)
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		throw rc;
 	}
+	is_oni_ = false;
 	Init();
 }
 
@@ -69,6 +70,13 @@ void KinectGrabber::OpenFile(const std::string& fn_oni)
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		throw rc;
 	}
+	
+	// disable looping
+	xn::Player player;
+	rc = context_.FindExistingNode(XN_NODE_TYPE_PLAYER, player);
+	player.SetRepeat(false);
+
+	is_oni_ = true;
 	Init();
 }
 
