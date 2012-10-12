@@ -80,6 +80,19 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
+          <widget class="QLabel" name="labelFrameCounter">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Frame: ---</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QVBoxLayout" name="verticalLayoutBenchmark">
            <item>
             <widget class="QLabel" name="label">

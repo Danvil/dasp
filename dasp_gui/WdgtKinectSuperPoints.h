@@ -66,6 +66,9 @@ private:
 	bool interrupt_loaded_thread_;
 	bool reload;
 
+	unsigned int frame_counter_;
+	bool has_new_frame_;
+
 private:
     Ui::WdgtKinectSuperPointsClass ui;
 };

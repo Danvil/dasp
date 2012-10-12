@@ -11,6 +11,8 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.setupUi(this);
 
 	capture_next_ = false;
+	frame_counter_ = 0;
+	has_new_frame_ = false;
 
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
 #if defined DASP_HAS_OPENNI
@@ -61,7 +63,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 #endif
 
 	QObject::connect(&timer_, SIGNAL(timeout()), this, SLOT(OnUpdateImages()));
-	timer_.setInterval(20);
+	timer_.setInterval(1);
 	timer_.start();
 
 }
@@ -140,6 +142,7 @@ void WdgtKinectSuperPoints::OnLoadOne()
 			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
 			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
 			this->OnImages(cpy_depth, cpy_color);
+			frame_counter_ = 1;
 			while(!this->reload && !this->interrupt_loaded_thread_) {
 				usleep(1000);
 			}
@@ -168,6 +171,7 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
 	// processing thread polls kinect
+	frame_counter_ = 0;
 	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
@@ -183,6 +187,7 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
 	// processing thread polls kinect
+	frame_counter_ = 0;
 	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
 }
 
@@ -207,10 +212,16 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	// process image
 	dasp::SetRandomNumberSeed(0);
 	dasp_processing_->step(kinect_depth, kinect_color);
+	frame_counter_ ++;
+	has_new_frame_ = true;
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
+	if(!has_new_frame_) {
+		return;
+	}
+	ui.labelFrameCounter->setText(QString("Frame: %1").arg(frame_counter_));
 	std::map<std::string, bool> tabs_usage;
 	std::map<std::string, QWidget*> tabs_labels;
 	// prepare tabs
@@ -257,4 +268,5 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 			}
 		}
 	}
+	has_new_frame_ = false;
 }
