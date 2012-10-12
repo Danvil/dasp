@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
+    <width>363</width>
     <height>805</height>
    </rect>
   </property>
@@ -76,7 +76,7 @@
          <number>100</number>
         </property>
         <property name="value">
-         <number>5</number>
+         <number>3</number>
         </property>
        </widget>
       </item>
@@ -212,7 +212,7 @@
          <string>Repair Depth</string>
         </property>
         <property name="checked">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
       </item>
