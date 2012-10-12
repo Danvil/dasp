@@ -42,6 +42,13 @@ public Q_SLOTS:
 	void ChangePlotGraph(int state);
 	void ChangePlotDensity(int state);
 	void ChangePlotSegments(int state);
+	void ChangeClipEnable(int state);
+	void ChangeClipXMin(double val);
+	void ChangeClipYMin(double val);
+	void ChangeClipZMin(double val);
+	void ChangeClipXMax(double val);
+	void ChangeClipYMax(double val);
+	void ChangeClipZMax(double val);
 
 private:
 	boost::shared_ptr<DaspProcessing> dasp_processing_;

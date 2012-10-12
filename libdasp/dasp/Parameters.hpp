@@ -80,6 +80,11 @@ namespace dasp
 		bool is_smooth_depth;
 		bool is_improve_seeds;
 
+		bool enable_clipping;
+		float clip_x_min, clip_x_max;
+		float clip_y_min, clip_y_max;
+		float clip_z_min, clip_z_max;
+
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and
 		 * at given depth [kinect] on the image sensor

@@ -63,6 +63,14 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
 	QObject::connect(ui.doubleSpinBoxDaspSegmentThreshold, SIGNAL(valueChanged(double)), this, SLOT(ChangeDaspSegmentThreshold(double)));
 
+	QObject::connect(ui.checkBoxClipEnable, SIGNAL(stateChanged(int)), this, SLOT(ChangeClipEnable(int)));
+	QObject::connect(ui.doubleSpinBoxClipXMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipXMin(double)));
+	QObject::connect(ui.doubleSpinBoxClipYMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipYMin(double)));
+	QObject::connect(ui.doubleSpinBoxClipZMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipZMin(double)));
+	QObject::connect(ui.doubleSpinBoxClipXMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipXMax(double)));
+	QObject::connect(ui.doubleSpinBoxClipYMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipYMax(double)));
+	QObject::connect(ui.doubleSpinBoxClipZMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipZMax(double)));
+
 	QObject::connect(ui.checkBoxPlotPoints, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotPoints(int)));
 	QObject::connect(ui.comboBoxPlotPointsColor, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotPointsColor(int)));
 	QObject::connect(ui.checkBoxPlotClusters, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotClusters(int)));
@@ -89,6 +97,14 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	dasp_processing_->dasp_params->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_processing_->dasp_params->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
 	dasp_processing_->dasp_params->segment_threshold = ui.doubleSpinBoxDaspSegmentThreshold->value();
+
+	dasp_processing_->dasp_params->enable_clipping = ui.checkBoxClipEnable->isChecked();
+	dasp_processing_->dasp_params->clip_x_min = ui.doubleSpinBoxClipXMin->value();
+	dasp_processing_->dasp_params->clip_y_min = ui.doubleSpinBoxClipYMin->value();
+	dasp_processing_->dasp_params->clip_z_min = ui.doubleSpinBoxClipZMin->value();
+	dasp_processing_->dasp_params->clip_x_max = ui.doubleSpinBoxClipXMax->value();
+	dasp_processing_->dasp_params->clip_y_max = ui.doubleSpinBoxClipYMax->value();
+	dasp_processing_->dasp_params->clip_z_max = ui.doubleSpinBoxClipZMax->value();
 
 	dasp_processing_->show_points_ = ui.checkBoxPlotPoints->isChecked();
 	dasp_processing_->point_color_mode_ = (dasp::plots::ColorMode)(ui.comboBoxPlotPointsColor->itemData(ui.comboBoxPlotPointsColor->currentIndex()).toInt());
@@ -257,3 +273,46 @@ void WdgtSuperpixelParameters::ChangePlotSegments(int state)
 	dasp_processing_->plot_segments_ = state;
 	*reload = true;
 }
+
+void WdgtSuperpixelParameters::ChangeClipEnable(int state)
+{
+	dasp_processing_->dasp_params->enable_clipping = state;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipXMin(double val)
+{
+	dasp_processing_->dasp_params->clip_x_min = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipYMin(double val)
+{
+	dasp_processing_->dasp_params->clip_y_min = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipZMin(double val)
+{
+	dasp_processing_->dasp_params->clip_z_min = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipXMax(double val)
+{
+	dasp_processing_->dasp_params->clip_x_max = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipYMax(double val)
+{
+	dasp_processing_->dasp_params->clip_y_max = val;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangeClipZMax(double val)
+{
+	dasp_processing_->dasp_params->clip_z_max = val;
+	*reload = true;
+}
+

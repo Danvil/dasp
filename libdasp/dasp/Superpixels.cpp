@@ -54,6 +54,10 @@ Parameters::Parameters()
 	is_repair_depth = true;
 	is_smooth_depth = false;
 	is_improve_seeds = false;
+	enable_clipping = false;
+	clip_x_min = -3.0f; clip_x_max = +3.0f;
+	clip_y_min = -3.0f; clip_y_max = -3.0f;
+	clip_z_min = 0.0f; clip_z_max = 3.0f;
 }
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
@@ -246,6 +250,11 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 	slimage::It1ui16 p_depth = depth.begin();
 	//const float* p_normals = normals.isNull() ? 0 : normals.begin();
 
+	bool is_clipping = opt.enable_clipping
+		&& (opt.clip_x_min < opt.clip_x_max)
+		&& (opt.clip_y_min < opt.clip_y_max)
+		&& (opt.clip_z_min < opt.clip_z_max);
+
 	for(unsigned int y=0; y<height; y++) {
 		for(unsigned int x=0; x<width; x++, ++p_col, ++p_depth) {
 			Point& p = points(x, y);
@@ -270,6 +279,22 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
 				p.world = opt.camera.unprojectUsingScala(x, y, scala);
+
+				if(is_clipping) {
+					if(    p.world.x() < opt.clip_x_min || opt.clip_x_max < p.world.x()
+						|| p.world.y() < opt.clip_y_min || opt.clip_y_max < p.world.y()
+						|| p.world.z() < opt.clip_z_min || opt.clip_z_max < p.world.z()
+					) {
+						// point is clipped
+						p.depth_i16 = 0;
+						p.world = Eigen::Vector3f::Zero();
+						p.image_super_radius = 0.0f;
+						p.gradient = Eigen::Vector2f::Zero();
+						p.circularity = 1.0f;
+						continue;
+					}
+				}
+
 				// FIXME in count mode the gradient is computed using a default radius of 0.02
 				// FIXME regardless of the radius chosen later
 				p.gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
