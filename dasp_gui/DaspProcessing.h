@@ -64,8 +64,10 @@ private:
 
 	std::vector<dasp::Seed> seeds;
 
+public:
 	dasp::Superpixels clustering_;
 
+private:
 	dasp:: plots::ClusterSelection selection_;
 
 	std::map<std::string, slimage::ImagePtr> images_;

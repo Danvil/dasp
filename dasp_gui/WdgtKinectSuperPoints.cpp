@@ -4,15 +4,19 @@
 #include <boost/bind.hpp>
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
+#include <boost/format.hpp>
 
 WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
     : QMainWindow(parent)
 {
 	ui.setupUi(this);
 
+	mode_ = IdleMode;
 	capture_next_ = false;
 	frame_counter_ = 0;
 	has_new_frame_ = false;
+	save_dasp_enabled_ = false;
+	save_dasp_fn_ = "/tmp/dasp";
 
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
 #if defined DASP_HAS_OPENNI
@@ -25,6 +29,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.pushButtonLive->setEnabled(false);
 #endif
 	QObject::connect(ui.pushButtonSaveDebug, SIGNAL(clicked()), this, SLOT(OnSaveDebugImages()));
+	QObject::connect(ui.pushButtonSaveDasp, SIGNAL(clicked()), this, SLOT(OnSaveDasp()));
 
 	dasp_processing_.reset(new DaspProcessing());
 
@@ -135,6 +140,8 @@ void WdgtKinectSuperPoints::OnLoadOne()
 		return;
 	}
 
+	mode_ = SingleFileMode;
+
 	// processing thread repeats loaded image (only updated if requested)
 	processing_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
 		this->interrupt_loaded_thread_ = false;
@@ -161,15 +168,22 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	if(fn.isEmpty()) {
 		return;
 	}
+	LoadOni(fn.toStdString());
+}
 
+void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
+{
 	StopProcessingThread();
 
 	// open Kinect OpenNI ONI file
-	std::cout << "Opening oni file: " << fn.toStdString() << std::endl;
+	std::cout << "Opening oni file: " << fn << std::endl;
 	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->OpenFile(fn.toStdString());
+	kinect_grabber_->OpenFile(fn);
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
+	mode_ = ReplayOniMode;
+	remembered_capture_fn_ = fn;
+	
 	// processing thread polls kinect
 	frame_counter_ = 0;
 	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
@@ -186,6 +200,8 @@ void WdgtKinectSuperPoints::OnLive()
 	kinect_grabber_->OpenConfig(config.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
+	mode_ = LiveMode;
+
 	// processing thread polls kinect
 	frame_counter_ = 0;
 	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
@@ -198,6 +214,28 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 	// save all generated dasp images
 	for(auto p : dasp_processing_->getImages()) {
 		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
+	}
+}
+
+void WdgtKinectSuperPoints::OnSaveDasp()
+{
+	if(ui.pushButtonSaveDasp->isChecked()) {
+		// get filename
+		QString fn = QFileDialog::getSaveFileName(this,
+				"Choose filename base for saving images",
+				QString::fromStdString(save_dasp_fn_));
+		save_dasp_fn_ = fn.toStdString();
+		save_dasp_enabled_ = true;
+		this->reload = true; // trigger OnImages if in single file mode
+		if(mode_ == ReplayOniMode) {
+			// reload oni file because we want to record from the beginning
+			// TODO make this optional
+			// TODO use seeking
+			LoadOni(remembered_capture_fn_);
+		}
+	}
+	else {
+		save_dasp_enabled_ = false;
 	}
 }
 
@@ -214,6 +252,11 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	dasp_processing_->step(kinect_depth, kinect_color);
 	frame_counter_ ++;
 	has_new_frame_ = true;
+	// save
+	if(save_dasp_enabled_) {
+		std::string fn = (boost::format(save_dasp_fn_+"%1$05d.tsv") % frame_counter_).str();
+		dasp_processing_->clustering_.SaveToFile(fn, false);
+	}
 }
 
 void WdgtKinectSuperPoints::OnUpdateImages()

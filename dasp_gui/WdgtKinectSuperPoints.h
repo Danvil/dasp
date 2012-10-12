@@ -39,6 +39,10 @@ public Q_SLOTS:
 	void OnLive();
 #endif
 	void OnSaveDebugImages();
+	void OnSaveDasp();
+
+private:
+	void LoadOni(const std::string& fn);
 
 private:
 #if defined DASP_HAS_CANDY
@@ -61,6 +65,13 @@ private:
 
 	boost::thread processing_thread_;
 
+	enum CaptureMode {
+		IdleMode, SingleFileMode, ReplayOniMode, LiveMode
+	};
+	CaptureMode mode_;
+
+	std::string remembered_capture_fn_;
+
 	bool capture_next_;
 	std::string capture_filename_;
 	bool interrupt_loaded_thread_;
@@ -68,6 +79,8 @@ private:
 
 	unsigned int frame_counter_;
 	bool has_new_frame_;
+	bool save_dasp_enabled_;
+	std::string save_dasp_fn_;
 
 private:
     Ui::WdgtKinectSuperPointsClass ui;

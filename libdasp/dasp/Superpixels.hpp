@@ -153,6 +153,12 @@ namespace dasp
 
 		Eigen::Vector3f ColorFromRGB(const Eigen::Vector3f& c) const;
 
+		/** Saves superpixels to a file
+		 * Writes rgb (color), xyz (position) and uvw (normal) in that order for each superpixel.
+		 * Binary mode: writes raw data (9 x bytes forming a float)
+		 * Text mode: writes floats as strings with 3 digits, one superpixel per line
+		 */
+		void SaveToFile(const std::string& fn, bool binary=true);
 
 	};
 
