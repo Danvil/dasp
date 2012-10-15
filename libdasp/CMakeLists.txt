@@ -10,6 +10,7 @@ add_library(libdasp SHARED
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp
 	dasp/Superpixels.cpp
+	dasp/IO.cpp
 )
 
 set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
