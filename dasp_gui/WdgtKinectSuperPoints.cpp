@@ -1,4 +1,5 @@
 #include "WdgtKinectSuperPoints.h"
+#include <dasp/IO.hpp>
 #include <Slimage/IO.hpp>
 #include <Slimage/Parallel.h>
 #include <boost/bind.hpp>
@@ -254,8 +255,17 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	has_new_frame_ = true;
 	// save
 	if(save_dasp_enabled_) {
-		std::string fn = (boost::format(save_dasp_fn_+"%1$05d.tsv") % frame_counter_).str();
-		dasp_processing_->clustering_.SaveToFile(fn, false);
+		std::string fn1 = (boost::format(save_dasp_fn_+"%1$05d.tsv") % frame_counter_).str();
+		dasp_processing_->clustering_.SaveToFile(fn1, false);
+		if(boost::num_vertices(dasp_processing_->Gnb) > 0) {
+			std::string fn2 = (boost::format(save_dasp_fn_+"%1$05d_graph.txt") % frame_counter_).str();
+			dasp::SaveGraph(dasp_processing_->Gnb, fn2);
+		}
+		else {
+			if(frame_counter_ == 1) {
+				std::cerr << "Graph not created -> not saving graph." << std::endl;
+			}
+		}
 	}
 }
 

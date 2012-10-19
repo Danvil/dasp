@@ -110,13 +110,19 @@ void DaspProcessing::performSegmentationStep()
 
 	DANVIL_BENCHMARK_STOP(mog)
 
+	DANVIL_BENCHMARK_START(graph)
+	if(show_graph_ || plot_segments_) {
+		// create neighbourhood graph
+		Gnb = CreateNeighborhoodGraph(clustering_);
+	}
+	DANVIL_BENCHMARK_STOP(graph)
+
 	DANVIL_BENCHMARK_START(segmentation)
-	ClusterLabeling dasp_segment_labeling;
 	EdgeWeightGraph dasp_segment_graph;
+	ClusterLabeling dasp_segment_labeling;
 	if(plot_segments_) {
 		// create segmentation graph
 		//segments = MinCutSegmentation(clustering_);
-		BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_, NeighborGraphSettings::SpatialCut());
 		EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
 				ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
 		dasp_segment_graph = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
@@ -167,8 +173,6 @@ void DaspProcessing::performSegmentationStep()
 			}
 			else {
 				if(show_graph_) {
-					// create neighbourhood graph
-					BorderPixelGraph Gnb = CreateNeighborhoodGraph(clustering_);
 					// plot neighbourhood graph
 					plots::PlotGraphLines(vis_img, clustering_, Gnb);
 //					plots::PlotGraphLines(vis_img, clustering_, Gnb, [&Gnb](BorderPixelGraph::edge_descriptor eid) {

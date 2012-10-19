@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------//
 #include <dasp/Superpixels.hpp>
 #include <dasp/Plots.hpp>
+#include <dasp/Graph.hpp>
 #include <Slimage/Slimage.hpp>
 #include <boost/thread.hpp>
 #include <vector>
@@ -66,6 +67,8 @@ private:
 
 public:
 	dasp::Superpixels clustering_;
+
+	dasp::BorderPixelGraph Gnb;
 
 private:
 	dasp:: plots::ClusterSelection selection_;
