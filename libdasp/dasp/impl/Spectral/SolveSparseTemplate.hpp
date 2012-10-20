@@ -1,28 +1,22 @@
 /*
- * SpectralEigenSolveSparse.cpp
+ * SolveSparseTemplate.hpp
  *
- *  Created on: May 29, 2012
+ *  Created on: Okt 20, 2012
  *      Author: david
  */
 
-#include "Spectral.hpp"
+#ifndef DASP_IMPL_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
+#define DASP_IMPL_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
+
+#include "Types.hpp"
 #include <arpack++/arlssym.h>
 #include <cmath>
 #include <iostream>
 
-void MemoryOverflow() {
-	std::cerr << "ArpackError: MEMORY_OVERFLOW" << std::endl;
-	throw ArpackError(ArpackError::MEMORY_OVERFLOW);
-}
-
-void ArpackError::Set(ArpackError::ErrorCode code, char const* msg) {
-//	ArpackError::code = code;
-	std::cerr << "ArpackError: code=" << code << ", msg=" << std::string(msg) << std::endl;
-}
-
 namespace dasp { namespace detail {
 
-PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsigned int num_ev)
+template<typename Graph>
+PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev)
 {
 	if(cVerbose)
 		std::cout << "Sparse Solver: started" << std::endl;
@@ -249,3 +243,5 @@ PartialEigenSolution SpectralEigenSolveSparse(const SpectralGraph& graph, unsign
 }
 
 }}
+
+#endif

@@ -4,8 +4,8 @@ add_library(libdasp SHARED
 	dasp/impl/RepairDepth.cpp
 	dasp/impl/Sampling.cpp
 	dasp/impl/Spectral.cpp
-	dasp/impl/SpectralEigenSolveDense.cpp
-	dasp/impl/SpectralEigenSolveSparse.cpp
+	dasp/impl/Spectral/SolveSparseTemplate.cpp
+	dasp/impl/Spectral/SolveTemplate.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp

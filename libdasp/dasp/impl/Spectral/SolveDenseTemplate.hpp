@@ -1,18 +1,20 @@
 /*
- * SpectralEigenSolveDense.cpp
+ * SolveDenseTemplate.hpp
  *
- *  Created on: May 29, 2012
+ *  Created on: Okt 20, 2012
  *      Author: david
  */
 
-#define SEGS_VERBOSE
+#ifndef DASP_IMPL_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
+#define DASP_IMPL_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
 
-#include "Spectral.hpp"
+#include "Types.hpp"
 #include <iostream>
 
 namespace dasp { namespace detail {
 
-PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigned int num_ev)
+template<typename Graph>
+PartialEigenSolution SolveDenseTemplate(const Graph& graph, unsigned int num_ev)
 {
 	unsigned int dim = boost::num_vertices(graph);
 	if(cVerbose) {
@@ -84,3 +86,5 @@ PartialEigenSolution SpectralEigenSolveDense(const SpectralGraph& graph, unsigne
 }
 
 }}
+
+#endif
