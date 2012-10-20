@@ -256,7 +256,7 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	// save
 	if(save_dasp_enabled_) {
 		std::string fn1 = (boost::format(save_dasp_fn_+"%1$05d.tsv") % frame_counter_).str();
-		dasp_processing_->clustering_.SaveToFile(fn1, false);
+		SaveSuperpixels(dasp_processing_->clustering_, fn1, false);
 		if(boost::num_vertices(dasp_processing_->Gnb) > 0) {
 			std::string fn2 = (boost::format(save_dasp_fn_+"%1$05d_graph.txt") % frame_counter_).str();
 			dasp::SaveGraph(dasp_processing_->Gnb, fn2);
