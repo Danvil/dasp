@@ -19,6 +19,7 @@ namespace dasp
 			const Point& p = c.center;
 			Eigen::Vector3f n = p.computeNormal();
 			std::vector<float> v {
+				p.pos.x(), p.pos.y(),
 				p.world.x(), p.world.y(), p.world.z(),
 				p.color.x(), p.color.y(), p.color.z(),
 				n.x(), n.y(), n.z()
@@ -136,7 +137,7 @@ namespace dasp
 	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph)
 	{
 		const std::string separator = "\t";
-		constexpr unsigned int num_values_per_vertex = 9;
+		constexpr unsigned int num_values_per_vertex = 11;
 		constexpr unsigned int num_values_per_edge_min = 2;
 		constexpr unsigned int num_values_per_edge_max = 3;
 
@@ -168,9 +169,10 @@ namespace dasp
 				// add vertex to graph
 				auto vid = boost::add_vertex(g);
 				DaspPoint& p = g[vid];
-				p.position	= Eigen::Vector3f(values[0], values[1], values[2]);
-				p.color		= Eigen::Vector3f(values[3], values[4], values[5]);
-				p.normal	= Eigen::Vector3f(values[6], values[7], values[8]);
+				p.px = Eigen::Vector2f(values[0], values[1]);
+				p.position	= Eigen::Vector3f(values[2], values[3], values[4]);
+				p.color		= Eigen::Vector3f(values[5], values[6], values[7]);
+				p.normal	= Eigen::Vector3f(values[8], values[9], values[10]);
 			}
 		}
 

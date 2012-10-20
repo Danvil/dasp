@@ -29,6 +29,7 @@ namespace dasp
 
 	struct DaspPoint
 	{
+		Eigen::Vector2f px;
 		Eigen::Vector3f position;
 		Eigen::Vector3f color;
 		Eigen::Vector3f normal;

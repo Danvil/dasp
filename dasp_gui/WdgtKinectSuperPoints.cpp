@@ -266,6 +266,10 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 				std::cerr << "Graph not created -> not saving graph." << std::endl;
 			}
 		}
+		{	// save rgb in png
+			std::string fn_rgb = (boost::format(save_dasp_fn_+"%1$05d.png") % frame_counter_).str();
+			slimage::Save(kinect_color, fn_rgb);
+		}
 	}
 }
 
