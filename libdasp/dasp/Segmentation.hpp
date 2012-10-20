@@ -82,9 +82,6 @@ slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLab
 template<typename SuperpixelGraph, typename WeightMap>
 EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int num_eigenvectors=24);
 
-/** Performs min-cut graph segmentation */
-EdgeWeightGraph MinCutSegmentation(const Superpixels& clusters);
-
 }
 
 #include "SegmentationImpl.hpp"

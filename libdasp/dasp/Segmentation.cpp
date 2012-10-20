@@ -70,17 +70,4 @@ slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLab
 	return vis_img;
 }
 
-EdgeWeightGraph MinCutSegmentation(const Superpixels& clusters)
-{
-	// FIXME
-	throw 0;
-//	graph::Graph Gn = clusters.CreateNeighborhoodGraph();
-//	Segmentation seg;
-//	// graph segmentation
-//	seg.segmentation_graph = graph::MinimalSpanningCutting(Gn, clusters.opt.segment_threshold, &seg.cluster_labels);
-//	// remap labels to get a continuous interval of labels
-//	seg.relabel();
-//	return seg;
-}
-
 }
