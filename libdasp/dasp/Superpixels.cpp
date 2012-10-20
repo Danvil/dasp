@@ -883,38 +883,6 @@ Eigen::Vector3f Superpixels::ColorFromRGB(const Eigen::Vector3f& source) const
 	return target;
 }
 
-void Superpixels::SaveToFile(const std::string& fn, bool binary)
-{
-	std::ofstream ofs;
-	if(binary) {
-		ofs.open(fn, std::fstream::out | std::fstream::binary);
-	}
-	else {
-		ofs.open(fn, std::fstream::out);
-	}
-	for(const Cluster& c : cluster) {
-		const Point& p = c.center;
-		Eigen::Vector3f n = p.computeNormal();
-		float data[9] = {
-			p.world.x(), p.world.y(), p.world.z(),
-			p.color.x(), p.color.y(), p.color.z(),
-			n.x(), n.y(), n.z()
-		};
-		if(binary) {
-			ofs.write(reinterpret_cast<const char*>(static_cast<float*>(data)), 9*4);
-		}
-		else {
-			for(unsigned int i=0; i<9; i++) {
-				ofs << data[i];
-				if(i == 8)
-					ofs << "\n";
-				else
-					ofs << "\t";
-			}
-		}
-	}
-}
-
 Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
 {
 	Superpixels clustering;

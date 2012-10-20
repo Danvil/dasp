@@ -1,8 +1,13 @@
 #include "IO.hpp"
 #include "Superpixels.hpp"
-#include <fstream>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <stdexcept>
 
 namespace dasp
 {
@@ -44,8 +49,7 @@ namespace dasp
 			ofs.open(filename, std::fstream::out);
 		}
 		if(!ofs.is_open()) {
-			// FIXME throw proper exception
-			throw "Could not open file";
+			throw std::runtime_error("Could not open file '" + filename + "'!");
 		}
 		if(data.size() == 0) {
 			return;
@@ -82,23 +86,28 @@ namespace dasp
 			ifs.open(filename, std::fstream::in);
 		}
 		if(!ifs.is_open()) {
-			// FIXME throw exception
-			return {};
+			throw std::runtime_error("Could not open file '" + filename + "'!");
 		}
-		boost::escaped_list_separator<char> separator('\\','\t','\"');
-		typedef boost::tokenizer<decltype(separator)> Tokenizer;
 		std::vector<std::vector<float>> data;
-		std::string line;
-		std::vector<float> v;
-		while(std::getline(ifs,line))
-		{
-			v.clear();
-			Tokenizer tok(line, separator);
-			for(Tokenizer::iterator beg=tok.begin(); beg!=tok.end(); ++beg) {
-				float x = boost::lexical_cast<float>(*beg);
-				v.push_back(x);
+		if(binary) {
+			// FIXME implement
+			throw std::logic_error("Not implemented!");
+		}
+		else {
+			boost::escaped_list_separator<char> separator('\\','\t','\"');
+			typedef boost::tokenizer<decltype(separator)> Tokenizer;
+			std::string line;
+			std::vector<float> v;
+			while(std::getline(ifs,line))
+			{
+				v.clear();
+				Tokenizer tok(line, separator);
+				for(Tokenizer::iterator beg=tok.begin(); beg!=tok.end(); ++beg) {
+					float x = boost::lexical_cast<float>(*beg);
+					v.push_back(x);
+				}
+				data.push_back(v);
 			}
-			data.push_back(v);
 		}
 		return data;
 	}
@@ -122,6 +131,77 @@ namespace dasp
 			ofs << static_cast<unsigned int>(boost::source(eid, graph)) << "\t"
 				<< static_cast<unsigned int>(boost::target(eid, graph)) << "\n";
 		}
+	}
+
+	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph)
+	{
+		const std::string separator = "\t";
+		constexpr unsigned int num_values_per_vertex = 9;
+		constexpr unsigned int num_values_per_edge_min = 2;
+		constexpr unsigned int num_values_per_edge_max = 3;
+
+		DaspGraph g;
+
+		// load superpixel vertices
+		{
+			std::ifstream ifs(fn_dasp);
+			if(!ifs.is_open()) {
+				throw std::runtime_error("Could not open file '" + fn_dasp + "'!");
+			}
+			std::string line;
+			std::vector<std::string> tokens;
+			std::vector<float> values;
+			while(std::getline(ifs,line)) {
+				// split line into tokens
+				tokens.clear();
+				boost::split(tokens, line, boost::algorithm::is_any_of(separator));
+				if(tokens.size() == 0) {
+					continue;
+				}
+				if(tokens.size() != num_values_per_vertex) {
+					throw std::runtime_error("Invalid dasp vertex line!");
+				}
+				// convert to float
+				values.resize(tokens.size());
+				std::transform(tokens.begin(), tokens.end(), values.begin(),
+					[](const std::string& str) { return boost::lexical_cast<float>(str); });
+				// add vertex to graph
+				auto vid = boost::add_vertex(g);
+				DaspPoint& p = g[vid];
+				p.position	= Eigen::Vector3f(values[0], values[1], values[2]);
+				p.color		= Eigen::Vector3f(values[3], values[4], values[5]);
+				p.normal	= Eigen::Vector3f(values[6], values[7], values[8]);
+			}
+		}
+
+		// load superpixel edges
+		{
+			std::ifstream ifs(fn_graph);
+			if(!ifs.is_open()) {
+				throw std::runtime_error("Could not open file '" + fn_graph + "'!");
+			}
+			std::string line;
+			std::vector<std::string> tokens;
+			unsigned int e_source, e_target;
+			while(std::getline(ifs,line)) {
+				// split line into tokens
+				tokens.clear();
+				boost::split(tokens, line, boost::algorithm::is_any_of(separator));
+				if(tokens.size() == 0) {
+					continue;
+				}
+				if(tokens.size() < num_values_per_edge_min || num_values_per_edge_max < tokens.size()) {
+					throw std::runtime_error("Invalid dasp edge line!");
+				}
+				// convert to indices
+				e_source = boost::lexical_cast<unsigned int>(tokens[0]);
+				e_target = boost::lexical_cast<unsigned int>(tokens[1]);
+				// add edge to graph
+				boost::add_edge(e_source, e_target, g);
+			}
+		}		
+
+		return g;
 	}
 
 }
