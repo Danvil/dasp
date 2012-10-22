@@ -19,6 +19,10 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	save_dasp_enabled_ = false;
 	save_dasp_fn_ = "/tmp/dasp";
 
+	QObject::connect(ui.horizontalSliderFrame, SIGNAL(valueChanged(int)), this, SLOT(OnChangeFrame(int)));
+	ui.horizontalSliderFrame->setEnabled(false);
+	ui.horizontalSliderFrame->setMinimum(0);
+	ui.horizontalSliderFrame->setMaximum(0);
 	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
 #if defined DASP_HAS_OPENNI
 	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
@@ -81,6 +85,8 @@ WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 
 void WdgtKinectSuperPoints::StopProcessingThread()
 {
+	ui.horizontalSliderFrame->setEnabled(false);
+	ui.horizontalSliderFrame->setMaximum(0);
 	// stops the processing thread and the kinect if it is running
 #if defined DASP_HAS_OPENNI
 	if(kinect_grabber_) {
@@ -92,6 +98,13 @@ void WdgtKinectSuperPoints::StopProcessingThread()
 #if defined DASP_HAS_OPENNI
 	kinect_grabber_.reset();
 #endif
+}
+
+void WdgtKinectSuperPoints::OnChangeFrame(int value)
+{
+	// if(mode_ == ReplayOniMode) {
+	// 	this->reload = true;
+	// }
 }
 
 #if defined DASP_HAS_OPENNI
@@ -185,9 +198,34 @@ void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
 	mode_ = ReplayOniMode;
 	remembered_capture_fn_ = fn;
 	
+	ui.horizontalSliderFrame->setEnabled(true);
+	ui.horizontalSliderFrame->setMaximum(kinect_grabber_->NumFrames());
+
 	// processing thread polls kinect
 	frame_counter_ = 0;
-	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+	processing_thread_ = boost::thread(
+		[this]() {
+			this->interrupt_loaded_thread_ = false;
+			while(!this->interrupt_loaded_thread_) {
+				unsigned int requested_frame = frame_counter_ + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
+				while(!this->reload && requested_frame == frame_counter_ && !this->interrupt_loaded_thread_) {
+					usleep(1000);
+					requested_frame = ui.horizontalSliderFrame->value() + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
+				}
+				this->reload = false;
+				// seek to requested frame (playing will start from there)
+				kinect_grabber_->SeekToFrame(requested_frame);
+				frame_counter_ = kinect_grabber_->TellFrame();
+				// grab frame from oni
+				bool ok = this->kinect_grabber_->Grab();
+				if(!ok) {
+					break;
+				}
+				// update images with new data
+				this->OnImages(this->kinect_grabber_->GetLastDepth(), this->kinect_grabber_->GetLastColor());
+			}
+		});
+
 }
 
 void WdgtKinectSuperPoints::OnLive()
@@ -251,7 +289,9 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 	// process image
 	dasp::SetRandomNumberSeed(0);
 	dasp_processing_->step(kinect_depth, kinect_color);
-	frame_counter_ ++;
+	if(mode_ == LiveMode) {
+		frame_counter_ ++;
+	}
 	has_new_frame_ = true;
 	// save
 	if(save_dasp_enabled_) {
@@ -278,7 +318,11 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 	if(!has_new_frame_) {
 		return;
 	}
-	ui.labelFrameCounter->setText(QString("Frame: %1").arg(frame_counter_));
+
+	if(mode_ == ReplayOniMode) {
+		ui.horizontalSliderFrame->setValue(frame_counter_);
+	}
+	ui.labelFrameCounter->setText(QString("Frame: %1 / %2").arg(frame_counter_).arg(ui.horizontalSliderFrame->maximum()));
 	std::map<std::string, bool> tabs_usage;
 	std::map<std::string, QWidget*> tabs_labels;
 	// prepare tabs

@@ -61,9 +61,15 @@ public:
 		return last_depth_;
 	}
 
+	int NumFrames() const;
+
+	void SeekToFrame(int frame);
+
+	int TellFrame();
+
 	bool Grab();
 
-	void GrabAndNotify();
+	bool GrabAndNotify();
 
 	void Run();
 
@@ -91,6 +97,7 @@ private:
 private:
 	xn::Context context_;
 	bool is_oni_;
+	xn::Player player_;
 	xn::DepthGenerator depth_;
 	xn::ImageGenerator image_;
 	xn::DepthMetaData depthMD_;

@@ -31,6 +31,7 @@ private:
 	void StopProcessingThread();
 
 public Q_SLOTS:
+	void OnChangeFrame(int);
 	void OnUpdateImages();
 	void OnLoadOne();
 #if defined DASP_HAS_OPENNI

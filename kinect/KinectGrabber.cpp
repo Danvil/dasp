@@ -72,9 +72,8 @@ void KinectGrabber::OpenFile(const std::string& fn_oni)
 	}
 	
 	// disable looping
-	xn::Player player;
-	rc = context_.FindExistingNode(XN_NODE_TYPE_PLAYER, player);
-	player.SetRepeat(false);
+	rc = context_.FindExistingNode(XN_NODE_TYPE_PLAYER, player_);
+	player_.SetRepeat(false);
 
 	is_oni_ = true;
 	Init();
@@ -113,12 +112,84 @@ void KinectGrabber::Init()
 	can_grab_ = true;
 }
 
-void KinectGrabber::GrabAndNotify()
+int KinectGrabber::NumFrames() const
+{
+	if(is_oni_) {
+		XnStatus rc;
+		XnUInt32 num1;
+		rc = player_.GetNumFrames(depth_.GetName(), num1);
+		if(rc != XN_STATUS_OK) {
+			cerr << "Could not get number of frames for depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		}
+		// XnUInt32 num2;
+		// rc = player_.GetNumFrames(image_.GetName(), num2);
+		// if(rc != XN_STATUS_OK) {
+		// 	cerr << "Could not get number of frames for image node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		// }
+		// if(num1 != num2) {
+		// 	cerr << "Number of frames for depth node (" << num1 << ") and image node (" << num2 << ") are not identical!" << endl;
+		// }
+		return static_cast<int>(num1);
+	}
+	else {
+		return -1;
+	}
+}
+
+void KinectGrabber::SeekToFrame(int frame)
+{
+	if(is_oni_) {
+		XnStatus rc;
+		// the following line is a hack because calling seektoframe(i) grab seektoframe(i) grab
+		// may not yield the same result the second time.
+		player_.SeekToFrame(depth_.GetName(), (frame == 0 ? 1 : frame - 1), XN_PLAYER_SEEK_SET);
+		rc = player_.SeekToFrame(depth_.GetName(), frame, XN_PLAYER_SEEK_SET);
+		if(rc != XN_STATUS_OK) {
+			cerr << "Could not seek to frame in depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		}
+		// rc = player_.SeekToFrame(image_.GetName(), frame, XN_PLAYER_SEEK_SET);
+		// if(rc != XN_STATUS_OK) {
+		// 	cerr << "Could not seek to frame in image node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		// }
+	}
+	else {
+		cerr << "Can not seek in live mode!" << endl;
+	}
+}
+
+int KinectGrabber::TellFrame()
+{
+	if(is_oni_) {
+		XnStatus rc;
+		XnUInt32 num1;
+		rc = player_.TellFrame(depth_.GetName(), num1);
+		if(rc != XN_STATUS_OK) {
+			cerr << "Could not tell frame for depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		}
+		// XnUInt32 num2;
+		// rc = player_.TellFrame(image_.GetName(), num2);
+		// if(rc != XN_STATUS_OK) {
+		// 	cerr << "Could not tell frame for image node! " << rc << ": " << xnGetStatusString(rc) << endl;
+		// }
+		// if(num1 != num2) {
+		// 	cerr << "Current frame for depth node (" << num1 << ") and image node (" << num2 << ") are not identical!" << endl;
+		// }
+		return static_cast<int>(num1);
+	}
+	else {
+		return -1;
+	}
+}
+
+bool KinectGrabber::GrabAndNotify()
 {
 	if(can_grab_) {
 		can_grab_ = Grab();
+	}
+	if(can_grab_) {
 		Notify();
 	}
+	return can_grab_;
 }
 
 void KinectGrabber::Run()
@@ -131,7 +202,7 @@ void KinectGrabber::Run()
 bool KinectGrabber::Grab()
 {
 	// read a new frame
-	XnStatus rc = context_.WaitAnyUpdateAll();
+	XnStatus rc = context_.WaitAndUpdateAll();
 	if(rc != XN_STATUS_OK) {
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		return false;
