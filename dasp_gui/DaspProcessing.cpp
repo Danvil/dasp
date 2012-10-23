@@ -101,9 +101,9 @@ void DaspProcessing::performSegmentationStep()
 
 	DANVIL_BENCHMARK_START(mog)
 
-	slimage::Image1f probability;
-	slimage::Image1f probability_2;
-	slimage::Image3ub plot_labels;
+	// slimage::Image1f probability;
+	// slimage::Image1f probability_2;
+	// slimage::Image3ub plot_labels;
 
 	result_.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
 	result_.fill({0});
@@ -183,15 +183,15 @@ void DaspProcessing::performSegmentationStep()
 			}
 		}
 
-		// plot label probability
-		slimage::Image3ub probability_color;
-		slimage::Image3ub probability_2_color;
-		if(probability) {
-			probability_color = ColorizeIntensity(probability, 0.0f, 1.0f, thread_pool_index_);
-		}
-		if(probability_2) {
-			probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
-		}
+		// // plot label probability
+		// slimage::Image3ub probability_color;
+		// slimage::Image3ub probability_2_color;
+		// if(probability) {
+		// 	probability_color = ColorizeIntensity(probability, 0.0f, 1.0f, thread_pool_index_);
+		// }
+		// if(probability_2) {
+		// 	probability_2_color = ColorizeIntensity(probability_2, 0.0f, 1.0f, thread_pool_index_);
+		// }
 
 		// visualize density, seed density and density error
 		slimage::Image3ub vis_density;
@@ -201,13 +201,21 @@ void DaspProcessing::performSegmentationStep()
 			slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
 			vis_density = slimage::Image3ub(density.dimensions());
 			for(unsigned int i=0; i<vis_density.size(); i++) {
-				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.1f);
+				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.05f);
 			}
-			slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density);
-			slimage::conversion::Convert(seed_density, vis_seed_density); // FIXME * 20.0f
-			vis_density_delta.resize(density.width(), density.height());
-			for(unsigned int i=0; i<density.size(); i++) {
-				vis_density_delta[i] = plots::PlusMinusColor(density[i] - seed_density[i], 0.025f);
+
+			if(clustering_.opt.seed_mode == SeedModes::Delta) {
+				slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density);
+				vis_seed_density.resize(vis_density.dimensions());
+				for(unsigned int i=0; i<seed_density.size(); i++) {
+					vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
+				}
+//				slimage::conversion::Convert(seed_density, vis_seed_density);
+
+				vis_density_delta.resize(density.width(), density.height());
+				for(unsigned int i=0; i<density.size(); i++) {
+					vis_density_delta[i] = plots::PlusMinusColor(density[i] - seed_density[i], 0.025f);
+				}
 			}
 		}
 
@@ -215,14 +223,14 @@ void DaspProcessing::performSegmentationStep()
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			images_["2D"] = slimage::Ptr(vis_img);
-			images_["rhoE"] = slimage::Ptr(vis_density);
-			images_["rhoA"] = slimage::Ptr(vis_seed_density);
-			images_["rhoD"] = slimage::Ptr(vis_density_delta);
+			if(vis_img) images_["2D"] = slimage::Ptr(vis_img);
+			if(vis_density) images_["density"] = slimage::Ptr(vis_density);
+			if(vis_seed_density) images_["density (seeds)"] = slimage::Ptr(vis_seed_density);
+			if(vis_density_delta) images_["density (delta)"] = slimage::Ptr(vis_density_delta);
 //			images_["seeds"] = slimage::Ptr(seeds_img);
-			images_["prob"] = slimage::Ptr(probability_color);
-			images_["prob2"] = slimage::Ptr(probability_2_color);
-			images_["labels"] = slimage::Ptr(plot_labels);
+			// images_["prob"] = slimage::Ptr(probability_color);
+			// images_["prob2"] = slimage::Ptr(probability_2_color);
+			// images_["labels"] = slimage::Ptr(plot_labels);
 
 			for(auto p : sDebugImages) {
 				images_[p.first] = p.second;
