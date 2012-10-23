@@ -195,26 +195,30 @@ void DaspProcessing::performSegmentationStep()
 
 		// visualize density, seed density and density error
 		slimage::Image3ub vis_density;
-		slimage::Image1ub vis_seed_density;
+		slimage::Image3ub vis_seed_density;
 		slimage::Image3ub vis_density_delta;
 		if(plot_density_) {
 			slimage::Image1f density = ComputeDepthDensity(clustering_.points, clustering_.opt);
 			vis_density = slimage::Image3ub(density.dimensions());
 			for(unsigned int i=0; i<vis_density.size(); i++) {
-				vis_density[i] = plots::IntensityColor(density[i], 0.0f, 0.05f);
+				float d = density[i];
+				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
 			}
 
 			if(clustering_.opt.seed_mode == SeedModes::Delta) {
 				slimage::Image1f seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density);
 				vis_seed_density.resize(vis_density.dimensions());
 				for(unsigned int i=0; i<seed_density.size(); i++) {
-					vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
+					//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
+					float d = seed_density[i];
+					vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
 				}
 //				slimage::conversion::Convert(seed_density, vis_seed_density);
 
 				vis_density_delta.resize(density.width(), density.height());
 				for(unsigned int i=0; i<density.size(); i++) {
-					vis_density_delta[i] = plots::PlusMinusColor(density[i] - seed_density[i], 0.025f);
+					float q = density[i] - seed_density[i];
+					vis_density_delta[i] = plots::PlusMinusColor(q, 0.04f);
 				}
 			}
 		}

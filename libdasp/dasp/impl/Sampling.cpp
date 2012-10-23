@@ -49,25 +49,24 @@ slimage::Image1f ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, 
 		float sxf = fx(s);
 		float syf = fy(s);
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-		float rho = target(sx, sy);
+		const float rho = target(sx, sy);
+		if(rho == 0) {
+			continue;
+		}
 //		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
 //			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
 //			rho *= 0.25f;
 //		}
-		// dimension is 2!
-		float norm = rho;
-		float sigma = 1.0f / std::sqrt(norm);
-		float sigma_inv_2 = norm;
 		// kernel influence range
-		int R = static_cast<int>(std::ceil(cRange * sigma));
-		int xmin = std::max<int>(sx - R, 0);
-		int xmax = std::min<int>(sx + R, int(target.width()) - 1);
-		int ymin = std::max<int>(sy - R, 0);
-		int ymax = std::min<int>(sy + R, int(target.height()) - 1);
+		const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho)));
+		const int xmin = std::max<int>(sx - R, 0);
+		const int xmax = std::min<int>(sx + R, int(target.width()) - 1);
+		const int ymin = std::max<int>(sy - R, 0);
+		const int ymax = std::min<int>(sy + R, int(target.height()) - 1);
 		for(int yi=ymin; yi<=ymax; yi++) {
 			for(int xi=xmin; xi<=xmax; xi++) {
-				float d = Square(static_cast<float>(xi) - sxf) + Square(static_cast<float>(yi) - syf);
-				float delta = norm * BlueNoise::KernelFunctorSquare(d*sigma_inv_2);
+				float d2 = Square(static_cast<float>(xi) - sxf) + Square(static_cast<float>(yi) - syf);
+				float delta = rho * BlueNoise::KernelFunctorSquare(rho*d2);
 				density(xi, yi) += delta;
 			}
 		}
@@ -461,31 +460,33 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				}
 			}
 			else {
-				// find nearest
-				int best_dist = 1000000000;
-				std::size_t best_index = 0;
-				for(std::size_t i=0; i<seeds.size(); i++) {
-					const Seed& s = seeds[i];
-					// do not remove fixed seed points
-					if(s.is_fixed) {
-						continue;
+				if(seeds.size() > 0) {
+					// find nearest
+					int best_dist = 1000000000;
+					std::size_t best_index = 0;
+					for(std::size_t i=0; i<seeds.size(); i++) {
+						const Seed& s = seeds[i];
+						// do not remove fixed seed points
+						if(s.is_fixed) {
+							continue;
+						}
+						int dist =  Square(sx - s.x) + Square(sy - s.y);
+						if(dist < best_dist) {
+							best_dist = dist;
+							best_index = i;
+						}
 					}
-					int dist =  Square(sx - s.x) + Square(sy - s.y);
-					if(dist < best_dist) {
-						best_dist = dist;
-						best_index = i;
-					}
+	//				auto it = std::min_element(seeds.begin(), seeds.end(), [sx, sy](const Seed& a, const Seed& b) {
+	//					return Square(sx - a.x) + Square(sy - a.y) < Square(sx - b.x) + Square(sy - b.y);
+	//				});
+					// delete nearest seed
+	//				seeds.erase(it);
+	#ifdef CREATE_DEBUG_IMAGES
+					slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+					debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
+	#endif
+					seeds.erase(seeds.begin() + best_index);
 				}
-//				auto it = std::min_element(seeds.begin(), seeds.end(), [sx, sy](const Seed& a, const Seed& b) {
-//					return Square(sx - a.x) + Square(sy - a.y) < Square(sx - b.x) + Square(sy - b.y);
-//				});
-				// delete nearest seed
-//				seeds.erase(it);
-#ifdef CREATE_DEBUG_IMAGES
-				slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
-				debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
-#endif
-				seeds.erase(seeds.begin() + best_index);
 			}
 		}
 	}

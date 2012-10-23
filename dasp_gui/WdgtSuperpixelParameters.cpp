@@ -87,7 +87,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	dasp_processing_->dasp_params->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_processing_->dasp_params->ignore_pixels_with_bad_visibility = ui.checkBoxSkipBad->isChecked();
 	dasp_processing_->dasp_params->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
-	dasp_processing_->dasp_params->count = ui.spinBoxSuperCount->value();
+	dasp_processing_->dasp_params->count = 0; // ui.spinBoxSuperCount->value(); // use radius
 	dasp_processing_->dasp_params->iterations = ui.spinBoxIterations->value();
 	dasp_processing_->dasp_params->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
 	dasp_processing_->dasp_params->weight_color = ui.doubleSpinBoxWeightColor->value();
