@@ -22,8 +22,14 @@ class WdgtKinectSuperPoints : public QMainWindow
     Q_OBJECT
 
 public:
-    WdgtKinectSuperPoints(QWidget *parent = 0);
-    ~WdgtKinectSuperPoints();
+	WdgtKinectSuperPoints(QWidget *parent = 0);
+	~WdgtKinectSuperPoints();
+
+	void ShowLive();
+
+	void LoadOni(const std::string& fn);
+
+	void LoadRgbd(const std::string& fn);
 
 private:
 	void OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color);
@@ -41,9 +47,6 @@ public Q_SLOTS:
 #endif
 	void OnSaveDebugImages();
 	void OnSaveDasp();
-
-private:
-	void LoadOni(const std::string& fn);
 
 private:
 #if defined DASP_HAS_CANDY

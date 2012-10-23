@@ -61,6 +61,7 @@ TARGET_LINK_LIBRARIES(dasp_gui
 	${QT_LIBRARIES}
 	boost_signals
 	boost_thread
+	boost_program_options
 )
 
 if (DASP_HAS_CANDY)

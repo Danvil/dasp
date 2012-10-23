@@ -83,6 +83,103 @@ WdgtKinectSuperPoints::~WdgtKinectSuperPoints()
 	StopProcessingThread();
 }
 
+void WdgtKinectSuperPoints::ShowLive()
+{
+	StopProcessingThread();
+
+	// open Kinect in live mode
+	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
+	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
+	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_->OpenConfig(config.toStdString());
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+
+	mode_ = LiveMode;
+
+	// processing thread polls kinect
+	frame_counter_ = 0;
+	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+}
+
+void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
+{
+	StopProcessingThread();
+
+	// open Kinect OpenNI ONI file
+	std::cout << "Opening oni file: " << fn << std::endl;
+	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_->OpenFile(fn);
+	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+
+	mode_ = ReplayOniMode;
+	remembered_capture_fn_ = fn;
+	
+	ui.horizontalSliderFrame->setEnabled(true);
+	ui.horizontalSliderFrame->setMaximum(kinect_grabber_->NumFrames());
+
+	// processing thread polls kinect
+	frame_counter_ = 0;
+	processing_thread_ = boost::thread(
+		[this]() {
+			this->interrupt_loaded_thread_ = false;
+			while(!this->interrupt_loaded_thread_) {
+				unsigned int requested_frame = frame_counter_ + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
+				while(!this->reload && requested_frame == frame_counter_ && !this->interrupt_loaded_thread_) {
+					usleep(1000);
+					requested_frame = ui.horizontalSliderFrame->value() + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
+				}
+				this->reload = false;
+				// seek to requested frame (playing will start from there)
+				kinect_grabber_->SeekToFrame(requested_frame);
+				frame_counter_ = kinect_grabber_->TellFrame();
+				// grab frame from oni
+				bool ok = this->kinect_grabber_->Grab();
+				if(!ok) {
+					break;
+				}
+				// update images with new data
+				this->OnImages(this->kinect_grabber_->GetLastDepth(), this->kinect_grabber_->GetLastColor());
+			}
+		});
+
+}
+
+void WdgtKinectSuperPoints::LoadRgbd(const std::string& fn)
+{
+	capture_filename_ = fn;
+
+	StopProcessingThread();
+
+	// load selected images
+	std::string fn_color = fn + "_color.png";
+	std::string fn_depth = fn + "_depth.pgm";
+	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
+	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
+	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
+	if(loaded_kinect_color.width() != loaded_kinect_depth.width() || loaded_kinect_color.height() != loaded_kinect_depth.height()) {
+		std::cerr << "Size of color and depth image must match!" << std::endl;
+		return;
+	}
+
+	mode_ = SingleFileMode;
+
+	// processing thread repeats loaded image (only updated if requested)
+	processing_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
+		this->interrupt_loaded_thread_ = false;
+		while(!this->interrupt_loaded_thread_) {
+			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
+			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
+			this->OnImages(cpy_depth, cpy_color);
+			frame_counter_ = 1;
+			while(!this->reload && !this->interrupt_loaded_thread_) {
+				usleep(1000);
+			}
+			this->reload = false;
+		}
+	});
+
+}
+
 void WdgtKinectSuperPoints::StopProcessingThread()
 {
 	ui.horizontalSliderFrame->setEnabled(false);
@@ -139,38 +236,7 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	if(fn.isEmpty()) {
 		return;
 	}
-	capture_filename_ = fn.toStdString();
-
-	StopProcessingThread();
-
-	// load selected images
-	std::string fn_color = fn.toStdString() + "_color.png";
-	std::string fn_depth = fn.toStdString() + "_depth.pgm";
-	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
-	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
-	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
-	if(loaded_kinect_color.width() != loaded_kinect_depth.width() || loaded_kinect_color.height() != loaded_kinect_depth.height()) {
-		std::cerr << "Size of color and depth image must match!" << std::endl;
-		return;
-	}
-
-	mode_ = SingleFileMode;
-
-	// processing thread repeats loaded image (only updated if requested)
-	processing_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
-		this->interrupt_loaded_thread_ = false;
-		while(!this->interrupt_loaded_thread_) {
-			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
-			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
-			this->OnImages(cpy_depth, cpy_color);
-			frame_counter_ = 1;
-			while(!this->reload && !this->interrupt_loaded_thread_) {
-				usleep(1000);
-			}
-			this->reload = false;
-		}
-	});
-
+	LoadRgbd(fn.toStdString());
 }
 
 #if defined DASP_HAS_OPENNI
@@ -185,65 +251,9 @@ void WdgtKinectSuperPoints::OnLoadOni()
 	LoadOni(fn.toStdString());
 }
 
-void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
-{
-	StopProcessingThread();
-
-	// open Kinect OpenNI ONI file
-	std::cout << "Opening oni file: " << fn << std::endl;
-	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->OpenFile(fn);
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-
-	mode_ = ReplayOniMode;
-	remembered_capture_fn_ = fn;
-	
-	ui.horizontalSliderFrame->setEnabled(true);
-	ui.horizontalSliderFrame->setMaximum(kinect_grabber_->NumFrames());
-
-	// processing thread polls kinect
-	frame_counter_ = 0;
-	processing_thread_ = boost::thread(
-		[this]() {
-			this->interrupt_loaded_thread_ = false;
-			while(!this->interrupt_loaded_thread_) {
-				unsigned int requested_frame = frame_counter_ + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
-				while(!this->reload && requested_frame == frame_counter_ && !this->interrupt_loaded_thread_) {
-					usleep(1000);
-					requested_frame = ui.horizontalSliderFrame->value() + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
-				}
-				this->reload = false;
-				// seek to requested frame (playing will start from there)
-				kinect_grabber_->SeekToFrame(requested_frame);
-				frame_counter_ = kinect_grabber_->TellFrame();
-				// grab frame from oni
-				bool ok = this->kinect_grabber_->Grab();
-				if(!ok) {
-					break;
-				}
-				// update images with new data
-				this->OnImages(this->kinect_grabber_->GetLastDepth(), this->kinect_grabber_->GetLastColor());
-			}
-		});
-
-}
-
 void WdgtKinectSuperPoints::OnLive()
 {
-	StopProcessingThread();
-
-	// open Kinect in live mode
-	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
-	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
-	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
-	kinect_grabber_->OpenConfig(config.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-
-	mode_ = LiveMode;
-
-	// processing thread polls kinect
-	frame_counter_ = 0;
-	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+	ShowLive();
 }
 
 #endif
