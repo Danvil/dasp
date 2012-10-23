@@ -47,6 +47,12 @@ public Q_SLOTS:
 #endif
 	void OnSaveDebugImages();
 	void OnSaveDasp();
+	void onViewParameters();
+	void onViewBenchmark();
+	void onViewAbout();
+
+protected:
+	void closeEvent(QCloseEvent* event);
 
 private:
 #if defined DASP_HAS_CANDY

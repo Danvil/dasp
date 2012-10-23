@@ -23,28 +23,33 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.horizontalSliderFrame->setEnabled(false);
 	ui.horizontalSliderFrame->setMinimum(0);
 	ui.horizontalSliderFrame->setMaximum(0);
-	QObject::connect(ui.pushButtonLoadOne, SIGNAL(clicked()), this, SLOT(OnLoadOne()));
+	QObject::connect(ui.actionLoad_RGB_D_Image, SIGNAL(triggered()), this, SLOT(OnLoadOne()));
 #if defined DASP_HAS_OPENNI
-	QObject::connect(ui.pushButtonSaveOne, SIGNAL(clicked()), this, SLOT(OnCaptureOne()));
-	QObject::connect(ui.pushButtonLoadOni, SIGNAL(clicked()), this, SLOT(OnLoadOni()));
-	QObject::connect(ui.pushButtonLive, SIGNAL(clicked()), this, SLOT(OnLive()));
+	QObject::connect(ui.actionKinect_Live_Mode, SIGNAL(triggered()), this, SLOT(OnLive()));
+	QObject::connect(ui.actionLoad_ONI, SIGNAL(triggered()), this, SLOT(OnLoadOni()));
+	QObject::connect(ui.actionSave_RBG_D_Image, SIGNAL(triggered()), this, SLOT(OnCaptureOne()));
 #else
-	ui.pushButtonSaveOne->setEnabled(false);
-	ui.pushButtonLoadOni->setEnabled(false);
-	ui.pushButtonLive->setEnabled(false);
+	ui.actionKinect_Live_Mode->setEnabled(false);
+	ui.actionLoad_ONI->setEnabled(false);
+	ui.actionSave_RBG_D_Image->setEnabled(false);
 #endif
-	QObject::connect(ui.pushButtonSaveDebug, SIGNAL(clicked()), this, SLOT(OnSaveDebugImages()));
-	QObject::connect(ui.pushButtonSaveDasp, SIGNAL(clicked()), this, SLOT(OnSaveDasp()));
+	QObject::connect(ui.actionSave_Debug_Images, SIGNAL(triggered()), this, SLOT(OnSaveDebugImages()));
+	QObject::connect(ui.actionBatch_Save, SIGNAL(triggered()), this, SLOT(OnSaveDasp()));
+
+	QObject::connect(ui.action_Parameters, SIGNAL(triggered()), this, SLOT(onViewParameters()));
+	QObject::connect(ui.action_Benchmarks, SIGNAL(triggered()), this, SLOT(onViewBenchmark()));
+	QObject::connect(ui.actionAbout, SIGNAL(triggered()), this, SLOT(onViewAbout()));
 
 	dasp_processing_.reset(new DaspProcessing());
 
 	gui_params_.reset(new WdgtSuperpixelParameters(dasp_processing_));
+	gui_params_->setAttribute(Qt::WA_DeleteOnClose, false);
 	gui_params_->reload = &reload;
 	gui_params_->show();
 
 	gui_benchmark_.reset(new WdgtBenchmark());
+	gui_benchmark_->setAttribute(Qt::WA_DeleteOnClose, false);
 	Danvil::Benchmark::Instance().setOnUpdate(boost::bind(&WdgtBenchmark::update, gui_benchmark_, _1, _2));
-	ui.verticalLayoutBenchmark->addWidget(gui_benchmark_.get());
 
 #if defined DASP_HAS_CANDY
 	std::cout << "Creating OpenGL Widget ..." << std::endl;
@@ -268,7 +273,7 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 
 void WdgtKinectSuperPoints::OnSaveDasp()
 {
-	if(ui.pushButtonSaveDasp->isChecked()) {
+	if(ui.actionBatch_Save->isChecked()) {
 		// get filename
 		QString fn = QFileDialog::getSaveFileName(this,
 				"Choose filename base for saving images",
@@ -325,6 +330,10 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
+	ui.action_Parameters->setChecked(gui_params_->isVisible());
+	ui.action_Benchmarks->setChecked(gui_benchmark_->isVisible());
+//	ui.actionAbout->setChecked(gui_benchmark_->isVisible());
+
 	if(!has_new_frame_) {
 		return;
 	}
@@ -380,4 +389,27 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		}
 	}
 	has_new_frame_ = false;
+}
+
+void WdgtKinectSuperPoints::onViewParameters()
+{
+	gui_params_->setVisible(ui.action_Parameters->isChecked());
+}
+
+void WdgtKinectSuperPoints::onViewBenchmark()
+{
+	gui_benchmark_->setVisible(ui.action_Benchmarks->isChecked());
+}
+
+void WdgtKinectSuperPoints::onViewAbout()
+{
+//	gui_about_->setVisible(ui.actionAbout->isChecked());
+}
+
+void WdgtKinectSuperPoints::closeEvent(QCloseEvent* event)
+{
+	gui_params_->close();
+	gui_benchmark_->close();
+//	gui_about_->close();
+	event->accept();
 }
