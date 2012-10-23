@@ -51,6 +51,9 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	gui_benchmark_->setAttribute(Qt::WA_DeleteOnClose, false);
 	Danvil::Benchmark::Instance().setOnUpdate(boost::bind(&WdgtBenchmark::update, gui_benchmark_, _1, _2));
 
+	gui_about_.reset(new WdgtAbout());
+	gui_about_->setAttribute(Qt::WA_DeleteOnClose, false);
+
 #if defined DASP_HAS_CANDY
 	std::cout << "Creating OpenGL Widget ..." << std::endl;
 
@@ -332,7 +335,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 {
 	ui.action_Parameters->setChecked(gui_params_->isVisible());
 	ui.action_Benchmarks->setChecked(gui_benchmark_->isVisible());
-//	ui.actionAbout->setChecked(gui_benchmark_->isVisible());
+	ui.actionAbout->setChecked(gui_benchmark_->isVisible());
 
 	if(!has_new_frame_) {
 		return;
@@ -403,13 +406,13 @@ void WdgtKinectSuperPoints::onViewBenchmark()
 
 void WdgtKinectSuperPoints::onViewAbout()
 {
-//	gui_about_->setVisible(ui.actionAbout->isChecked());
+	gui_about_->setVisible(ui.actionAbout->isChecked());
 }
 
 void WdgtKinectSuperPoints::closeEvent(QCloseEvent* event)
 {
 	gui_params_->close();
 	gui_benchmark_->close();
-//	gui_about_->close();
+	gui_about_->close();
 	event->accept();
 }

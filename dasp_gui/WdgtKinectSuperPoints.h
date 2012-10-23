@@ -4,6 +4,7 @@
 #include "ui_WdgtKinectSuperPoints.h"
 #include "WdgtSuperpixelParameters.h"
 #include "WdgtBenchmark.h"
+#include "WdgtAbout.h"
 #if defined DASP_HAS_OPENNI
 #	include "KinectGrabber.h"
 #endif
@@ -66,6 +67,7 @@ private:
 
 	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;
 	boost::shared_ptr<WdgtBenchmark> gui_benchmark_;
+	boost::shared_ptr<WdgtAbout> gui_about_;
 
 #if defined DASP_HAS_OPENNI
 	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
