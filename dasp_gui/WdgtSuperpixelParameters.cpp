@@ -123,6 +123,20 @@ WdgtSuperpixelParameters::~WdgtSuperpixelParameters()
 
 }
 
+void WdgtSuperpixelParameters::SetActualCount(unsigned int count)
+{
+	bool oldState = ui.spinBoxSuperCount->blockSignals(true);
+	ui.spinBoxSuperCount->setValue(count);
+	ui.spinBoxSuperCount->blockSignals(oldState);
+}
+
+void WdgtSuperpixelParameters::SetActualRadius(float radius)
+{
+	bool oldState = ui.doubleSpinBoxRadius->blockSignals(true);
+	ui.doubleSpinBoxRadius->setValue(radius / 0.001);
+	ui.doubleSpinBoxRadius->blockSignals(oldState);
+}
+
 void WdgtSuperpixelParameters::ChangeDaspRepairDepth(int state)
 {
 	dasp_processing_->dasp_params->is_repair_depth = state;

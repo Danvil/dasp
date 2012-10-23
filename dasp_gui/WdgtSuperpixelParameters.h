@@ -16,6 +16,9 @@ public:
 
 	bool* reload;
 
+	void SetActualCount(unsigned int count);
+	void SetActualRadius(float radius);
+
 public Q_SLOTS:
 	void ChangeDaspSmoothDepth(int state);
 	void ChangeDaspRepairDepth(int state);

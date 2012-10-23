@@ -341,6 +341,15 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		return;
 	}
 
+	if(dasp_processing_->dasp_params->count == 0) {
+		unsigned int actual_count = dasp_processing_->clustering_.cluster.size();
+		gui_params_->SetActualCount(actual_count);
+	}
+	else {
+		double actual_radius = dasp_processing_->clustering_.opt.base_radius;
+		gui_params_->SetActualRadius(actual_radius);
+	}
+
 	if(mode_ == ReplayOniMode) {
 		ui.horizontalSliderFrame->setValue(frame_counter_);
 	}
