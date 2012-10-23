@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>914</width>
-    <height>577</height>
+    <width>546</width>
+    <height>525</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Depth-adaptive Superpixels</string>
+   <string>Depth-Adaptive Superpixels (DASP)</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -82,7 +82,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>914</width>
+     <width>546</width>
      <height>25</height>
     </rect>
    </property>

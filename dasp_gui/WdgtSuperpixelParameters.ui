@@ -7,11 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>379</width>
-    <height>952</height>
+    <height>919</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Depth-Adaptive Super Pixels Parameters</string>
+   <string>DASP Parameters</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
