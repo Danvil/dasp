@@ -185,6 +185,7 @@ namespace dasp
 			std::string line;
 			std::vector<std::string> tokens;
 			unsigned int e_source, e_target;
+			float weight;
 			while(std::getline(ifs,line)) {
 				// split line into tokens
 				tokens.clear();
@@ -198,8 +199,11 @@ namespace dasp
 				// convert to indices
 				e_source = boost::lexical_cast<unsigned int>(tokens[0]);
 				e_target = boost::lexical_cast<unsigned int>(tokens[1]);
+				weight = (tokens.size() == 3) ? boost::lexical_cast<float>(tokens[2]) : 0.0f;
 				// add edge to graph
-				boost::add_edge(e_source, e_target, g);
+				auto result = boost::add_edge(e_source, e_target, g);
+				// set edge weight
+				boost::put(boost::edge_weight, g, result.first, weight);
 			}
 		}		
 

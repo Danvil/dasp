@@ -38,7 +38,8 @@ namespace dasp
 	typedef boost::adjacency_list<
 		boost::vecS, boost::vecS,
 		boost::directedS,
-		DaspPoint> DaspGraph;
+		DaspPoint,
+		boost::property<boost::edge_weight_t, float>> DaspGraph;
 
 	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph);
 
