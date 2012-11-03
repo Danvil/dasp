@@ -42,7 +42,9 @@ public Q_SLOTS:
 	void ChangePlotClusterMode(int selection);
 	void ChangePlotClusterColor(int selection);
 	void ChangePlotBorders(int state);
+	void ChangePlotGraphSpatialCut(int state);
 	void ChangePlotGraph(int state);
+	void ChangePlotGraphWeights(int state);
 	void ChangePlotDensity(int state);
 	void ChangePlotSegments(int state);
 	void ChangeClipEnable(int state);

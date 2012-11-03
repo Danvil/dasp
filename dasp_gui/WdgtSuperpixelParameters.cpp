@@ -77,7 +77,9 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	QObject::connect(ui.comboBoxPlotClusterMode, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotClusterMode(int)));
 	QObject::connect(ui.comboBoxPlotClusterColor, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotClusterColor(int)));
 	QObject::connect(ui.checkBoxPlotBorders, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotBorders(int)));
+	QObject::connect(ui.checkBoxPlotGraphSpatialCut, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraphSpatialCut(int)));
 	QObject::connect(ui.checkBoxPlotGraph, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraph(int)));
+	QObject::connect(ui.checkBoxPlotGraphWeights, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraphWeights(int)));
 	QObject::connect(ui.checkBoxPlotDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotDensity(int)));
 	QObject::connect(ui.checkBoxPlotSegments, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotSegments(int)));
 
@@ -112,7 +114,9 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	dasp_processing_->cluster_mode_ = (dasp::plots::ClusterMode)(ui.comboBoxPlotClusterMode->itemData(ui.comboBoxPlotClusterMode->currentIndex()).toInt());
 	dasp_processing_->cluster_color_mode_ = (dasp::plots::ColorMode)(ui.comboBoxPlotClusterColor->itemData(ui.comboBoxPlotClusterColor->currentIndex()).toInt());
 	dasp_processing_->show_cluster_borders_ = ui.checkBoxPlotBorders->isChecked();
+	dasp_processing_->graph_cut_spatial_ = ui.checkBoxPlotGraphSpatialCut->isChecked();
 	dasp_processing_->show_graph_ = ui.checkBoxPlotGraph->isChecked();
+	dasp_processing_->show_graph_weights_ = ui.checkBoxPlotGraphWeights->isChecked();
 	dasp_processing_->plot_density_ = ui.checkBoxPlotDensity->isChecked();
 	dasp_processing_->plot_segments_ = ui.checkBoxPlotSegments->isChecked();
 
@@ -270,9 +274,21 @@ void WdgtSuperpixelParameters::ChangePlotBorders(int state)
 	*reload = true;
 }
 
+void WdgtSuperpixelParameters::ChangePlotGraphSpatialCut(int state)
+{
+	dasp_processing_->graph_cut_spatial_ = state;
+	*reload = true;
+}
+
 void WdgtSuperpixelParameters::ChangePlotGraph(int state)
 {
 	dasp_processing_->show_graph_ = state;
+	*reload = true;
+}
+
+void WdgtSuperpixelParameters::ChangePlotGraphWeights(int state)
+{
+	dasp_processing_->show_graph_weights_ = state;
 	*reload = true;
 }
 

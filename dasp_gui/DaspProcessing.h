@@ -47,9 +47,11 @@ public:
 	dasp::plots::ColorMode point_color_mode_;
 	dasp::plots::ColorMode cluster_color_mode_;
 	dasp::plots::ClusterMode cluster_mode_;
+	bool graph_cut_spatial_;
 	bool show_graph_;
-	bool plot_density_;
+	bool show_graph_weights_;
 	bool plot_segments_;
+	bool plot_density_;
 
     boost::shared_ptr<dasp::Parameters> dasp_params;
 
@@ -69,6 +71,7 @@ public:
 	dasp::Superpixels clustering_;
 
 	dasp::BorderPixelGraph Gnb;
+	dasp::EdgeWeightGraph Gnb_weighted;
 
 private:
 	dasp:: plots::ClusterSelection selection_;

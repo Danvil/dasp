@@ -42,9 +42,11 @@ DaspProcessing::DaspProcessing()
 	cluster_color_mode_ = plots::Color;
 	point_color_mode_ = plots::Color;
 	cluster_mode_ = plots::ClusterPoints;
+	graph_cut_spatial_ = true;
 	show_graph_ = false;
-	plot_density_ = false;
+	show_graph_weights_ = true;
 	plot_segments_ = false;
+	plot_density_ = false;
 
 }
 
@@ -113,7 +115,12 @@ void DaspProcessing::performSegmentationStep()
 	DANVIL_BENCHMARK_START(graph)
 	if(show_graph_ || plot_segments_) {
 		// create neighbourhood graph
-		Gnb = CreateNeighborhoodGraph(clustering_);
+		Gnb = CreateNeighborhoodGraph(clustering_,
+			graph_cut_spatial_ ? NeighborGraphSettings::SpatialCut() : NeighborGraphSettings::NoCut());
+		Gnb_weighted = ComputeEdgeWeights(clustering_, Gnb,
+				MetricDASP(
+					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal,
+					clustering_.opt.base_radius));
 	}
 	DANVIL_BENCHMARK_STOP(graph)
 
@@ -123,9 +130,9 @@ void DaspProcessing::performSegmentationStep()
 	if(plot_segments_) {
 		// create segmentation graph
 		//segments = MinCutSegmentation(clustering_);
-		EdgeWeightGraph Gnb_local_weights = ComputeEdgeWeights(clustering_, Gnb,
+		EdgeWeightGraph similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
 				ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
-		dasp_segment_graph = SpectralSegmentation(Gnb_local_weights, boost::get(boost::edge_weight, Gnb_local_weights));
+		dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
 		dasp_segment_labeling = ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
 	}
 	DANVIL_BENCHMARK_STOP(segmentation)
@@ -166,15 +173,25 @@ void DaspProcessing::performSegmentationStep()
 				vis_img = CreateLabelImage(clustering_, dasp_segment_labeling, colors);
 
 				if(show_graph_) {
-					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph, [](float weight) {
-						return plots::IntensityColor(weight, 0, 1);
-					});
+					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
+						[](float weight) {
+							return plots::IntensityColor(weight, 0, 1);
+						});
 				}
 			}
 			else {
 				if(show_graph_) {
 					// plot neighbourhood graph
-					plots::PlotGraphLines(vis_img, clustering_, Gnb);
+					if(show_graph_weights_) {
+						plots::PlotWeightedGraphLines(vis_img, clustering_, Gnb_weighted,
+							[](float weight) {
+								float s = std::exp(-0.1f*weight);
+								return plots::IntensityColor(s, 0, 1);
+							});
+					}
+					else {
+						plots::PlotGraphLines(vis_img, clustering_, Gnb);
+					}
 //					plots::PlotGraphLines(vis_img, clustering_, Gnb, [&Gnb](BorderPixelGraph::edge_descriptor eid) {
 //						unsigned int n = boost::get(borderpixels_t(), Gnb, eid).size();
 //						return plots::IntensityColor(static_cast<float>(n), 0.0f, 20.0f);

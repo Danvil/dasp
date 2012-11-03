@@ -261,13 +261,6 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="1">
-       <widget class="QCheckBox" name="checkBoxPlotDensity">
-        <property name="text">
-         <string>Plot Density</string>
-        </property>
-       </widget>
-      </item>
       <item row="4" column="1">
        <widget class="QCheckBox" name="checkBoxPlotBorders">
         <property name="text">
@@ -282,6 +275,33 @@
        <widget class="QCheckBox" name="checkBoxPlotSegments">
         <property name="text">
          <string>Plot Segmentation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="1">
+       <widget class="QCheckBox" name="checkBoxPlotGraphWeights">
+        <property name="text">
+         <string>Plot Graph Weights</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="1">
+       <widget class="QCheckBox" name="checkBoxPlotDensity">
+        <property name="text">
+         <string>Plot Density</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBoxPlotGraphSpatialCut">
+        <property name="text">
+         <string>Spatial Cut for Neightbourhood Graph</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
