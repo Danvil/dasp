@@ -113,13 +113,27 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 	// compute superpixel borders
 	std::vector<std::vector<BorderPixel> > border = ComputeBorderLabels(superpixels);
 	// connect superpixels
-	const float node_distance_threshold = settings.max_spatial_distance_mult * superpixels.opt.base_radius;
+	const float spatial_distance_threshold = settings.spatial_distance_mult_threshold * superpixels.opt.base_radius;
+	const float pixel_distance_mult_threshold = settings.pixel_distance_mult_threshold;
 	for(unsigned int i=0; i<superpixels.cluster.size(); i++) {
 		for(unsigned int j=i+1; j<superpixels.cluster.size(); j++) {
+			const Point& c_i = superpixels.cluster[i].center;
+			const Point& c_j = superpixels.cluster[j].center;
+			// early test if the two superpixels are even near to each other
 			if(settings.cut_by_spatial) {
-				float d = (superpixels.cluster[i].center.world - superpixels.cluster[j].center.world).norm();
+				// spatial distance
+				float d = (c_i.world - c_j.world).norm();
 				// only test if distance is smaller than threshold
-				if(d > node_distance_threshold) {
+				if(d > spatial_distance_threshold) {
+					continue;
+				}
+			}
+			else {
+				// pixel distance on camera image plane
+				float d = (c_i.pos - c_j.pos).norm();
+				// only test if pixel distance is smaller then C * pixel_radius
+				float r = std::max(c_i.image_super_radius, c_j.image_super_radius);
+				if(d > pixel_distance_mult_threshold * r) {
 					continue;
 				}
 			}

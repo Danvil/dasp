@@ -25,15 +25,16 @@ namespace dasp
 	struct NeighborGraphSettings
 	{
 		bool cut_by_spatial;
-		float max_spatial_distance_mult;
+		float spatial_distance_mult_threshold;
+		float pixel_distance_mult_threshold;
 		float min_border_overlap;
 		unsigned min_abs_border_overlap;
 
 		static NeighborGraphSettings SpatialCut() {
-			return NeighborGraphSettings{true, 5.0f, 0.0f, 1};
+			return NeighborGraphSettings{true, 5.0f, 4.0f, 0.0f, 1};
 		}
 		static NeighborGraphSettings NoCut() {
-			return NeighborGraphSettings{false, 5.0f, 0.0f, 1};
+			return NeighborGraphSettings{false, 5.0f, 4.0f, 0.0f, 1};
 		}
 	};
 
