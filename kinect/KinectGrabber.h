@@ -10,11 +10,11 @@
 //----------------------------------------------------------------------------//
 #include "GrabOptions.h"
 #include <Slimage/Slimage.hpp>
-#include <XnCppWrapper.h>
 #include <boost/signals.hpp>
 #include <string>
 namespace xn {
 	class Context;
+	class Player;
 	class DepthGenerator;
 	class ImageGenerator;
 	class DepthMetaData;
