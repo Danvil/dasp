@@ -5,12 +5,11 @@
  *      Author: david
  */
 
-#ifndef ROMEO_KINECT_GRABOPTIONS_H_
-#define ROMEO_KINECT_GRABOPTIONS_H_
+#ifndef DASP_KINECT_GRABOPTIONS_H_
+#define DASP_KINECT_GRABOPTIONS_H_
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-namespace Romeo {
-namespace Kinect {
+namespace dasp {
 //----------------------------------------------------------------------------//
 
 struct GrabOptions
@@ -40,6 +39,6 @@ struct GrabOptions
 };
 
 //----------------------------------------------------------------------------//
-}}
+}
 //----------------------------------------------------------------------------//
 #endif

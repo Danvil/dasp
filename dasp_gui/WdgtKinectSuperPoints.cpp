@@ -98,7 +98,7 @@ void WdgtKinectSuperPoints::ShowLive()
 	// open Kinect in live mode
 	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
 	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
-	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_.reset(new dasp::KinectGrabber());
 	kinect_grabber_->OpenConfig(config.toStdString());
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 
@@ -106,7 +106,7 @@ void WdgtKinectSuperPoints::ShowLive()
 
 	// processing thread polls kinect
 	frame_counter_ = 0;
-	processing_thread_ = boost::thread(&Romeo::Kinect::KinectGrabber::Run, kinect_grabber_);
+	processing_thread_ = boost::thread(&dasp::KinectGrabber::Run, kinect_grabber_);
 }
 
 void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
@@ -115,7 +115,7 @@ void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
 
 	// open Kinect OpenNI ONI file
 	std::cout << "Opening oni file: " << fn << std::endl;
-	kinect_grabber_.reset(new Romeo::Kinect::KinectGrabber());
+	kinect_grabber_.reset(new dasp::KinectGrabber());
 	kinect_grabber_->OpenFile(fn);
 	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
 

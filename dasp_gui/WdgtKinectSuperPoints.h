@@ -70,7 +70,7 @@ private:
 	boost::shared_ptr<WdgtAbout> gui_about_;
 
 #if defined DASP_HAS_OPENNI
-	boost::shared_ptr<Romeo::Kinect::KinectGrabber> kinect_grabber_;
+	boost::shared_ptr<dasp::KinectGrabber> kinect_grabber_;
 #endif
 
 	boost::shared_ptr<DaspProcessing> dasp_processing_;

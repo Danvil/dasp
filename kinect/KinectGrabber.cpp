@@ -25,12 +25,22 @@ slimage::Image1ub ColorizeDepth(const slimage::Image1ui16& depth)
 }
 
 //----------------------------------------------------------------------------//
-namespace Romeo {
-namespace Kinect {
+namespace dasp {
 //----------------------------------------------------------------------------//
+
+struct KinectGrabber::xn_vars
+{
+	xn::Context context_;
+	xn::Player player_;
+	xn::DepthGenerator depth_;
+	xn::ImageGenerator image_;
+	xn::DepthMetaData depthMD_;
+	xn::ImageMetaData imageMD_;
+};
 
 KinectGrabber::KinectGrabber()
 {
+	impl_ = std::make_shared<xn_vars>();
 	frame_current_ = 0;
 	stop_requested_ = false;
 }
@@ -42,7 +52,7 @@ KinectGrabber::~KinectGrabber()
 void KinectGrabber::OpenConfig(const std::string& fn_config)
 {
 	xn::EnumerationErrors errors;
-	XnStatus rc = context_.InitFromXmlFile(fn_config.c_str(), &errors);
+	XnStatus rc = impl_->context_.InitFromXmlFile(fn_config.c_str(), &errors);
 	if(rc == XN_STATUS_NO_NODE_PRESENT) {
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		XnChar strError[1024];
@@ -60,20 +70,20 @@ void KinectGrabber::OpenConfig(const std::string& fn_config)
 
 void KinectGrabber::OpenFile(const std::string& fn_oni)
 {
-	XnStatus rc = context_.Init();
+	XnStatus rc = impl_->context_.Init();
 	if(rc != XN_STATUS_OK) {
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		throw rc;
 	}
-	rc = context_.OpenFileRecording(fn_oni.c_str());
+	rc = impl_->context_.OpenFileRecording(fn_oni.c_str());
 	if(rc != XN_STATUS_OK) {
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		throw rc;
 	}
 	
 	// disable looping
-	rc = context_.FindExistingNode(XN_NODE_TYPE_PLAYER, player_);
-	player_.SetRepeat(false);
+	rc = impl_->context_.FindExistingNode(XN_NODE_TYPE_PLAYER, impl_->player_);
+	impl_->player_.SetRepeat(false);
 
 	is_oni_ = true;
 	Init();
@@ -81,32 +91,32 @@ void KinectGrabber::OpenFile(const std::string& fn_oni)
 
 void KinectGrabber::Init()
 {
-	XnStatus rc = context_.FindExistingNode(XN_NODE_TYPE_DEPTH, depth_);
+	XnStatus rc = impl_->context_.FindExistingNode(XN_NODE_TYPE_DEPTH, impl_->depth_);
 	if(rc != XN_STATUS_OK) {
 		cout << "Could not get image node. " << rc << ": " << xnGetStatusString(rc) << endl;
 		has_depth_ = false;
 	}
 	else {
 		has_depth_ = true;
-		depth_.GetMetaData(depthMD_);
-		cout << "Depth node: " << depthMD_.FullXRes() << "x" << depthMD_.FullYRes() << endl;
+		impl_->depth_.GetMetaData(impl_->depthMD_);
+		cout << "Depth node: " << impl_->depthMD_.FullXRes() << "x" << impl_->depthMD_.FullYRes() << endl;
 	}
-	rc = context_.FindExistingNode(XN_NODE_TYPE_IMAGE, image_);
+	rc = impl_->context_.FindExistingNode(XN_NODE_TYPE_IMAGE, impl_->image_);
 	if(rc != XN_STATUS_OK) {
 		cout << "Could not get image node. " << rc << ": " << xnGetStatusString(rc) << endl;
 		has_image_ = false;
 	}
 	else {
 		has_image_ = true;
-		image_.GetMetaData(imageMD_);
-		cout << "Image node: " << imageMD_.FullXRes() << "x" << imageMD_.FullYRes() << endl;
+		impl_->image_.GetMetaData(impl_->imageMD_);
+		cout << "Image node: " << impl_->imageMD_.FullXRes() << "x" << impl_->imageMD_.FullYRes() << endl;
 	}
 	// set color viewport to depth
-	if(!depth_.IsCapabilitySupported(XN_CAPABILITY_ALTERNATIVE_VIEW_POINT)) {
+	if(!impl_->depth_.IsCapabilitySupported(XN_CAPABILITY_ALTERNATIVE_VIEW_POINT)) {
 		cerr << "Can not change image node viewport to depth image!" << endl;
 	}
 	else {
-		depth_.GetAlternativeViewPointCap().SetViewPoint(image_);
+		impl_->depth_.GetAlternativeViewPointCap().SetViewPoint(impl_->image_);
 	}
 	cout << "Kinect initialized successfully" << endl;
 	can_grab_ = true;
@@ -117,7 +127,7 @@ int KinectGrabber::NumFrames() const
 	if(is_oni_) {
 		XnStatus rc;
 		XnUInt32 num1;
-		rc = player_.GetNumFrames(depth_.GetName(), num1);
+		rc = impl_->player_.GetNumFrames(impl_->depth_.GetName(), num1);
 		if(rc != XN_STATUS_OK) {
 			cerr << "Could not get number of frames for depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
 		}
@@ -142,8 +152,8 @@ void KinectGrabber::SeekToFrame(int frame)
 		XnStatus rc;
 		// the following line is a hack because calling seektoframe(i) grab seektoframe(i) grab
 		// may not yield the same result the second time.
-		player_.SeekToFrame(depth_.GetName(), (frame == 0 ? 1 : frame - 1), XN_PLAYER_SEEK_SET);
-		rc = player_.SeekToFrame(depth_.GetName(), frame, XN_PLAYER_SEEK_SET);
+		impl_->player_.SeekToFrame(impl_->depth_.GetName(), (frame == 0 ? 1 : frame - 1), XN_PLAYER_SEEK_SET);
+		rc = impl_->player_.SeekToFrame(impl_->depth_.GetName(), frame, XN_PLAYER_SEEK_SET);
 		if(rc != XN_STATUS_OK) {
 			cerr << "Could not seek to frame in depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
 		}
@@ -162,7 +172,7 @@ int KinectGrabber::TellFrame()
 	if(is_oni_) {
 		XnStatus rc;
 		XnUInt32 num1;
-		rc = player_.TellFrame(depth_.GetName(), num1);
+		rc = impl_->player_.TellFrame(impl_->depth_.GetName(), num1);
 		if(rc != XN_STATUS_OK) {
 			cerr << "Could not tell frame for depth node! " << rc << ": " << xnGetStatusString(rc) << endl;
 		}
@@ -202,7 +212,7 @@ void KinectGrabber::Run()
 bool KinectGrabber::Grab()
 {
 	// read a new frame
-	XnStatus rc = context_.WaitAndUpdateAll();
+	XnStatus rc = impl_->context_.WaitAndUpdateAll();
 	if(rc != XN_STATUS_OK) {
 		cerr << "ERROR " << rc << ": " << xnGetStatusString(rc) << endl;
 		return false;
@@ -226,15 +236,15 @@ bool KinectGrabber::Grab()
 	}
 
 	// store color image
-	image_.GetMetaData(imageMD_);
-	const XnUInt8* pImage = imageMD_.Data();
-	last_color_.resize(imageMD_.FullXRes(), imageMD_.FullYRes());
+	impl_->image_.GetMetaData(impl_->imageMD_);
+	const XnUInt8* pImage = impl_->imageMD_.Data();
+	last_color_.resize(impl_->imageMD_.FullXRes(), impl_->imageMD_.FullYRes());
 	memcpy(last_color_.begin().pointer(), pImage, last_color_.size() * 3 * sizeof(unsigned char));
 
 	// store depth image
-	depth_.GetMetaData(depthMD_);
-	const XnDepthPixel* pDepth = depthMD_.Data();
-	last_depth_.resize(depthMD_.FullXRes(), depthMD_.FullYRes());
+	impl_->depth_.GetMetaData(impl_->depthMD_);
+	const XnDepthPixel* pDepth = impl_->depthMD_.Data();
+	last_depth_.resize(impl_->depthMD_.FullXRes(), impl_->depthMD_.FullYRes());
 	memcpy(last_depth_.begin().pointer(), pDepth, last_depth_.size() * sizeof(uint16_t));
 
 	frame_current_++;
@@ -255,5 +265,5 @@ void KinectGrabber::Notify()
 }
 
 //----------------------------------------------------------------------------//
-}}
+}
 //----------------------------------------------------------------------------//

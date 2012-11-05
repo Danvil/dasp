@@ -5,28 +5,17 @@
  *      Author: david
  */
 
-#ifndef ROMOE_KINECT_KINECTGRABBER_H_
-#define ROMOE_KINECT_KINECTGRABBER_H_
+#ifndef DASP_KINECT_KINECTGRABBER_H_
+#define DASP_KINECT_KINECTGRABBER_H_
 //----------------------------------------------------------------------------//
 #include "GrabOptions.h"
 #include <Slimage/Slimage.hpp>
 #include <boost/signals.hpp>
 #include <string>
-namespace xn {
-	class Context;
-	class Player;
-	class DepthGenerator;
-	class ImageGenerator;
-	class DepthMetaData;
-	class ImageMetaData;
-}
-
+#include <memory>
 slimage::Image1ub ColorizeDepth(const slimage::Image1ui16& depth);
-
-
 //----------------------------------------------------------------------------//
-namespace Romeo {
-namespace Kinect {
+namespace dasp {
 //----------------------------------------------------------------------------//
 
 class KinectGrabber
@@ -95,16 +84,13 @@ private:
 	bool stop_requested_;
 
 private:
-	xn::Context context_;
+	struct xn_vars;
+	std::shared_ptr<xn_vars> impl_;
+
 	bool is_oni_;
-	xn::Player player_;
-	xn::DepthGenerator depth_;
-	xn::ImageGenerator image_;
-	xn::DepthMetaData depthMD_;
-	xn::ImageMetaData imageMD_;
 };
 
 //----------------------------------------------------------------------------//
-}}
+}
 //----------------------------------------------------------------------------//
 #endif
