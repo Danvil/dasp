@@ -32,10 +32,10 @@ std::map<std::string,slimage::ImagePtr> sDebugImages;
 
 Parameters::Parameters()
 {
-	camera.cx = 0.0f;
-	camera.cy = 0.0f;
-	camera.focal = 0.0f;
-	camera.z_slope = 0.0f;
+	camera.cx = 318.39f;
+	camera.cy = 271.99f;
+	camera.focal = 528.01f;
+	camera.z_slope = 0.001f;
 	color_space = ColorSpaces::RGB;
 	weight_color = 2.0f;
 	weight_spatial = 1.0f;
@@ -52,7 +52,7 @@ Parameters::Parameters()
 	ignore_pixels_with_bad_visibility = false;
 	is_conquer_enclaves = true;
 	segment_threshold = 1.0f;
-	is_repair_depth = true;
+	is_repair_depth = false;
 	is_smooth_depth = false;
 	is_improve_seeds = false;
 	enable_clipping = false;
