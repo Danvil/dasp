@@ -8,42 +8,9 @@
 #ifndef DASP_GRAPH_HPP_
 #define DASP_GRAPH_HPP_
 
+#include "impl/as_range.hpp"
 #include <boost/graph/adjacency_list.hpp>
-
-namespace detail
-{
-	template<class Iter>
-	struct iter_pair_range
-	: std::pair<Iter,Iter>
-	{
-		iter_pair_range(const std::pair<Iter,Iter>& x)
-		: std::pair<Iter,Iter>(x)
-		{}
-
-		Iter begin() const {
-			return this->first;
-		}
-
-		Iter end() const {
-			return this->second;
-		}
-	};
-}
-
-template<class Iter>
-inline detail::iter_pair_range<Iter> as_range(const std::pair<Iter,Iter>& x) {
-	return detail::iter_pair_range<Iter>(x);
-}
-
-template<class Graph>
-inline detail::iter_pair_range<typename Graph::edge_iterator> edges_range(const Graph& graph) {
-	return as_range(boost::edges(graph));
-}
-
-template<class Graph>
-inline detail::iter_pair_range<typename Graph::vertex_iterator> vertices_range(const Graph& graph) {
-	return as_range(boost::vertices(graph));
-}
+#include <Eigen/Dense>
 
 namespace dasp
 {
@@ -64,10 +31,32 @@ namespace dasp
 	typedef boost::property<superpixel_id_t, SuperpixelId> VertexSuperpixelIdProperty;
 
 	/** An undirected graph with a list of image border pixels per edge */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, VertexSuperpixelIdProperty, EdgeBorderPixelsProperty> BorderPixelGraph;
+	typedef boost::adjacency_list<boost::vecS, boost::vecS,
+		boost::undirectedS,
+		VertexSuperpixelIdProperty,
+		EdgeBorderPixelsProperty> BorderPixelGraph;
 
 	/** An undirected weighted graph */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, VertexSuperpixelIdProperty, EdgeWeightProperty> EdgeWeightGraph;
+	typedef boost::adjacency_list<boost::vecS, boost::vecS,
+		boost::undirectedS,
+		VertexSuperpixelIdProperty,
+		EdgeWeightProperty> EdgeWeightGraph;
+
+	/** Core superpoint information */
+	struct DaspPoint
+	{
+		Eigen::Vector2f px;
+		Eigen::Vector3f position;
+		Eigen::Vector3f color;
+		Eigen::Vector3f normal;
+	};
+
+	/** Weighted graph of superpoints */
+	typedef boost::adjacency_list<boost::vecS, boost::vecS,
+		boost::directedS,
+		DaspPoint,
+		EdgeWeightProperty> DaspGraph;
+
 
 	/** Gets the superpixel id of the source vertex of a superpixel graph edge
 	 * SuperpixelGraph must have a superpixel_id_t edge property.

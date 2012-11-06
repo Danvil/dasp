@@ -7,9 +7,46 @@
 
 #include "Neighbourhood.hpp"
 #include <Slimage/Convert.hpp>
+#include <boost/graph/copy.hpp>
 
 namespace dasp
 {
+
+DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph& weighted_graph)
+{
+	DaspGraph result;
+	boost::copy_graph(weighted_graph, result,
+		boost::vertex_copy(
+			[&superpixels,&weighted_graph,&result](EdgeWeightGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
+				const SuperpixelId i = boost::get(superpixel_id_t(), weighted_graph, src);
+				const auto& center = superpixels.cluster[i].center;
+				DaspPoint& p = result[dst];
+				p.px = center.pos;
+				p.position = center.world;
+				p.color = center.color;
+				p.normal = center.computeNormal();
+			}
+		)
+		.edge_copy(
+			[&weighted_graph,&result](EdgeWeightGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
+				const float d = boost::get(boost::edge_weight, weighted_graph, src);
+				boost::put(boost::edge_weight, result, dst, d);
+			}
+		)
+	);
+	return result;
+}
+
+DaspGraph ConvertToSimilarityGraph(const DaspGraph& source, const float sigma) {
+	DaspGraph result;
+	boost::copy_graph(source, result,
+			boost::edge_copy([&source,&result,sigma](typename DaspGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
+				const float d = boost::get(boost::edge_weight, source, src);
+				const float s = std::exp(-d/sigma);
+				boost::put(boost::edge_weight, result, dst, s);
+	}));
+	return result;
+}
 
 std::vector<unsigned int> ComputeAllBorderPixels(const Superpixels& superpixels)
 {

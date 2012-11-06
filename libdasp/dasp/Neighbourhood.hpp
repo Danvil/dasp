@@ -59,6 +59,13 @@ namespace dasp
 		return result;
 	}
 
+	/** Computes a weighted superpixel graph with superpixel values as vertex properties
+	 */
+	DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph& weighted_graph);
+
+	/** Copies graph and changes edge weights to exp(-w/sigma) */
+	DaspGraph ConvertToSimilarityGraph(const DaspGraph& source, const float sigma);
+
 	/** Computes a border image
 	 * All border pixels for each edge are set to the edge weight in the image.
 	 * Default value for non border pixels is 0.
