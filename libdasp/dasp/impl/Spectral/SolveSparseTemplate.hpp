@@ -190,6 +190,10 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 	// solve ARPACK problem (see p. 82 in ARPACK++ manual)
 	if(cVerbose)
 		std::cout << "Sparse Solver: solving ..." << std::flush;
+	num_ev = std::min<unsigned int>(num_ev, n);
+	if(static_cast<float>(num_ev)/static_cast<float>(n) > 0.1f) {
+		std::cout << "Warning: Using sparse eigensolver, but trying to get a huge number of eigenvectors!" << std::endl;
+	}
 	ARluSymStdEig<Real> solv(num_ev, mat, "SM");
 	std::vector<Real> v_ew(num_ev);
 	std::vector<Real> v_ev(num_ev * n);
