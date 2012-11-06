@@ -121,38 +121,34 @@ namespace dasp
 		{
 			scl_spatial_ = w_spatial / (4.0f * superpixel_radius_ * superpixel_radius_);
 			scl_color_ = w_color / (std::sqrt(static_cast<float>(num_superpixels_)) * cWeightRho);
-			scl_normal_ = 3.0f * w_normal;
+			scl_normal_ = w_normal;
 		}
-
-		struct Data {
-			Eigen::Vector3f position;
-			Eigen::Vector3f normal;
-			Eigen::Vector3f color;
-		};
 
 		float operator()(const Point& x, const Point& y) const {
-			return operator()(Data{x.world, x.color, x.computeNormal()}, Data{y.world, y.color, y.computeNormal()});
-		}
-
-		float operator()(const Data& x, const Data& y) const {
+			const Eigen::Vector3f& x_pos = x.world;
+			const Eigen::Vector3f& y_pos = y.world;
+			const Eigen::Vector3f& x_col = x.color;
+			const Eigen::Vector3f& y_col = y.color;
+			Eigen::Vector3f x_norm = x.computeNormal();
+			Eigen::Vector3f y_norm = y.computeNormal();
 			// spatial distance
-			float d_spatial = metric::SpatialDistanceRaw(x.position, y.position);
-			d_spatial = std::max(0.0f, d_spatial - 1.0f); // distance of 1 indicates estimated distance
+			float scl_d_spatial = metric::SpatialDistanceRaw(x_pos, y_pos) * scl_spatial_;
+			scl_d_spatial = std::max(0.0f, scl_d_spatial - 1.2f); // distance of 1 indicates estimated distance
 			// color distance
-			float d_color = metric::ColorDistanceRaw(x.color, y.color);
+			float d_color = metric::ColorDistanceRaw(x_col, y_col);
 			// normal distance
 			float d_normal;
 			if(SupressConvexEdges) {
 				// only use concave edges
-				Eigen::Vector3f d = y.position - x.position;
-				d_normal = (x.normal - y.normal).dot(d) * Danvil::MoreMath::FastInverseSqrt(d.squaredNorm());
+				Eigen::Vector3f d = y_pos - x_pos;
+				d_normal = (x_norm - y_norm).dot(d) * Danvil::MoreMath::FastInverseSqrt(d.squaredNorm());
 				d_normal = std::max(0.0f, d_normal);
 			}
 			else {
-				d_normal = metric::NormalDistanceRaw(x.normal, y.normal);
+				d_normal = metric::NormalDistanceRaw(x_norm, y_norm);
 			}
 			// compute total edge connectivity
-			float d_combined = scl_spatial_*d_spatial + scl_color_*d_color + scl_normal_*d_normal;
+			float d_combined = scl_d_spatial + scl_color_*d_color + scl_normal_*d_normal;
 			return exp_cache_(d_combined);
 		}
 
