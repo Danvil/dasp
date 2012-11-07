@@ -7,6 +7,13 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 
 	ui.setupUi(this);
 
+	ui.comboBoxPlotGraphWeights->addItem("White", 0);
+	ui.comboBoxPlotGraphWeights->addItem("Black", 1);
+	ui.comboBoxPlotGraphWeights->addItem("DASP metric", 2);
+	ui.comboBoxPlotGraphWeights->addItem("Spectral metric", 3);
+	ui.comboBoxPlotGraphWeights->addItem("Spectral result", 4);
+	ui.comboBoxPlotGraphWeights->setCurrentIndex(2);
+
 	ui.comboBoxSeedType->addItem("Grid", dasp::SeedModes::Grid);
 	ui.comboBoxSeedType->addItem("DepthMipmap", dasp::SeedModes::DepthMipmap);
 	ui.comboBoxSeedType->addItem("DepthMipmapFS", dasp::SeedModes::DepthMipmapFS);
@@ -79,7 +86,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	QObject::connect(ui.checkBoxPlotBorders, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotBorders(int)));
 	QObject::connect(ui.checkBoxPlotGraphSpatialCut, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraphSpatialCut(int)));
 	QObject::connect(ui.checkBoxPlotGraph, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraph(int)));
-	QObject::connect(ui.checkBoxPlotGraphWeights, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotGraphWeights(int)));
+	QObject::connect(ui.comboBoxPlotGraphWeights, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangePlotGraphWeights(int)));
 	QObject::connect(ui.checkBoxPlotDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotDensity(int)));
 	QObject::connect(ui.checkBoxPlotSegments, SIGNAL(stateChanged(int)), this, SLOT(ChangePlotSegments(int)));
 
@@ -116,7 +123,7 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	dasp_processing_->show_cluster_borders_ = ui.checkBoxPlotBorders->isChecked();
 	dasp_processing_->graph_cut_spatial_ = ui.checkBoxPlotGraphSpatialCut->isChecked();
 	dasp_processing_->show_graph_ = ui.checkBoxPlotGraph->isChecked();
-	dasp_processing_->show_graph_weights_ = ui.checkBoxPlotGraphWeights->isChecked();
+	dasp_processing_->show_graph_weights_ = ui.comboBoxPlotGraphWeights->itemData(ui.comboBoxPlotGraphWeights->currentIndex()).toInt();
 	dasp_processing_->plot_density_ = ui.checkBoxPlotDensity->isChecked();
 	dasp_processing_->plot_segments_ = ui.checkBoxPlotSegments->isChecked();
 
@@ -286,9 +293,9 @@ void WdgtSuperpixelParameters::ChangePlotGraph(int state)
 	*reload = true;
 }
 
-void WdgtSuperpixelParameters::ChangePlotGraphWeights(int state)
+void WdgtSuperpixelParameters::ChangePlotGraphWeights(int selection)
 {
-	dasp_processing_->show_graph_weights_ = state;
+	dasp_processing_->show_graph_weights_ = ui.comboBoxPlotGraphWeights->itemData(selection).toInt();
 	*reload = true;
 }
 

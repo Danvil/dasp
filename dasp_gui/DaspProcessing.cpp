@@ -44,7 +44,7 @@ DaspProcessing::DaspProcessing()
 	cluster_mode_ = plots::ClusterPoints;
 	graph_cut_spatial_ = true;
 	show_graph_ = false;
-	show_graph_weights_ = true;
+	show_graph_weights_ = 2;
 	plot_segments_ = false;
 	plot_density_ = false;
 
@@ -125,13 +125,17 @@ void DaspProcessing::performSegmentationStep()
 	DANVIL_BENCHMARK_STOP(graph)
 
 	DANVIL_BENCHMARK_START(segmentation)
+	EdgeWeightGraph similarity_graph;
 	EdgeWeightGraph dasp_segment_graph;
 	ClusterLabeling dasp_segment_labeling;
-	if(plot_segments_) {
+	if(plot_segments_ || show_graph_weights_ == 3 || show_graph_weights_ == 4) {
 		// create segmentation graph
 		//segments = MinCutSegmentation(clustering_);
-		EdgeWeightGraph similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
-				ClassicSpectralAffinity<true>(clustering_.clusterCount(), clustering_.opt.base_radius));
+		similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
+				ClassicSpectralAffinity<true>(
+					clustering_.clusterCount(), clustering_.opt.base_radius,
+					1.0f, 1.0f, 1.0f));
+//					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal));
 		dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
 		dasp_segment_labeling = ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
 	}
@@ -165,37 +169,41 @@ void DaspProcessing::performSegmentationStep()
 			plots::PlotEdges(vis_img, clustering_.ComputeLabels(), border_color, 2);
 		}
 
-		if(show_graph_ || plot_segments_) {
-			if(plot_segments_) {
-				// plot segmentation graph
-				//std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, labeling);
-				std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(dasp_segment_labeling.num_labels);
-				vis_img = CreateLabelImage(clustering_, dasp_segment_labeling, colors);
+		if(plot_segments_) {
+			// plot segments
+			//std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, labeling);
+			std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(dasp_segment_labeling.num_labels);
+			vis_img = CreateLabelImage(clustering_, dasp_segment_labeling, colors);
+		}
 
-				if(show_graph_) {
-					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
+		if(show_graph_) {
+			switch(show_graph_weights_) {
+				default:
+				case 0:
+				case 1: // FIXME implement
+					plots::PlotGraphLines(vis_img, clustering_, Gnb);
+					break;
+				case 2: // dasp metric
+					plots::PlotWeightedGraphLines(vis_img, clustering_, Gnb_weighted,
+						[](float weight) {
+							float s = std::exp(-0.1f*weight);
+							return plots::IntensityColor(s, 0, 1);
+						});
+					break;
+				case 3: // spectral metric
+					plots::PlotWeightedGraphLines(vis_img, clustering_, similarity_graph,
 						[](float weight) {
 							return plots::IntensityColor(weight, 0, 1);
 						});
-				}
-			}
-			else {
-				if(show_graph_) {
-					// plot neighbourhood graph
-					if(show_graph_weights_) {
-						plots::PlotWeightedGraphLines(vis_img, clustering_, Gnb_weighted,
-							[](float weight) {
-								float s = std::exp(-0.1f*weight);
-								return plots::IntensityColor(s, 0, 1);
-							});
-					}
-					else {
-						plots::PlotGraphLines(vis_img, clustering_, Gnb);
-					}
-//					plots::PlotGraphLines(vis_img, clustering_, Gnb, [&Gnb](BorderPixelGraph::edge_descriptor eid) {
-//						unsigned int n = boost::get(borderpixels_t(), Gnb, eid).size();
-//						return plots::IntensityColor(static_cast<float>(n), 0.0f, 20.0f);
-//					});
+					break;
+				case 4: { // spectral result
+					const float T = clustering_.opt.segment_threshold;
+					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
+						[T](float weight) {
+							float q = std::max(0.0f, 2.0f*T - weight);
+							return plots::IntensityColor(q, 0, 2.0f*T);
+						});
+					break;
 				}
 			}
 		}

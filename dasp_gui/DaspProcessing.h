@@ -49,7 +49,7 @@ public:
 	dasp::plots::ClusterMode cluster_mode_;
 	bool graph_cut_spatial_;
 	bool show_graph_;
-	bool show_graph_weights_;
+	unsigned int show_graph_weights_;
 	bool plot_segments_;
 	bool plot_density_;
 

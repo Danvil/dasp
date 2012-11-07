@@ -44,7 +44,7 @@ public Q_SLOTS:
 	void ChangePlotBorders(int state);
 	void ChangePlotGraphSpatialCut(int state);
 	void ChangePlotGraph(int state);
-	void ChangePlotGraphWeights(int state);
+	void ChangePlotGraphWeights(int val);
 	void ChangePlotDensity(int state);
 	void ChangePlotSegments(int state);
 	void ChangeClipEnable(int state);
