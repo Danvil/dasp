@@ -24,6 +24,7 @@ include_directories(
 project(dasp)
 
 add_subdirectory(libdasp)
+add_subdirectory(dasp_cmd)
 add_subdirectory(dasp_gui)
 
 if (DASP_HAS_OPENNI)
