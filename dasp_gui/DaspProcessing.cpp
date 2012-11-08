@@ -134,7 +134,7 @@ void DaspProcessing::performSegmentationStep()
 		similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
 				ClassicSpectralAffinity<true>(
 					clustering_.clusterCount(), clustering_.opt.base_radius,
-					1.0f, 1.0f, 1.0f));
+					1.0f, 1.0f, 3.0f));
 //					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal));
 		dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
 		dasp_segment_labeling = ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
