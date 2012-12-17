@@ -27,6 +27,8 @@ add_subdirectory(libdasp)
 add_subdirectory(dasp_cmd)
 add_subdirectory(dasp_gui)
 
+add_subdirectory(dasv)
+
 if (DASP_HAS_OPENNI)
 	add_subdirectory(kinect)
 endif (DASP_HAS_OPENNI)
