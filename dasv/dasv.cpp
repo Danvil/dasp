@@ -230,7 +230,7 @@ void SampleDensityImplRec(
 	}
 }
 
-int find_next_pow2(int x)
+inline int find_next_pow2(int x)
 {
 	int a = 1;
 	while(a < x) a *= 2;
@@ -336,9 +336,12 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 	return p;
 }
 
-inline float PointClusterDistance(const Point& p, const Cluster& c)
+inline float PointClusterDistance(int time, const Point& p, const Cluster& c)
 {
-	return (p.color - c.color).squaredNorm();
+	const float dt = static_cast<float>(std::abs(time-c.time)) / static_cast<float>(CLUSTER_TIME_RADIUS);
+	const float dc = (p.color - c.color).squaredNorm();
+	const float dx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
+	return dt + dc + dx;
 }
 
 template<typename F>
@@ -372,7 +375,7 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 				assigment_type& assignment = frames[t]->assignment;
 				for(int y=y1; y<=y2; y++) {
 					for(int x=x1; x<=x2; x++) {
-						f(c, rgbd(x,y), assignment(x,y));
+						f(c, t, rgbd(x,y), assignment(x,y));
 					}
 				}
 			}
@@ -383,8 +386,8 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
 {
 	ClusterBox(frames,
-		[](const ClusterPtr& c, const Point& p, Assignment& a) {
-			const float d = PointClusterDistance(p, *c);
+		[](const ClusterPtr& c, int time, const Point& p, Assignment& a) {
+			const float d = PointClusterDistance(time, p, *c);
 			if(d < a.distance) {
 				a.distance = d;
 				a.cluster = c;
@@ -429,7 +432,7 @@ void UpdateClusterCenters(Timeseries& timeseries)
 	int t0 = timeseries.getBeginTime();
 	// do cluster box
 	ClusterBox(timeseries.frames,
-		[&ccas,t0](const ClusterPtr& c, const Point& p, Assignment& a) {
+		[&ccas,t0](const ClusterPtr& c, int time, const Point& p, Assignment& a) {
 			if(a.cluster == c) {
 				ccas[c->time - t0][c->id].add(p);
 			}
