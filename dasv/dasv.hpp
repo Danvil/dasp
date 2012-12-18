@@ -144,6 +144,21 @@ namespace dasv
 			result.insert(result.begin(), frames.begin() + i1, frames.begin() + i2);
 			return result;
 		}
+
+		void add(const FramePtr& f) {
+			frames.push_back(f);
+		}
+
+		std::vector<ClusterPtr> purge(int tmin) {
+			std::vector<ClusterPtr> clusters;
+			int i;
+			for(i=0; i<frames.size() && frames[i]->time < tmin; ++i) {
+				clusters.insert(clusters.begin(), frames[i]->clusters.begin(), frames[i]->clusters.end());
+			}
+			frames.erase(frames.begin(), frames.begin() + i);
+			t0 = tmin;
+			return clusters;
+		}
 	};
 
 	/**
