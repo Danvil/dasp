@@ -72,11 +72,11 @@ Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
 
 void ComputeRgbdDataNormals(RgbdData& rgbd)
 {
-	const int NY = rgbd.shape()[0];
-	const int NX = rgbd.shape()[1];
+	const int NY = rgbd.cols();
+	const int NX = rgbd.rows();
 	for(int y=0; y<NY; y++) {
 		for(int x=0; x<NX; x++) {
-			rgbd[y][x].normal = Eigen::Vector3f(0,0,-1); // FIXME implement
+			rgbd(x,y).normal = Eigen::Vector3f(0,0,-1); // FIXME implement
 		}
 	}
 }
@@ -85,10 +85,10 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 {
 	const int NX = img_color.width();
 	const int NY = img_color.height();
-	RgbdData rgbd(boost::extents[NY][NX]);
+	RgbdData rgbd(NX, NY);
 	for(int y=0, i=0; y<NY; y++) {
 		for(int x=0; x<NX; x++, i++) {
-			Point& point = rgbd[y][x];
+			Point& point = rgbd(x,y);
 			const uint16_t depth = img_depth[i];
 			const float z_over_f = DEPTH_TO_Z * static_cast<float>(depth) / PX_FOCAL;
 			// RGB color
@@ -115,12 +115,12 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 
 Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd)
 {
-	const int NY = rgbd.shape()[0];
-	const int NX = rgbd.shape()[1];
+	const int NY = rgbd.cols();
+	const int NX = rgbd.rows();
 	Eigen::MatrixXf density(NX, NY);
 	for(int y=0; y<NY; y++) {
 		for(int x=0; x<NX; x++) {
-			const Point& p = rgbd[y][x];
+			const Point& p = rgbd(x,y);
 			if(p.valid) {
 				// rho = r_px|^2 * pi / sqrt(||g||^2+1)
 				// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
@@ -139,12 +139,12 @@ Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd)
 
 bool FindValidSeedPoint(const RgbdData& rgbd, int& sx0, int& sy0, int range)
 {
-	const int NY = rgbd.shape()[0];
-	const int NX = rgbd.shape()[1];
+	const int NY = rgbd.cols();
+	const int NX = rgbd.rows();
 	if(range == 0) {
 		return 0 <= sx0 && sx0 < NX
 			&& 0 <= sy0 && sy0 < NY
-			&& rgbd[sy0][sx0].valid;
+			&& rgbd(sx0,sy0).valid;
 	}
 	// add random offset to add noise
 	std::uniform_int_distribution<int> delta(-range, +range); // FIXME
@@ -154,7 +154,7 @@ bool FindValidSeedPoint(const RgbdData& rgbd, int& sx0, int& sy0, int range)
 		int sy = sy0 + delta(random_engine);
 		if(    0 <= sx && sx < NX
 			&& 0 <= sy && sy < NY
-			&& rgbd[sy][sx].valid
+			&& rgbd(sx,sy).valid
 		) {
 			sx0 = sx;
 			sy0 = sy;
@@ -300,11 +300,11 @@ std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen
 		Eigen::Vector2f px = points[i];
 		int x = static_cast<int>(px.x());
 		int y = static_cast<int>(px.y());
-		if(!IsValidMultiArrayIndex(rgbd, y, x)) {
+		if(!rgbd.isValid(x,y)) {
 			// skip
 			continue;
 		}
-		const Point& fp = rgbd[y][x];
+		const Point& fp = rgbd(x,y);
 		Cluster& c = clusters[i];
 		c.pixel = px;
 		// FIXME use small neighbourhood
@@ -329,7 +329,7 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 		c.time = time;
 		c.id = i;
 	}
-	p->assignment.resize(boost::extents[rgbd.shape()[0]][rgbd.shape()[1]]);
+	p->assignment = assigment_type(rgbd.rows(), rgbd.cols());
 //	std::fill(p->assignment.data(), p->assignment.data() + p->assignment.num_elements(), Assignment{0,0.0f});
 	return p;
 }
@@ -344,12 +344,11 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 {
 	assert(frames.size() > 0);
 	const int T = frames.size();
-	const int NY = frames.front()->rgbd.shape()[0];
-	const int NX = frames.front()->rgbd.shape()[1];
+	const int NY = frames.front()->rgbd.cols();
+	const int NX = frames.front()->rgbd.rows();
 	// iterate over all frames
 	for(int k=0; k<frames.size(); k++) {
 		const std::vector<ClusterPtr>& frame_clusters = frames[k]->clusters;
-		int frame_time = frames[k];
 		// iterate over clusters
 		for(int i=0; i<frame_clusters.size(); i++) {
 			const ClusterPtr& c = frame_clusters[i];
@@ -371,7 +370,7 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 				assigment_type& assignment = frames[t]->assignment;
 				for(int y=y1; y<=y2; y++) {
 					for(int x=x1; x<=x2; x++) {
-						f(c, rgbd[y][x], assignment[y][x]);
+						f(c, rgbd(x,y), assignment(x,y));
 					}
 				}
 			}
@@ -399,10 +398,10 @@ struct ClusterCenterAccumulator
 	Eigen::Matrix3f mean_normal;
 
 	ClusterCenterAccumulator()
-	: mean_color(Eigen::Vector3f::Zero()),
+	: num(0),
+	  mean_color(Eigen::Vector3f::Zero()),
 	  mean_position(Eigen::Vector3f::Zero()),
-	  mean_normal(Eigen::Matrix3f::Zero()),
-	  num(0)
+	  mean_normal(Eigen::Matrix3f::Zero())
 	{}
 
 	void add(const Point& p) {
@@ -489,12 +488,15 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	series.add(frame);
 
-	if(series.getDuration() >= 2*CLUSTER_TIME_RADIUS) {
-		int t = series.getEndTime() - CLUSTER_TIME_RADIUS;
+	std::cout << "time=[" << series.getBeginTime() << "," << series.getEndTime() << "[" << std::endl;
+
+	if(series.getDuration() >= 2*CLUSTER_TIME_RADIUS+1) {
+		int t = series.getEndTime() - CLUSTER_TIME_RADIUS - 1;
 //		std::cout << "UpdateClusters" << std::endl;
 		UpdateClusters(t, series);
 //		std::cout << "Purge" << std::endl;
-		std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS);
+		std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
+		std::cout << "purged " << purged_clusters.size() << std::endl;
 		clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
 	}
 

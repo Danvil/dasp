@@ -11,6 +11,39 @@ namespace dasv
 {
 	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
 
+	inline bool IsValidIndex(int rows, int cols, int i, int j) {
+		return (0 <= i && i < rows && 0 <= j && j < cols);
+	}
+
+	// template<typename MA>
+	// bool IsValidMultiArrayIndex(const MA& ma, int i, int j) {
+	// 	return (0 <= i && i < ma.shape()[0] && 0 <= j && j < ma.shape()[1]);
+	// }
+
+	template<typename T>
+	struct Vector2D
+	{
+	public:
+		typedef std::vector<T> Container;
+		typedef typename Container::iterator it;
+		typedef typename Container::const_iterator const_it;
+		Vector2D() : rows_(0), cols_(0) {}
+		Vector2D(int rows, int cols) : rows_(rows), cols_(cols), data_(rows*cols) { }
+		int rows() const { return rows_; }
+		int cols() const { return cols_; }
+		int size() const { return rows_*cols_; }
+		it begin() { return data_.begin(); }
+		const_it begin() const { return data_.begin(); }
+		it end() { return data_.end(); }
+		const_it end() const { return data_.end(); }
+		T& operator()(int i, int j) { return data_[i + j*rows_]; }
+		const T& operator()(int i, int j) const { return data_[i + j*rows_]; }
+		bool isValid(int i, int j) const { return IsValidIndex(rows_, cols_, i, j); }
+	private:
+		int rows_, cols_;
+		std::vector<T> data_;
+	};
+
 	/** Voxel data */
 	struct Point
 	{
@@ -21,17 +54,9 @@ namespace dasv
 		bool valid;
 	};
 
-	inline bool IsValidIndex(int rows, int cols, int i, int j) {
-		return (0 <= i && i < rows && 0 <= j && j < cols);
-	}
-
-	template<typename MA>
-	bool IsValidMultiArrayIndex(const MA& ma, int i, int j) {
-		return (0 <= i && i < ma.shape()[0] && 0 <= j && j < ma.shape()[1]);
-	}
-
 	/** A frame of voxels at a given timestamp */
-	typedef boost::multi_array<Point, 2> RgbdData;
+	//typedef boost::multi_array<Point, 2> RgbdData;
+	typedef Vector2D<Point> RgbdData;
 
 	/** Creates a frame from color and depht data */
 	RgbdData CreateRgbdData(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
@@ -64,7 +89,8 @@ namespace dasv
 	};
 
 	/** Frame pixel to cluster assignment */
-	typedef boost::multi_array<Assignment, 2> assigment_type;
+	//typedef boost::multi_array<Assignment, 2> assigment_type;
+	typedef Vector2D<Assignment> assigment_type;
 
 	/** Various data related to one timestamp */
 	struct Frame
@@ -85,30 +111,30 @@ namespace dasv
 	{
 		std::vector<FramePtr> frames;
 
-		int getStartTime() const {
+		int getBeginTime() const {
 			return frames.empty() ? 0 : frames.front()->time;
 		}
 
 		int getEndTime() const {
-			return frames.empty() ? 0 : frames.back()->time;
+			return frames.empty() ? 0 : frames.back()->time+1;
 		}
 
 		int getDuration() const {
-			return getEndTime() - getStartTime();
+			return getEndTime() - getBeginTime();
 		}
 
 		const FramePtr& getFrame(int t) {
-			const int t0 = getStartTime();
+			const int t0 = getBeginTime();
 			assert(t0 <= t && t < t0 + frames.size());
 			return frames[t-t0];
 		}
 
-		std::vector<FramePtr> getFrameRange(int t1, int t2) const {
-			assert(t1 <= t2);
+		std::vector<FramePtr> getFrameRange(int t_begin, int t_end) const {
+			assert(t_begin < t_end);
 			int i1 = 0;
-			while(i1 < frames.size() && frames[i1]->time < t1) i1++;
+			while(i1 < frames.size() && frames[i1]->time < t_begin) i1++;
 			int i2 = i1;
-			while(i2 < frames.size() && frames[i2]->time < t2) i2++;
+			while(i2 < frames.size() && frames[i2]->time < t_end) i2++;
 			std::vector<FramePtr> result;
 			result.insert(result.begin(), frames.begin() + i1, frames.begin() + i2);
 			return result;
@@ -124,7 +150,7 @@ namespace dasv
 			for(i=0; i<frames.size() && frames[i]->time < tmin; ++i) {
 				clusters.insert(clusters.begin(), frames[i]->clusters.begin(), frames[i]->clusters.end());
 			}
-			frames.erase(frames.begin(), frames.begin() + i - 1);
+			frames.erase(frames.begin(), frames.begin() + i);
 			return clusters;
 		}
 	};
