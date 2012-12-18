@@ -33,7 +33,7 @@
 #include <assert.h>
 
 //#define GUI_DEBUG_VERBOSE
-#define GUI_DEBUG_NORMAL
+//#define GUI_DEBUG_NORMAL
 
 namespace dasv
 {
@@ -45,16 +45,18 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.02f;
-constexpr int CLUSTER_TIME_RADIUS = 5; // 1 second
+constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
 
 constexpr float PI = 3.1415f;
 
 void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl)
 {
+#ifdef GUI_DEBUG_NORMAL
 	slimage::Image1f img(mat.rows(), mat.cols());
 	img.buffer().copyFrom(&mat(0,0));
 	slimage::gui::Show(filename, img, scl, 0);
+#endif
 }
 
 Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
@@ -80,6 +82,14 @@ void ComputeRgbdDataNormals(RgbdData& rgbd)
 			rgbd(x,y).normal = Eigen::Vector3f(0,0,-1); // FIXME implement
 		}
 	}
+}
+
+Eigen::Vector2f CameraProject(const Eigen::Vector3f& p)
+{
+	return {
+		CENTER_X + PX_FOCAL*p.x()/p.z(),
+		CENTER_Y + PX_FOCAL*p.y()/p.z()
+	};
 }
 
 RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image1ui16& img_depth)
@@ -114,7 +124,7 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 	return rgbd;
 }
 
-Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd)
+Eigen::MatrixXf ComputeFrameDensity(const RgbdData& rgbd)
 {
 	const int NY = rgbd.cols();
 	const int NX = rgbd.rows();
@@ -127,11 +137,45 @@ Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd)
 				// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
 				// TODO n_z should always be negative so abs(n_z) should equal -n_z.
 				const float A = p.cluster_radius_px * p.cluster_radius_px * PI * std::abs(p.normal.z());
-				const float rho = 1.0f / A / static_cast<float>(2*CLUSTER_TIME_RADIUS);
+				const float rho = 1.0f / A;
 				density(x,y) = rho; // FIXME is density(i) correct?
 			}
 			else {
 				density(x,y) = 0.0f;
+			}
+		}
+	}
+	return density;
+}
+
+Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Cluster>& clusters)
+{
+	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
+	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
+	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	for(const Cluster& c : clusters) {
+		if(!c.valid) {
+			continue;
+		}
+		const int sx = static_cast<int>(c.pixel.x() + 0.5f);
+		const int sy = static_cast<int>(c.pixel.y() + 0.5f);
+		const float sxf = c.pixel.x();
+		const float syf = c.pixel.y();
+		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
+		const float rho = 1.0f / (c.cluster_radius_px*c.cluster_radius_px*PI*std::abs(c.normal.z()));
+		// kernel influence range
+		const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho)));
+		const int xmin = std::max<int>(sx - R, 0);
+		const int xmax = std::min<int>(sx + R, rows - 1);
+		const int ymin = std::max<int>(sy - R, 0);
+		const int ymax = std::min<int>(sy + R, cols - 1);
+		for(int yi=ymin; yi<=ymax; yi++) {
+			for(int xi=xmin; xi<=xmax; xi++) {
+				const float dx = static_cast<float>(xi) - sxf;
+				const float dy = static_cast<float>(yi) - syf;
+				const float d2 = dx*dx + dy*dy;
+				const float delta = rho * std::exp(-PI*rho*d2);// BlueNoise::KernelFunctorSquare(rho*d2);
+				density(xi, yi) += delta;
 			}
 		}
 	}
@@ -189,7 +233,7 @@ void SampleDensityImplRec(
 			int half = (1 << (level - 1));
 			int sx = (x << level) + half;
 			int sy = (y << level) + half;
-			if(FindValidSeedPoint(rgbd, sx, sy, half/4)) { // place near center
+			if(FindValidSeedPoint(rgbd, sx, sy, half/2)) { // place near center
 				seeds.push_back(Eigen::Vector2f(sx, sy));
 				// reduce density by 1
 				v -= 1.0f;
@@ -341,7 +385,7 @@ inline float PointClusterDistance(int time, const Point& p, const Cluster& c)
 	const float dt = static_cast<float>(std::abs(time-c.time)) / static_cast<float>(CLUSTER_TIME_RADIUS);
 	const float dc = (p.color - c.color).squaredNorm();
 	const float dx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
-	return dt + dc + dx;
+	return 0.5f*dt + 2.0f*dc + dx;
 }
 
 template<typename F>
@@ -454,6 +498,7 @@ void UpdateClusterCenters(Timeseries& timeseries)
 			c.color = scl * cca.mean_color;
 			c.position = scl * cca.mean_position;
 			c.normal = cca.computeNormal();
+			c.pixel = CameraProject(c.position);
 		}
 	}
 }
@@ -471,9 +516,9 @@ void UpdateClusters(int time, Timeseries& timeseries)
 	}
 }
 
-void ContinuousSupervoxels::start()
+void ContinuousSupervoxels::start(int rows, int cols)
 {
-
+	is_first_ = true;
 }
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
@@ -481,13 +526,44 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 //	std::cout << "CreateRgbdData" << std::endl;
 	RgbdData rgbd = CreateRgbdData(color, depth);
 
-//	std::cout << "ComputeClusterDensity" << std::endl;
-	Eigen::MatrixXf density = ComputeClusterDensity(rgbd);
+	if(!is_first_) {
+		DebugShowMatrix("last_density", last_density, 100.0f);
+	}
+
+//	std::cout << "ComputeFrameDensity" << std::endl;
+	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
+	DebugShowMatrix("target_density", target_density, 100.0f);
+	// target_density / static_cast<float>(2*CLUSTER_TIME_RADIUS)
 //	DebugShowMatrix("density", density, 2500.0f);
 
+	const float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
+
+	Eigen::MatrixXf sample_density;
+	if(is_first_) {
+		sample_density = target_density;
+	}
+	else {
+		sample_density = target_density - LAMBDA*last_density;
+	}
+	DebugShowMatrix("sample_density", sample_density, 100.0f);
+
 //	std::cout << "SampleClustersFromDensity" << std::endl;
-	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, density);
+	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
 //	std::cout << "Cluster Count: " << clusters.size() << std::endl;
+
+	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
+	DebugShowMatrix("current_density", current_density, 100.0f);
+
+#ifdef GUI_DEBUG_NORMAL
+	slimage::gui::WaitForKeypress();
+#endif
+
+	if(is_first_) {
+		last_density = current_density;
+	}
+	else {
+		last_density = LAMBDA*last_density + current_density;
+	}
 
 //	std::cout << "CreateFrame" << std::endl;
 	FramePtr frame = CreateFrame(series.getEndTime(), rgbd, new_clusters);
@@ -499,15 +575,14 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
 
-	if(series.getDuration() >= 2*CLUSTER_TIME_RADIUS+1) {
-		int t = series.getEndTime() - CLUSTER_TIME_RADIUS - 1;
-//		std::cout << "UpdateClusters" << std::endl;
-		UpdateClusters(t, series);
-//		std::cout << "Purge" << std::endl;
-		std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-		clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
-	}
+	int t = std::max(series.getBeginTime(), series.getEndTime() - CLUSTER_TIME_RADIUS - 1);
+//	std::cout << "UpdateClusters" << std::endl;
+	UpdateClusters(t, series);
+//	std::cout << "Purge" << std::endl;
+	std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
+	clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
 
+	is_first_ = false;
 }
 
 int ContinuousSupervoxels::numActiveClusters() const

@@ -168,7 +168,7 @@ namespace dasv
 	/** Control structure for continuous cluster generation */
 	struct ContinuousSupervoxels
 	{
-		void start();
+		void start(int rows, int cols);
 		void step(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
 
 		int numActiveClusters() const;
@@ -176,8 +176,12 @@ namespace dasv
 
 		std::vector<Cluster> getAllClusters() const;
 
+		Eigen::MatrixXf last_density;
 		Timeseries series;
 		std::vector<ClusterPtr> clusters;
+
+	private:
+		bool is_first_;
 	};
 
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);

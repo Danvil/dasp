@@ -20,6 +20,7 @@ int main(int argc, char** argv)
 	slimage::gui::Show("depth", depth, 500, 3000, 0);
 	
 	ContinuousSupervoxels sv;
+	sv.start(640,480);
 	for(int t=0; t<50; t++) {
 		sv.step(color, depth);
 	}
