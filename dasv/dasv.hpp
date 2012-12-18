@@ -135,9 +135,13 @@ namespace dasv
 		}
 
 		std::vector<FramePtr> getFrameRange(int t1, int t2) const {
-			assert(t0 <= t1 && t2 < t0+frames.size());
+			assert(t1 <= t2);
+			int i1 = 0;
+			while(i1 < frames.size() && frames[i1]->time < t1) i1++;
+			int i2 = i1;
+			while(i2 < frames.size() && frames[i2]->time < t2) i2++;
 			std::vector<FramePtr> result;
-			result.insert(result.begin(), frames.begin() + t1 - t0, frames.begin() + t2 - t0);
+			result.insert(result.begin(), frames.begin() + i1, frames.begin() + i2);
 			return result;
 		}
 	};
