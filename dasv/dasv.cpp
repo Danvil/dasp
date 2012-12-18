@@ -29,6 +29,7 @@
 #include <random>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <assert.h>
 
 //#define GUI_DEBUG_VERBOSE
@@ -45,7 +46,7 @@ constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.02f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // 1 second
-constexpr int CLUSTER_ITERATIONS = 3;
+constexpr int CLUSTER_ITERATIONS = 1;
 
 constexpr float PI = 3.1415f;
 
@@ -319,6 +320,7 @@ std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen
 
 FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>& clusters)
 {
+	constexpr float VERY_LARGE_DISTANCE = 1000000.0f;
 	FramePtr p = std::make_shared<Frame>();
 	p->time = time;
 	p->rgbd = rgbd;
@@ -330,7 +332,7 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 		c.id = i;
 	}
 	p->assignment = assigment_type(rgbd.rows(), rgbd.cols());
-//	std::fill(p->assignment.data(), p->assignment.data() + p->assignment.num_elements(), Assignment{0,0.0f});
+	std::fill(p->assignment.begin(), p->assignment.end(), Assignment{0,VERY_LARGE_DISTANCE});
 	return p;
 }
 
@@ -424,11 +426,12 @@ void UpdateClusterCenters(Timeseries& timeseries)
 	for(int t=0; t<ccas.size(); ++t) {
 		ccas[t].resize(timeseries.frames[t]->clusters.size());
 	}
+	int t0 = timeseries.getBeginTime();
 	// do cluster box
 	ClusterBox(timeseries.frames,
-		[&ccas](const ClusterPtr& c, const Point& p, Assignment& a) {
+		[&ccas,t0](const ClusterPtr& c, const Point& p, Assignment& a) {
 			if(a.cluster == c) {
-				ccas[c->time][c->id].add(p);
+				ccas[c->time - t0][c->id].add(p);
 			}
 		});
 	// update
@@ -455,7 +458,7 @@ void UpdateClusterCenters(Timeseries& timeseries)
 void UpdateClusters(int time, Timeseries& timeseries)
 {
 	// compute frame range for assignment update
-	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS);
+	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
 	// iterate some times
 	for (int k = 0; k < CLUSTER_ITERATIONS; ++k) {
 		// update cluster assignment for frames in range
@@ -488,7 +491,10 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	series.add(frame);
 
-	std::cout << "time=[" << series.getBeginTime() << "," << series.getEndTime() << "[" << std::endl;
+	std::cout << "t=" << frame->time
+			<< ", span=[" << series.getBeginTime() << "," << series.getEndTime() << "["
+			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
+			<< std::endl;
 
 	if(series.getDuration() >= 2*CLUSTER_TIME_RADIUS+1) {
 		int t = series.getEndTime() - CLUSTER_TIME_RADIUS - 1;
@@ -496,10 +502,51 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		UpdateClusters(t, series);
 //		std::cout << "Purge" << std::endl;
 		std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-		std::cout << "purged " << purged_clusters.size() << std::endl;
 		clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
 	}
 
+}
+
+int ContinuousSupervoxels::numActiveClusters() const
+{
+	return std::accumulate(series.frames.begin(), series.frames.end(), 0,
+		[](int a, const FramePtr& f) { return a + f->clusters.size(); } );
+}
+
+int ContinuousSupervoxels::numInactiveClusters() const
+{
+	return clusters.size();
+}
+
+std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
+{
+	std::vector<Cluster> result;
+	result.reserve(numActiveClusters() + numInactiveClusters());
+	for(const ClusterPtr& c : clusters) {
+		result.push_back(*c);
+	}
+	for(const FramePtr& f : series.frames) {
+		for(const ClusterPtr& c : f->clusters) {
+			result.push_back(*c);
+		}
+	}
+	return result;
+}
+
+void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters)
+{
+	std::ofstream ofs(fn);
+	for(const Cluster& c : clusters) {
+		ofs << c.time
+			<< "\t" << c.id
+			<< "\t" << (c.valid ? 1 : 0)
+			<< "\t" << c.cluster_radius_px
+			<< "\t" << c.pixel.x() << "\t" << c.pixel.y()
+			<< "\t" << c.color.x() << "\t" << c.color.y() << "\t" << c.color.z()
+			<< "\t" << c.position.x() << "\t" << c.position.y() << "\t" << c.position.z()
+			<< "\t" << c.normal.x() << "\t" << c.normal.y() << "\t" << c.normal.z()
+			<< std::endl;
+	}
 }
 
 }

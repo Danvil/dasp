@@ -20,12 +20,14 @@ int main(int argc, char** argv)
 	slimage::gui::Show("depth", depth, 500, 3000, 0);
 	
 	ContinuousSupervoxels sv;
-	for(int t=0; t<100; t++) {
-		std::cout << "t=" << t << std::endl;
+	for(int t=0; t<50; t++) {
 		sv.step(color, depth);
 	}
 
-	std::cout << "Supervoxel count = " << sv.clusters.size() << std::endl;
+	std::vector<Cluster> clusters = sv.getAllClusters();
+
+	std::cout << "Supervoxel count = " << clusters.size() << std::endl;
+	DebugWriteClusters("clusters.tsv", clusters);
 
 	std::cout << "Finished." << std::endl;
 //	slimage::gui::WaitForKeypress();

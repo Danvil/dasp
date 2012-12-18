@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <boost/multi_array.hpp>
 #include <vector>
+#include <string>
 #include <memory>
 
 namespace dasv
@@ -153,6 +154,7 @@ namespace dasv
 			frames.erase(frames.begin(), frames.begin() + i);
 			return clusters;
 		}
+
 	};
 
 	/**
@@ -163,14 +165,22 @@ namespace dasv
 	 */
 	void UpdateClusters(int time, Timeseries& timeseries);
 
+	/** Control structure for continuous cluster generation */
 	struct ContinuousSupervoxels
 	{
 		void start();
 		void step(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
 
+		int numActiveClusters() const;
+		int numInactiveClusters() const;
+
+		std::vector<Cluster> getAllClusters() const;
+
 		Timeseries series;
 		std::vector<ClusterPtr> clusters;
 	};
+
+	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 }
 
