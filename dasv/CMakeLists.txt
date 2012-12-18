@@ -1,9 +1,13 @@
+add_definitions(-DSLIMAGE_IO_OPENCV)
+
 add_library(dasv SHARED
 	dasv.cpp
 )
 
 target_link_libraries(dasv
 	boost_thread
+	opencv_core
+	opencv_highgui
 )
 
 #if (DASP_HAS_CANDY)

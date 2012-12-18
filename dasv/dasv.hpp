@@ -9,6 +9,8 @@
 
 namespace dasv
 {
+	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
+
 	/** Voxel data */
 	struct Point
 	{
@@ -23,64 +25,19 @@ namespace dasv
 		return (0 <= i && i < rows && 0 <= j && j < cols);
 	}
 
-	/** A frame of voxels at a given timestamp
-	 * COLUMN-MAJOR storage order!
-	 */
-	struct RgbdData
-	{
-		typedef std::vector<Point> Container;
-		typedef Container::iterator it;
-		typedef Container::const_iterator cit;
+	template<typename MA>
+	bool IsValidMultiArrayIndex(const MA& ma, int i, int j) {
+		return (0 <= i && i < ma.shape()[0] && 0 <= j && j < ma.shape()[1]);
+	}
 
-		int rows, cols;
-		Container points;
-
-		RgbdData()
-		: rows(0), cols(0)
-		{}
-
-		RgbdData(int nrows, int ncols)
-		: rows(nrows), cols(ncols),
-		  points(nrows*ncols)
-		{}
-
-		int size() const { return rows*cols; }
-
-		cit begin() const { return points.begin(); }
-
-		it begin() { return points.begin(); }
-
-		cit end() const { return points.end(); }
-
-		it end() { return points.end(); }
-
-		const Point& operator[](int i) const {
-			return points[i];
-		}
-
-		Point& operator[](int i) {
-			return points[i];
-		}
-
-		bool valid(int i, int j) const {
-			return IsValidIndex(rows, cols, i, j);
-		}
-
-		const Point& operator()(int i, int j) const {
-			return points[i+j*rows];
-		}
-
-		Point& operator()(int i, int j) {
-			return points[i+j*rows];
-		}
-		
-	};
+	/** A frame of voxels at a given timestamp */
+	typedef boost::multi_array<Point, 2> RgbdData;
 
 	/** Creates a frame from color and depht data */
 	RgbdData CreateRgbdData(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
 
 	/** Computes cluster density */
-	Eigen::MatrixXf ComputeClusterDensity(const RgbdData& frame);
+	Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd);
 
 	/** A voxel cluster (supervoxel) */
 	struct Cluster
@@ -98,7 +55,7 @@ namespace dasv
 	typedef std::shared_ptr<Cluster> ClusterPtr;
 
 	/** Samples clusters from cluster density */
-	std::vector<Cluster> SampleClustersFromDensity(const RgbdData& frame, const Eigen::MatrixXf& density);
+	std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen::MatrixXf& density);
 
 	struct Assignment
 	{
@@ -127,9 +84,21 @@ namespace dasv
 	struct Timeseries
 	{
 		std::vector<FramePtr> frames;
-		int t0;
+
+		int getStartTime() const {
+			return frames.empty() ? 0 : frames.front()->time;
+		}
+
+		int getEndTime() const {
+			return frames.empty() ? 0 : frames.back()->time;
+		}
+
+		int getDuration() const {
+			return getEndTime() - getStartTime();
+		}
 
 		const FramePtr& getFrame(int t) {
+			const int t0 = getStartTime();
 			assert(t0 <= t && t < t0 + frames.size());
 			return frames[t-t0];
 		}
@@ -155,8 +124,7 @@ namespace dasv
 			for(i=0; i<frames.size() && frames[i]->time < tmin; ++i) {
 				clusters.insert(clusters.begin(), frames[i]->clusters.begin(), frames[i]->clusters.end());
 			}
-			frames.erase(frames.begin(), frames.begin() + i);
-			t0 = tmin;
+			frames.erase(frames.begin(), frames.begin() + i - 1);
 			return clusters;
 		}
 	};
@@ -168,6 +136,15 @@ namespace dasv
 	 * @param clusters time -> clusters for this timestep
 	 */
 	void UpdateClusters(int time, Timeseries& timeseries);
+
+	struct ContinuousSupervoxels
+	{
+		void start();
+		void step(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+
+		Timeseries series;
+		std::vector<ClusterPtr> clusters;
+	};
 
 }
 
