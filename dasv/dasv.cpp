@@ -31,6 +31,7 @@ constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.03f;
 constexpr int CLUSTER_TIME_RADIUS = 15; // 1 second
+constexpr int CLUSTER_ITERATIONS = 3;
 
 constexpr float PI = 3.1415f;
 
@@ -402,11 +403,15 @@ void UpdateClusterCenters(Timeseries& timeseries)
 
 void UpdateClusters(int time, Timeseries& timeseries)
 {
-	// update cluster assignment for frames in range
+	// compute frame range for assignment update
 	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS);
-	UpdateClusterAssignment(frames);
-	// update cluster centers
-	UpdateClusterCenters(timeseries);
+	// iterate some times
+	for (int k = 0; k < CLUSTER_ITERATIONS; ++k) {
+		// update cluster assignment for frames in range
+		UpdateClusterAssignment(frames);
+		// update cluster centers
+		UpdateClusterCenters(timeseries);
+	}
 }
 
 }
