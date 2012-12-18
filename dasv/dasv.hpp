@@ -3,8 +3,8 @@
 
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
+#include <boost/multi_array.hpp>
 #include <vector>
-#include <map>
 #include <memory>
 
 namespace dasv
@@ -89,20 +89,39 @@ namespace dasv
 		Eigen::Vector3f color;
 		Eigen::Vector3f position;
 		Eigen::Vector3f normal;
+		float cluster_radius_px;
+		int time;
+		int id;
+		bool valid;
 	};
+
+	typedef std::shared_ptr<Cluster> ClusterPtr;
 
 	/** Samples clusters from cluster density */
 	std::vector<Cluster> SampleClustersFromDensity(const RgbdData& frame, const Eigen::MatrixXf& density);
 
+	struct Assignment
+	{
+		ClusterPtr cluster;
+		float distance;
+	};
+
+	/** Frame pixel to cluster assignment */
+	typedef boost::multi_array<Assignment, 2> assigment_type;
+
 	/** Various data related to one timestamp */
 	struct Frame
 	{
-		RgbdData rgbd;
-		std::vector<Cluster> clusters;
 		int time;
+		RgbdData rgbd;
+		std::vector<ClusterPtr> clusters;
+		assigment_type assignment;
 	};
 
 	typedef std::shared_ptr<Frame> FramePtr;
+
+	/** Creates a frame from RGBD data and initial clusters */
+	FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>& clusters);
 
 	/** A series of frames and clusters */
 	struct Timeseries
@@ -113,6 +132,13 @@ namespace dasv
 		const FramePtr& getFrame(int t) {
 			assert(t0 <= t && t < t0 + frames.size());
 			return frames[t-t0];
+		}
+
+		std::vector<FramePtr> getFrameRange(int t1, int t2) const {
+			assert(t0 <= t1 && t2 < t0+frames.size());
+			std::vector<FramePtr> result;
+			result.insert(result.begin(), frames.begin() + t1 - t0, frames.begin() + t2 - t0);
+			return result;
 		}
 	};
 

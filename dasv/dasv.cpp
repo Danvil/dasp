@@ -15,7 +15,9 @@
  */
 
 #include "dasv.hpp"
+#include <boost/multi_array.hpp>
 #include <random>
+#include <algorithm>
 #include <assert.h>
 
 namespace dasv
@@ -28,7 +30,7 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.03f;
-constexpr float CLUSTER_TIME = 30.0f; // 1 second
+constexpr int CLUSTER_TIME_RADIUS = 15; // 1 second
 
 constexpr float PI = 3.1415f;
 
@@ -85,7 +87,7 @@ Eigen::MatrixXf ComputeClusterDensity(const RgbdData& frame)
 		// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
 		// TODO n_z should always be negative so abs(n_z) should equal -n_z.
 		const float A = p.cluster_radius_px * p.cluster_radius_px * PI * std::abs(p.normal.z());
-		const float rho = 1.0f / A / CLUSTER_TIME;
+		const float rho = 1.0f / A / static_cast<float>(2*CLUSTER_TIME_RADIUS);
 		density(i) = rho; // FIXME is density(i) correct?
 	}
 	return density;
@@ -256,13 +258,155 @@ std::vector<Cluster> SampleClustersFromDensity(const RgbdData& frame, const Eige
 		c.color = fp.color;
 		c.position = fp.position;
 		c.normal = fp.normal;
+		c.cluster_radius_px = fp.cluster_radius_px;
+		c.valid = true;
 	}
 	return clusters;
 }
 
+FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>& clusters)
+{
+	FramePtr p = std::make_shared<Frame>();
+	p->time = time;
+	p->rgbd = rgbd;
+	p->clusters.resize(clusters.size());
+	for(int i=0; i=clusters.size(); ++i) {
+		p->clusters[i] = std::make_shared<Cluster>(clusters[i]);
+		Cluster& c = *p->clusters[i];
+		c.time = time;
+		c.id = i;
+	}
+	p->assignment = assigment_type(boost::extents[rgbd.cols][rgbd.rows]);
+//	std::fill(p->assignment.data(), p->assignment.data() + p->assignment.num_elements(), Assignment{0,0.0f});
+	return p;
+}
+
+inline float PointClusterDistance(const Point& p, const Cluster& c)
+{
+	return (p.color - c.color).squaredNorm();
+}
+
+template<typename F>
+void ClusterBox(const std::vector<FramePtr>& frames, F f)
+{
+	assert(frames.size() > 0);
+	const int T = frames.size();
+	const int NY = frames.front()->rgbd.cols;
+	const int NX = frames.front()->rgbd.rows;
+	// iterate over all frames
+	for(int k=0; k<frames.size(); k++) {
+		const std::vector<ClusterPtr>& frame_clusters = frames[k]->clusters;
+		int frame_time = frames[k];
+		// iterate over clusters
+		for(int i=0; i<frame_clusters.size(); i++) {
+			const ClusterPtr& c = frame_clusters[i];
+			// skip invalid clusters
+			if(!c->valid) {
+				continue;
+			}
+			// compute cluster bounding box
+			const int R = static_cast<float>(c->cluster_radius_px + 0.5f);
+			const int xc = static_cast<float>(c->pixel.x() + 0.5f);
+			const int yc = static_cast<float>(c->pixel.y() + 0.5f);
+			const int x1 = std::max(   0, xc - R);
+			const int x2 = std::min(NX-1, xc + R);
+			const int y1 = std::max(   0, yc - R);
+			const int y2 = std::min(NY-1, yc + R);
+			// iterate over all pixels in box and compute distance
+			for(int t=0; t<T; t++) {
+				const RgbdData& rgbd = frames[t]->rgbd;
+				assigment_type& assignment = frames[t]->assignment;
+				for(int y=y1; y<=y2; y++) {
+					for(int x=x1; x<=x2; x++) {
+						f(c, rgbd(x,y), assignment[y][x]);
+					}
+				}
+			}
+		}
+	}
+}
+
+void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
+{
+	ClusterBox(frames,
+		[](const ClusterPtr& c, const Point& p, Assignment& a) {
+			const float d = PointClusterDistance(p, *c);
+			if(d < a.distance) {
+				a.distance = d;
+				a.cluster = c;
+			}
+		});
+}
+
+struct ClusterCenterAccumulator
+{
+	int num;
+	Eigen::Vector3f mean_color;
+	Eigen::Vector3f mean_position;
+	Eigen::Matrix3f mean_normal;
+
+	ClusterCenterAccumulator()
+	: mean_color(Eigen::Vector3f::Zero()),
+	  mean_position(Eigen::Vector3f::Zero()),
+	  mean_normal(Eigen::Matrix3f::Zero()),
+	  num(0)
+	{}
+
+	void add(const Point& p) {
+		num ++;
+		mean_color += p.color;
+		mean_position += p.position;
+		mean_normal += p.normal * p.normal.transpose();
+	}
+
+	Eigen::Vector3f computeNormal() const {
+		// FIXME implement
+		return Eigen::Vector3f(0.0f, 0.0f, -1.0f);
+	}
+};
+
+void UpdateClusterCenters(Timeseries& timeseries)
+{
+	// init cluster center accumulators
+	std::vector<std::vector<ClusterCenterAccumulator>> ccas(timeseries.frames.size());
+	for(int t=0; t<ccas.size(); ++t) {
+		ccas[t].resize(timeseries.frames[t]->clusters.size());
+	}
+	// do cluster box
+	ClusterBox(timeseries.frames,
+		[&ccas](const ClusterPtr& c, const Point& p, Assignment& a) {
+			if(a.cluster == c) {
+				ccas[c->time][c->id].add(p);
+			}
+		});
+	// update
+	for(int t=0; t<ccas.size(); ++t) {
+		const auto& v = ccas[t];
+		for(int k=0; k<v.size(); k++) {
+			Cluster& c = *timeseries.frames[t]->clusters[k];
+			const ClusterCenterAccumulator& cca = v[k];
+			if(cca.num == 0) {
+				c.valid = false;
+			}
+			if(!c.valid) {
+				continue;
+			}
+			float scl = 1.0f / static_cast<float>(cca.num);
+			// recompute
+			c.color = scl * cca.mean_color;
+			c.position = scl * cca.mean_position;
+			c.normal = cca.computeNormal();
+		}
+	}
+}
+
 void UpdateClusters(int time, Timeseries& timeseries)
 {
-
+	// update cluster assignment for frames in range
+	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS);
+	UpdateClusterAssignment(frames);
+	// update cluster centers
+	UpdateClusterCenters(timeseries);
 }
 
 }
