@@ -44,9 +44,11 @@ constexpr float DEPTH_TO_Z = 0.001f;
 constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
-constexpr float CLUSTER_RADIUS = 0.02f;
+constexpr float CLUSTER_RADIUS = 0.025f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
+constexpr float CLUSTER_RADIUS_MULT = 1.5f;
+constexpr float SPATIAL_TIME_INCREASE = 0.005f; // 0.15 m/s
 
 constexpr float PI = 3.1415f;
 
@@ -380,9 +382,9 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 	return p;
 }
 
-inline float PointClusterDistance(int time, const Point& p, const Cluster& c)
+inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 {
-	const float dt = static_cast<float>(std::abs(time-c.time)) / static_cast<float>(CLUSTER_TIME_RADIUS);
+	const float dt = static_cast<float>(std::abs(p_time-c.time)) / static_cast<float>(CLUSTER_TIME_RADIUS);
 	const float dc = (p.color - c.color).squaredNorm();
 	const float dx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
 	return 0.5f*dt + 2.0f*dc + dx;
@@ -405,21 +407,33 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 			if(!c->valid) {
 				continue;
 			}
-			// compute cluster bounding box
-			const int R = static_cast<float>(c->cluster_radius_px + 0.5f);
-			const int xc = static_cast<float>(c->pixel.x() + 0.5f);
-			const int yc = static_cast<float>(c->pixel.y() + 0.5f);
-			const int x1 = std::max(   0, xc - R);
-			const int x2 = std::min(NX-1, xc + R);
-			const int y1 = std::max(   0, yc - R);
-			const int y2 = std::min(NY-1, yc + R);
 			// iterate over all pixels in box and compute distance
 			for(int t=0; t<T; t++) {
 				const RgbdData& rgbd = frames[t]->rgbd;
 				assigment_type& assignment = frames[t]->assignment;
+				int frame_time = frames[t]->time;
+				// compute cluster radius
+				float rpx = CLUSTER_RADIUS_MULT
+					* c->cluster_radius_px
+					* (1.0f + SPATIAL_TIME_INCREASE*static_cast<float>(std::abs(frame_time - c->time)) / CLUSTER_RADIUS);
+				// compute cluster bounding box
+				const int R = static_cast<float>(rpx + 0.5f);
+				const int xc = static_cast<float>(c->pixel.x() + 0.5f);
+				const int yc = static_cast<float>(c->pixel.y() + 0.5f);
+				const int x1 = std::max(   0, xc - R);
+				const int x2 = std::min(NX-1, xc + R);
+				const int y1 = std::max(   0, yc - R);
+				const int y2 = std::min(NY-1, yc + R);
+				// iterate over box at time
 				for(int y=y1; y<=y2; y++) {
 					for(int x=x1; x<=x2; x++) {
-						f(c, t, rgbd(x,y), assignment(x,y));
+						const Point& p = rgbd(x,y);
+						// skip invalid points
+						if(!p.valid) {
+							continue;
+						}
+						// call functor
+						f(c, frame_time, p, assignment(x,y));
 					}
 				}
 			}
@@ -430,8 +444,8 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
 {
 	ClusterBox(frames,
-		[](const ClusterPtr& c, int time, const Point& p, Assignment& a) {
-			const float d = PointClusterDistance(time, p, *c);
+		[](const ClusterPtr& c, int p_time, const Point& p, Assignment& a) {
+			const float d = PointClusterDistance(p_time, p, *c);
 			if(d < a.distance) {
 				a.distance = d;
 				a.cluster = c;
@@ -476,7 +490,7 @@ void UpdateClusterCenters(Timeseries& timeseries)
 	int t0 = timeseries.getBeginTime();
 	// do cluster box
 	ClusterBox(timeseries.frames,
-		[&ccas,t0](const ClusterPtr& c, int time, const Point& p, Assignment& a) {
+		[&ccas,t0](const ClusterPtr& c, int p_time, const Point& p, Assignment& a) {
 			if(a.cluster == c) {
 				ccas[c->time - t0][c->id].add(p);
 			}
@@ -523,41 +537,37 @@ void ContinuousSupervoxels::start(int rows, int cols)
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
-//	std::cout << "CreateRgbdData" << std::endl;
+	// create rgbd data
 	RgbdData rgbd = CreateRgbdData(color, depth);
 
+	// compute frame density and sample frame clusters
 	if(!is_first_) {
 		DebugShowMatrix("last_density", last_density, 100.0f);
 	}
-
-//	std::cout << "ComputeFrameDensity" << std::endl;
+	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
 	DebugShowMatrix("target_density", target_density, 100.0f);
-	// target_density / static_cast<float>(2*CLUSTER_TIME_RADIUS)
-//	DebugShowMatrix("density", density, 2500.0f);
-
+	// computes cluster sample density
 	const float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
-
 	Eigen::MatrixXf sample_density;
 	if(is_first_) {
+		// use target density
 		sample_density = target_density;
 	}
 	else {
+		// recent clusters provide density via last_density
 		sample_density = target_density - LAMBDA*last_density;
 	}
 	DebugShowMatrix("sample_density", sample_density, 100.0f);
-
-//	std::cout << "SampleClustersFromDensity" << std::endl;
+	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
-//	std::cout << "Cluster Count: " << clusters.size() << std::endl;
-
+	// computes density of generated clusters
 	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
 	DebugShowMatrix("current_density", current_density, 100.0f);
-
 #ifdef GUI_DEBUG_NORMAL
 	slimage::gui::WaitForKeypress();
 #endif
-
+	// updates last density
 	if(is_first_) {
 		last_density = current_density;
 	}
@@ -565,22 +575,25 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		last_density = LAMBDA*last_density + current_density;
 	}
 
-//	std::cout << "CreateFrame" << std::endl;
+	// creates a frame and adds it to the series
 	FramePtr frame = CreateFrame(series.getEndTime(), rgbd, new_clusters);
-
 	series.add(frame);
 
-	std::cout << "t=" << frame->time
+	// purge old frames to limit time interval
+	std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
+	clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
+
+	// get current active time
+	int t = std::max(series.getBeginTime(), series.getEndTime() - CLUSTER_TIME_RADIUS - 1);
+
+	// Debug
+	std::cout << "f=" << frame->time << ", t=" << t
 			<< ", span=[" << series.getBeginTime() << "," << series.getEndTime() << "["
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
 
-	int t = std::max(series.getBeginTime(), series.getEndTime() - CLUSTER_TIME_RADIUS - 1);
-//	std::cout << "UpdateClusters" << std::endl;
+	// update clusters around active time
 	UpdateClusters(t, series);
-//	std::cout << "Purge" << std::endl;
-	std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-	clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
 
 	is_first_ = false;
 }

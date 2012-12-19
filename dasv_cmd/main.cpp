@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 	
 	ContinuousSupervoxels sv;
 	sv.start(640,480);
-	for(int t=0; t<50; t++) {
+	for(int t=0; t<25; t++) {
 		sv.step(color, depth);
 	}
 
