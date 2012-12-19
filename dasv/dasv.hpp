@@ -10,17 +10,7 @@
 
 namespace dasv
 {
-	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
-
-	inline bool IsValidIndex(int rows, int cols, int i, int j) {
-		return (0 <= i && i < rows && 0 <= j && j < cols);
-	}
-
-	// template<typename MA>
-	// bool IsValidMultiArrayIndex(const MA& ma, int i, int j) {
-	// 	return (0 <= i && i < ma.shape()[0] && 0 <= j && j < ma.shape()[1]);
-	// }
-
+	/** 2D data structure implemented with an std::vector */
 	template<typename T>
 	struct Vector2D
 	{
@@ -30,16 +20,20 @@ namespace dasv
 		typedef typename Container::const_iterator const_it;
 		Vector2D() : rows_(0), cols_(0) {}
 		Vector2D(int rows, int cols) : rows_(rows), cols_(cols), data_(rows*cols) { }
-		int rows() const { return rows_; }
-		int cols() const { return cols_; }
-		int size() const { return rows_*cols_; }
+		Container& data() { return data_; }
+		const Container& data() const { return data_; }
 		it begin() { return data_.begin(); }
 		const_it begin() const { return data_.begin(); }
 		it end() { return data_.end(); }
 		const_it end() const { return data_.end(); }
+		int size() const { return rows_*cols_; }
+		T& operator[](int i) { return data_[i]; }
+		const T& operator[](int i) const { return data_[i]; }
+		int rows() const { return rows_; }
+		int cols() const { return cols_; }
+		bool isValid(int i, int j) const { return (0 <= i && i < rows_ && 0 <= j && j < cols_); }
 		T& operator()(int i, int j) { return data_[i + j*rows_]; }
 		const T& operator()(int i, int j) const { return data_[i + j*rows_]; }
-		bool isValid(int i, int j) const { return IsValidIndex(rows_, cols_, i, j); }
 	private:
 		int rows_, cols_;
 		std::vector<T> data_;
@@ -56,14 +50,7 @@ namespace dasv
 	};
 
 	/** A frame of voxels at a given timestamp */
-	//typedef boost::multi_array<Point, 2> RgbdData;
 	typedef Vector2D<Point> RgbdData;
-
-	/** Creates a frame from color and depht data */
-	RgbdData CreateRgbdData(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
-
-	/** Computes cluster density */
-	Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd);
 
 	/** A voxel cluster (supervoxel) */
 	struct Cluster
@@ -80,9 +67,6 @@ namespace dasv
 
 	typedef std::shared_ptr<Cluster> ClusterPtr;
 
-	/** Samples clusters from cluster density */
-	std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen::MatrixXf& density);
-
 	struct Assignment
 	{
 		ClusterPtr cluster;
@@ -90,7 +74,6 @@ namespace dasv
 	};
 
 	/** Frame pixel to cluster assignment */
-	//typedef boost::multi_array<Assignment, 2> assigment_type;
 	typedef Vector2D<Assignment> assigment_type;
 
 	/** Various data related to one timestamp */
@@ -104,10 +87,19 @@ namespace dasv
 
 	typedef std::shared_ptr<Frame> FramePtr;
 
+	/** Creates a frame from color and depht data */
+	RgbdData CreateRgbdData(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+
+	/** Computes cluster density */
+	Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd);
+
+	/** Samples clusters from cluster density */
+	std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen::MatrixXf& density);
+
 	/** Creates a frame from RGBD data and initial clusters */
 	FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>& clusters);
 
-	/** A series of frames and clusters */
+	/** A timeseries of frames */
 	struct Timeseries
 	{
 		std::vector<FramePtr> frames;
@@ -157,15 +149,10 @@ namespace dasv
 
 	};
 
-	/**
-	 * Updates clusters for a given timestep
-	 * @param time current timestep
-	 * @param frames time -> frames
-	 * @param clusters time -> clusters for this timestep
-	 */
+	/** Updates clusters near a given timestep */
 	void UpdateClusters(int time, Timeseries& timeseries);
 
-	/** Control structure for continuous cluster generation */
+	/** Control structure for continuous temporal-depth-adative superpoint generation */
 	struct ContinuousSupervoxels
 	{
 		/** Starts temporal superpoint generation */
@@ -190,6 +177,10 @@ namespace dasv
 		std::vector<ClusterPtr> inactive_clusters_;
 	};
 
+	/** Opens a window to display matrix data */
+	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
+
+	/** Writes clusters to a file */
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 }
