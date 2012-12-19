@@ -185,7 +185,17 @@ namespace dasv
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 	/** Computes superpixel image from clusters and assignment */
-	slimage::Image3ub DebugCreateSuperpixelImage(int time, const Timeseries& series);
+	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame);
+
+	/** Computes compression error
+	 *   sum_i (mu_{a(i)} - mu)^2 / sum_i (x_i - mu)^2
+	 * where
+	 *   x_i value of i-th pixel,
+	 *   mu_j mean for j-th cluster,
+	 *   a(i) cluster assignment of i-th pixel,
+	 *   mu total mean of all clusters
+	 */
+	Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame);
 
 }
 

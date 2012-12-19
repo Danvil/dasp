@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	grabber->SeekToFrame(100);
 	ContinuousSupervoxels sv;
 	sv.start(640,480);
-	for(int i=0; i<25; i++) {
+	for(int i=0; i<1000; i++) {
 		bool ok = grabber->Grab();
 		if(!ok) {
 			break;

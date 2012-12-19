@@ -40,9 +40,11 @@ constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
-constexpr int CLUSTER_ITERATIONS = 1;
+constexpr int CLUSTER_ITERATIONS = 3;
 constexpr float CLUSTER_RADIUS_MULT = 1.5f;
 constexpr float SPATIAL_TIME_INCREASE = 0.005f; // 0.15 m/s
+constexpr uint16_t DEPTH_MIN = 0;
+constexpr uint16_t DEPTH_MAX = 2500;
 
 constexpr float PI = 3.1415f;
 
@@ -103,23 +105,25 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 		for(int x=0; x<NX; x++, i++) {
 			Point& point = rgbd(x,y);
 			const uint16_t depth = img_depth[i];
-			const float z_over_f = DEPTH_TO_Z * static_cast<float>(depth) / PX_FOCAL;
-			// RGB color
-			const slimage::Pixel3ub& color = img_color[i];
-			point.color = (1.0f/255.0f) * Eigen::Vector3f(
-					static_cast<float>(color[0]),
-					static_cast<float>(color[1]),
-					static_cast<float>(color[2]));
-			// point from depth
-			point.position = z_over_f * Eigen::Vector3f(
-					static_cast<float>(x) - CENTER_X,
-					static_cast<float>(y) - CENTER_Y,
-					PX_FOCAL);
-			// normal -> ComputeRgbdDataNormals
-			// world cluster radius
-			point.cluster_radius_px = CLUSTER_RADIUS / z_over_f;
 			// valid
-			point.valid = (depth != 0);
+			point.valid = depth != 0 && DEPTH_MIN <= depth && depth <= DEPTH_MAX;
+			if(point.valid) {
+				const float z_over_f = DEPTH_TO_Z * static_cast<float>(depth) / PX_FOCAL;
+				// RGB color
+				const slimage::Pixel3ub& color = img_color[i];
+				point.color = (1.0f/255.0f) * Eigen::Vector3f(
+						static_cast<float>(color[0]),
+						static_cast<float>(color[1]),
+						static_cast<float>(color[2]));
+				// point from depth
+				point.position = z_over_f * Eigen::Vector3f(
+						static_cast<float>(x) - CENTER_X,
+						static_cast<float>(y) - CENTER_Y,
+						PX_FOCAL);
+				// normal -> ComputeRgbdDataNormals
+				// world cluster radius
+				point.cluster_radius_px = CLUSTER_RADIUS / z_over_f;
+			}
 		}
 	}
 	ComputeRgbdDataNormals(rgbd);
@@ -382,14 +386,6 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 	return p;
 }
 
-inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
-{
-	const float dt = static_cast<float>(std::abs(p_time-c.time)) / static_cast<float>(CLUSTER_TIME_RADIUS);
-	const float dc = (p.color - c.color).squaredNorm();
-	const float dx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
-	return 0.5f*dt + 2.0f*dc + dx;
-}
-
 template<typename F>
 void ClusterBox(const std::vector<FramePtr>& frames, F f)
 {
@@ -439,6 +435,16 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 			}
 		}
 	}
+}
+
+inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
+{
+	const float mc = (p.color - c.color).squaredNorm();
+	const float dt = static_cast<float>(std::abs(p_time-c.time));
+	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
+	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*dt;
+	const float mx = (p.position - c.position).squaredNorm() / (r*r);
+	return 0.67f*mc + 0.33f*(mt + mx);
 }
 
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
@@ -580,8 +586,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	}
 
 	// creates a frame and adds it to the series
-	FramePtr frame = CreateFrame(series_.getEndTime(), rgbd, new_clusters);
-	series_.add(frame);
+	FramePtr new_frame = CreateFrame(series_.getEndTime(), rgbd, new_clusters);
+	series_.add(new_frame);
 
 	// purge old frames to limit time interval
 	std::vector<ClusterPtr> purged_clusters = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
@@ -591,16 +597,19 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
 
 	// Debug
-	std::cout << "f=" << frame->time << ", t=" << t
+	std::cout << "f=" << new_frame->time << ", t=" << t
 			<< ", span=[" << series_.getBeginTime() << "," << series_.getEndTime() << "["
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
+
+	Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
+	std::cout << "Compression Error: " << compression_error.transpose() << std::endl;
 
 	// update clusters around active time
 	UpdateClusters(t, series_);
 
 #ifdef GUI_DEBUG_NORMAL
-	slimage::Image3ub img = DebugCreateSuperpixelImage(t, series_);
+	slimage::Image3ub img = DebugCreateSuperpixelImage(series_.getFrame(t));
 	slimage::gui::Show("superpixel", img, 200);
 #endif
 
@@ -653,9 +662,8 @@ void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clust
 	}
 }
 
-slimage::Image3ub DebugCreateSuperpixelImage(int time, const Timeseries& series)
+slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame)
 {
-	FramePtr frame = series.getFrame(time);
 	slimage::Image3ub img(frame->rgbd.rows(), frame->rgbd.cols(), {{0,0,0}});
 	const FrameAssignment& assignment = frame->assignment;
 	const int rows = frame->rgbd.rows();
@@ -673,6 +681,44 @@ slimage::Image3ub DebugCreateSuperpixelImage(int time, const Timeseries& series)
 		}
 	}
 	return img;
+}
+
+Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
+{
+	const int n = frame->rgbd.size();
+	const RgbdData& rgbd = frame->rgbd;
+	const FrameAssignment& assignment = frame->assignment;
+	// compute mean of all pixels
+	Eigen::Vector3f pixel_mean_color = Eigen::Vector3f::Zero();
+	Eigen::Vector3f pixel_mean_position = Eigen::Vector3f::Zero();
+	int num_pixels = 0;
+	for(int i=0; i<n; i++) {
+		const Point& p = rgbd[i];
+		if(!p.valid) continue;
+		pixel_mean_color += p.color;
+		pixel_mean_position += p.position;
+		num_pixels ++;
+	}
+	assert(num_pixels > 0);
+	pixel_mean_color /= static_cast<float>(num_pixels);
+	pixel_mean_position /= static_cast<float>(num_pixels);
+	// compute errors
+	float cluster_error_color = 0.0f;
+	float cluster_error_position = 0.0f;
+	float pixel_error_color = 0.0f;
+	float pixel_error_position = 0.0f;
+	for(int i=0; i<n; i++) {
+		const ClusterPtr& c = assignment[i].cluster;
+		if(!c) continue;
+		cluster_error_color += (c->color - pixel_mean_color).squaredNorm();
+		cluster_error_position += (c->position - pixel_mean_position).squaredNorm();
+		pixel_error_color += (rgbd[i].color - pixel_mean_color).squaredNorm();
+		pixel_error_position += (rgbd[i].position - pixel_mean_position).squaredNorm();
+	}
+	return {
+		cluster_error_color / pixel_error_color,
+		cluster_error_position / pixel_error_position
+	};
 }
 
 }
