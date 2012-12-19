@@ -533,22 +533,26 @@ void UpdateClusters(int time, Timeseries& timeseries)
 void ContinuousSupervoxels::start(int rows, int cols)
 {
 	is_first_ = true;
+	series_.frames.clear();
+	inactive_clusters_.clear();
 }
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
+	constexpr float DEBUG_DENSITY_SCALE = 100.0f;
+
 	// create rgbd data
 	RgbdData rgbd = CreateRgbdData(color, depth);
 
 	// compute frame density and sample frame clusters
 	if(!is_first_) {
-		DebugShowMatrix("last_density", last_density, 100.0f);
+		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
 	}
 	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
-	DebugShowMatrix("target_density", target_density, 100.0f);
+	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
 	// computes cluster sample density
-	const float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
+	constexpr float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
 	Eigen::MatrixXf sample_density;
 	if(is_first_) {
 		// use target density
@@ -556,67 +560,67 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	}
 	else {
 		// recent clusters provide density via last_density
-		sample_density = target_density - LAMBDA*last_density;
+		sample_density = target_density - LAMBDA*last_density_;
 	}
-	DebugShowMatrix("sample_density", sample_density, 100.0f);
+	DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
 	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
 	// computes density of generated clusters
 	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
-	DebugShowMatrix("current_density", current_density, 100.0f);
+	DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
 #ifdef GUI_DEBUG_NORMAL
 	slimage::gui::WaitForKeypress();
 #endif
 	// updates last density
 	if(is_first_) {
-		last_density = current_density;
+		last_density_ = current_density;
 	}
 	else {
-		last_density = LAMBDA*last_density + current_density;
+		last_density_ = LAMBDA*last_density_ + current_density;
 	}
 
 	// creates a frame and adds it to the series
-	FramePtr frame = CreateFrame(series.getEndTime(), rgbd, new_clusters);
-	series.add(frame);
+	FramePtr frame = CreateFrame(series_.getEndTime(), rgbd, new_clusters);
+	series_.add(frame);
 
 	// purge old frames to limit time interval
-	std::vector<ClusterPtr> purged_clusters = series.purge(series.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-	clusters.insert(clusters.end(), purged_clusters.begin(), purged_clusters.end());
+	std::vector<ClusterPtr> purged_clusters = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
+	inactive_clusters_.insert(inactive_clusters_.end(), purged_clusters.begin(), purged_clusters.end());
 
 	// get current active time
-	int t = std::max(series.getBeginTime(), series.getEndTime() - CLUSTER_TIME_RADIUS - 1);
+	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
 
 	// Debug
 	std::cout << "f=" << frame->time << ", t=" << t
-			<< ", span=[" << series.getBeginTime() << "," << series.getEndTime() << "["
+			<< ", span=[" << series_.getBeginTime() << "," << series_.getEndTime() << "["
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
 
 	// update clusters around active time
-	UpdateClusters(t, series);
+	UpdateClusters(t, series_);
 
 	is_first_ = false;
 }
 
 int ContinuousSupervoxels::numActiveClusters() const
 {
-	return std::accumulate(series.frames.begin(), series.frames.end(), 0,
+	return std::accumulate(series_.frames.begin(), series_.frames.end(), 0,
 		[](int a, const FramePtr& f) { return a + f->clusters.size(); } );
 }
 
 int ContinuousSupervoxels::numInactiveClusters() const
 {
-	return clusters.size();
+	return inactive_clusters_.size();
 }
 
 std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 {
 	std::vector<Cluster> result;
 	result.reserve(numActiveClusters() + numInactiveClusters());
-	for(const ClusterPtr& c : clusters) {
+	for(const ClusterPtr& c : inactive_clusters_) {
 		result.push_back(*c);
 	}
-	for(const FramePtr& f : series.frames) {
+	for(const FramePtr& f : series_.frames) {
 		for(const ClusterPtr& c : f->clusters) {
 			result.push_back(*c);
 		}
