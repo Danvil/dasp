@@ -67,6 +67,7 @@ namespace dasv
 
 	typedef std::shared_ptr<Cluster> ClusterPtr;
 
+	/** Pixel to cluster assignment */
 	struct Assignment
 	{
 		ClusterPtr cluster;
@@ -74,7 +75,7 @@ namespace dasv
 	};
 
 	/** Frame pixel to cluster assignment */
-	typedef Vector2D<Assignment> assigment_type;
+	typedef Vector2D<Assignment> FrameAssignment;
 
 	/** Various data related to one timestamp */
 	struct Frame
@@ -82,7 +83,7 @@ namespace dasv
 		int time;
 		RgbdData rgbd;
 		std::vector<ClusterPtr> clusters;
-		assigment_type assignment;
+		FrameAssignment assignment;
 	};
 
 	typedef std::shared_ptr<Frame> FramePtr;
@@ -116,7 +117,7 @@ namespace dasv
 			return getEndTime() - getBeginTime();
 		}
 
-		const FramePtr& getFrame(int t) {
+		const FramePtr& getFrame(int t) const {
 			const int t0 = getBeginTime();
 			assert(t0 <= t && t < t0 + frames.size());
 			return frames[t-t0];
@@ -182,6 +183,9 @@ namespace dasv
 
 	/** Writes clusters to a file */
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
+
+	/** Computes superpixel image from clusters and assignment */
+	slimage::Image3ub DebugCreateSuperpixelImage(int time, const Timeseries& series);
 
 }
 

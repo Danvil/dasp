@@ -8,16 +8,10 @@
  *     for(int i=0; i<cols; i++)
  *       for(int j=0; j<rows; j++)
  *	       m(j,i) = 42.0f;
- * - User defined 2D arrays use boost::multi_array
- *   boost::multi_array storage order is C-STYLE
- *   The following loop structure should be used:
- *     boost::multi_array<T> a(boost::extents[cols][rows]);
- *     for(int i=0; i<a.shape()[0]; i++)
- *       for(int j=0; j<a.shape()[1]; j++)
- *	       a[i][j] = 42.0f;
+ * - 2D arrays with user types use Vector2D which behaves like Eigen::MatrixXf
  * - With (x,y) coordinates these correspondences should be used:
- *     width -> rows -> a.shape()[1]
- *     height -> cols -> a.shape()[0]
+ *     width -> rows
+ *     height -> cols
  *     m(x,y) (it is optimal to use x in the inner loop)
  *     a[y][x] (it is optimal to use x in the inner loop)
  */
@@ -33,7 +27,7 @@
 #include <assert.h>
 
 //#define GUI_DEBUG_VERBOSE
-//#define GUI_DEBUG_NORMAL
+#define GUI_DEBUG_NORMAL
 
 namespace dasv
 {
@@ -54,11 +48,9 @@ constexpr float PI = 3.1415f;
 
 void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl)
 {
-#ifdef GUI_DEBUG_NORMAL
 	slimage::Image1f img(mat.rows(), mat.cols());
 	img.buffer().copyFrom(&mat(0,0));
 	slimage::gui::Show(filename, img, scl, 0);
-#endif
 }
 
 Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
@@ -92,6 +84,14 @@ Eigen::Vector2f CameraProject(const Eigen::Vector3f& p)
 		CENTER_X + PX_FOCAL*p.x()/p.z(),
 		CENTER_Y + PX_FOCAL*p.y()/p.z()
 	};
+}
+
+boost::array<unsigned char,3> ColorToImage(const Eigen::Vector3f& c) {
+	return {{
+		static_cast<unsigned char>(c.x() * 255.0f),
+		static_cast<unsigned char>(c.y() * 255.0f),
+		static_cast<unsigned char>(c.z() * 255.0f)
+	}};
 }
 
 RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image1ui16& img_depth)
@@ -377,7 +377,7 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 		c.time = time;
 		c.id = i;
 	}
-	p->assignment = assigment_type(rgbd.rows(), rgbd.cols());
+	p->assignment = FrameAssignment(rgbd.rows(), rgbd.cols());
 	std::fill(p->assignment.begin(), p->assignment.end(), Assignment{0,VERY_LARGE_DISTANCE});
 	return p;
 }
@@ -410,7 +410,7 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 			// iterate over all pixels in box and compute distance
 			for(int t=0; t<T; t++) {
 				const RgbdData& rgbd = frames[t]->rgbd;
-				assigment_type& assignment = frames[t]->assignment;
+				FrameAssignment& assignment = frames[t]->assignment;
 				int frame_time = frames[t]->time;
 				// compute cluster radius
 				float rpx = CLUSTER_RADIUS_MULT
@@ -545,12 +545,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	RgbdData rgbd = CreateRgbdData(color, depth);
 
 	// compute frame density and sample frame clusters
-	if(!is_first_) {
-		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
-	}
 	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
-	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
 	// computes cluster sample density
 	constexpr float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
 	Eigen::MatrixXf sample_density;
@@ -562,14 +558,18 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		// recent clusters provide density via last_density
 		sample_density = target_density - LAMBDA*last_density_;
 	}
-	DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
 	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
 	// computes density of generated clusters
 	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
+	// debug
+#ifdef GUI_DEBUG_VERBOSE
+	if(!is_first_) {
+		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
+	}
+	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
+	DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
 	DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
-#ifdef GUI_DEBUG_NORMAL
-	slimage::gui::WaitForKeypress();
 #endif
 	// updates last density
 	if(is_first_) {
@@ -598,6 +598,15 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	// update clusters around active time
 	UpdateClusters(t, series_);
+
+#ifdef GUI_DEBUG_NORMAL
+	slimage::Image3ub img = DebugCreateSuperpixelImage(t, series_);
+	slimage::gui::Show("superpixel", img, 200);
+#endif
+
+//#ifdef GUI_DEBUG_NORMAL
+//	slimage::gui::WaitForKeypress();
+//#endif
 
 	is_first_ = false;
 }
@@ -642,6 +651,28 @@ void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clust
 			<< "\t" << c.normal.x() << "\t" << c.normal.y() << "\t" << c.normal.z()
 			<< std::endl;
 	}
+}
+
+slimage::Image3ub DebugCreateSuperpixelImage(int time, const Timeseries& series)
+{
+	FramePtr frame = series.getFrame(time);
+	slimage::Image3ub img(frame->rgbd.rows(), frame->rgbd.cols(), {{0,0,0}});
+	const FrameAssignment& assignment = frame->assignment;
+	const int rows = frame->rgbd.rows();
+	const int cols = frame->rgbd.cols();
+	for(int y=0; y<cols; y++) {
+		for(int x=0; x<rows; x++) {
+			const ClusterPtr& c = assignment(x,y).cluster;	
+			if(c && c->valid) {
+				auto q = ColorToImage(c->color);
+				img(x,y) = {{q[0],q[1],q[2]}};
+			}
+			else {
+				img(x,y) = {{0,0,0}};
+			}
+		}
+	}
+	return img;
 }
 
 }
