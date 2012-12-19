@@ -20,6 +20,7 @@ namespace dasv
 		typedef typename Container::const_iterator const_it;
 		Vector2D() : rows_(0), cols_(0) {}
 		Vector2D(int rows, int cols) : rows_(rows), cols_(cols), data_(rows*cols) { }
+		Vector2D(int rows, int cols, const T& t) : rows_(rows), cols_(cols), data_(rows*cols, t) { }
 		Container& data() { return data_; }
 		const Container& data() const { return data_; }
 		it begin() { return data_.begin(); }
@@ -185,7 +186,7 @@ namespace dasv
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 	/** Computes superpixel image from clusters and assignment */
-	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame);
+	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders);
 
 	/** Computes compression error
 	 *   sum_i (mu_{a(i)} - mu)^2 / sum_i (x_i - mu)^2
@@ -193,9 +194,12 @@ namespace dasv
 	 *   x_i value of i-th pixel,
 	 *   mu_j mean for j-th cluster,
 	 *   a(i) cluster assignment of i-th pixel,
-	 *   mu total mean of all clusters
+	 *   mu total mean of all pixels
 	 */
 	Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame);
+
+	/** Computes the compression error for a downsampling with approx the same number of clusters */
+	Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame);
 
 }
 

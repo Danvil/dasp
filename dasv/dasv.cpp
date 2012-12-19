@@ -39,12 +39,12 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
-constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
-constexpr int CLUSTER_ITERATIONS = 3;
-constexpr float CLUSTER_RADIUS_MULT = 1.5f;
-constexpr float SPATIAL_TIME_INCREASE = 0.005f; // 0.15 m/s
+constexpr int CLUSTER_TIME_RADIUS = 10; // TR=15 -> 0.5 s
+constexpr int CLUSTER_ITERATIONS = 1;
+constexpr float CLUSTER_RADIUS_MULT = 1.7f;
+constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
 constexpr uint16_t DEPTH_MIN = 0;
-constexpr uint16_t DEPTH_MAX = 2500;
+constexpr uint16_t DEPTH_MAX = 2000;
 
 constexpr float PI = 3.1415f;
 
@@ -602,14 +602,15 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
 
-	Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
-	std::cout << "Compression Error: " << compression_error.transpose() << std::endl;
+	// Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
+	// Eigen::Vector2f ref_compression_error = EvaluateComputeDownsampleCompressionError(series_.getFrame(t));
+	// std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
 
 	// update clusters around active time
 	UpdateClusters(t, series_);
 
 #ifdef GUI_DEBUG_NORMAL
-	slimage::Image3ub img = DebugCreateSuperpixelImage(series_.getFrame(t));
+	slimage::Image3ub img = DebugCreateSuperpixelImage(series_.getFrame(t), true);
 	slimage::gui::Show("superpixel", img, 200);
 #endif
 
@@ -662,7 +663,7 @@ void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clust
 	}
 }
 
-slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame)
+slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders)
 {
 	slimage::Image3ub img(frame->rgbd.rows(), frame->rgbd.cols(), {{0,0,0}});
 	const FrameAssignment& assignment = frame->assignment;
@@ -670,13 +671,51 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame)
 	const int cols = frame->rgbd.cols();
 	for(int y=0; y<cols; y++) {
 		for(int x=0; x<rows; x++) {
-			const ClusterPtr& c = assignment(x,y).cluster;	
+			const ClusterPtr& c = assignment(x,y).cluster;
 			if(c && c->valid) {
+				// cluster color for pixel
 				auto q = ColorToImage(c->color);
 				img(x,y) = {{q[0],q[1],q[2]}};
+
+				// mark new clusters
+				if(c->time == frame->time) {
+					img(x,y) = {{0,0,255}};
+				}
+
+				// age to color
+				{
+					int dt = frame->time - c->time;
+					int q = std::max(-255, std::min(255, (dt*255)/CLUSTER_TIME_RADIUS));
+					if(q < 0) {
+						img(x,y) = {{ (unsigned char)(255+q), 255, 0 }};
+					}
+					else {
+						img(x,y) = {{ 255, (unsigned char)(255-q), 0 }};
+					}
+				}
+
 			}
 			else {
 				img(x,y) = {{0,0,0}};
+			}
+		}
+	}
+	if(borders) {
+		for(int y=1; y<cols-1; y++) {
+			for(int x=1; x<rows-1; x++) {
+				const ClusterPtr& c = assignment(x,y).cluster;
+				if(!c) continue;
+				if(    c != assignment(x,y-1).cluster
+					|| c != assignment(x-1,y).cluster
+					|| c != assignment(x,y+1).cluster
+					|| c != assignment(x+1,y).cluster
+				) {
+					const slimage::Pixel3ub& v = img(x,y);
+					unsigned char cr = 255 - v[0];
+					unsigned char cg = 255 - v[1];
+					unsigned char cb = 255 - v[2];
+					img(x,y) = {{cr, cg, cb}};
+				}
 			}
 		}
 	}
@@ -709,16 +748,87 @@ Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
 	float pixel_error_position = 0.0f;
 	for(int i=0; i<n; i++) {
 		const ClusterPtr& c = assignment[i].cluster;
-		if(!c) continue;
+		const Point& p = rgbd[i];
+		if(!c || !p.valid) continue;
 		cluster_error_color += (c->color - pixel_mean_color).squaredNorm();
 		cluster_error_position += (c->position - pixel_mean_position).squaredNorm();
-		pixel_error_color += (rgbd[i].color - pixel_mean_color).squaredNorm();
-		pixel_error_position += (rgbd[i].position - pixel_mean_position).squaredNorm();
+		pixel_error_color += (p.color - pixel_mean_color).squaredNorm();
+		pixel_error_position += (p.position - pixel_mean_position).squaredNorm();
 	}
 	return {
 		cluster_error_color / pixel_error_color,
 		cluster_error_position / pixel_error_position
 	};
 }
+
+Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
+{
+	const RgbdData& rgbd = frame->rgbd;
+	const FrameAssignment& assignment = frame->assignment;
+	// compute mean of all pixels
+	Eigen::Vector3f pixel_mean_color = Eigen::Vector3f::Zero();
+	Eigen::Vector3f pixel_mean_position = Eigen::Vector3f::Zero();
+	int num_pixels = 0;
+	const int n = rgbd.size();
+	for(int i=0; i<n; i++) {
+		const Point& p = rgbd[i];
+		if(!p.valid) continue;
+		pixel_mean_color += p.color;
+		pixel_mean_position += p.position;
+		num_pixels ++;
+	}
+	// downsample assignment
+	assert(num_pixels > 0);
+	pixel_mean_color /= static_cast<float>(num_pixels);
+	pixel_mean_position /= static_cast<float>(num_pixels);
+	const int num_clusters = frame->clusters.size();
+	const int rows = rgbd.rows();
+	const int cols = rgbd.cols();
+	const int sclrows = static_cast<int>(3.464f*std::sqrt(num_clusters) + 0.5f);
+	const int sclcols = static_cast<int>(2.598f*std::sqrt(num_clusters) + 0.5f);
+	std::cout << sclrows << " " << sclcols << std::endl;
+	Vector2D<Eigen::Vector3f> cluster_color(sclrows, sclcols, Eigen::Vector3f::Zero());
+	Vector2D<Eigen::Vector3f> cluster_position(sclrows, sclcols, Eigen::Vector3f::Zero());
+	Vector2D<int> num(sclrows, sclcols, 0);
+	for(int i=0; i<cols; i++) {
+		for(int j=0; j<rows; j++) {
+			const Point& p = rgbd(j,i);
+			if(!p.valid) continue;
+			const int si = (i * sclcols) / cols;
+			const int sj = (j * sclrows) / rows;
+			cluster_color(sj,si) += p.color;
+			cluster_position(sj,si) += p.position;
+			num(sj,si) ++;
+		}
+	}
+	const int scln = cluster_color.size();
+	for(int i=0; i<scln; i++) {
+		if(num[i] == 0) continue;
+		cluster_color[i] /= static_cast<float>(num[i]);
+		cluster_position[i] /= static_cast<float>(num[i]);
+	}
+	// compute errors
+	float cluster_error_color = 0.0f;
+	float cluster_error_position = 0.0f;
+	float pixel_error_color = 0.0f;
+	float pixel_error_position = 0.0f;
+	for(int i=0; i<cols; i++) {
+		for(int j=0; j<rows; j++) {
+			const int si = (i * sclcols) / cols;
+			const int sj = (j * sclrows) / rows;
+			const Point& p = rgbd(j,i);
+			if(num(sj,si) == 0 || !p.valid) continue;
+			cluster_error_color += (cluster_color(sj,si) - pixel_mean_color).squaredNorm();
+			cluster_error_position += (cluster_position(sj,si) - pixel_mean_position).squaredNorm();
+			pixel_error_color += (p.color - pixel_mean_color).squaredNorm();
+			pixel_error_position += (p.position - pixel_mean_position).squaredNorm();
+		}
+	}
+	return {
+		cluster_error_color / pixel_error_color,
+		cluster_error_position / pixel_error_position
+	};
+}
+
 
 }
