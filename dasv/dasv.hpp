@@ -131,6 +131,7 @@ namespace dasv
 			int i2 = i1;
 			while(i2 < frames.size() && frames[i2]->time < t_end) i2++;
 			std::vector<FramePtr> result;
+//			std::cout << t_begin << " " << t_end << " -> " << i1 << " " << i2 << std::endl;
 			result.insert(result.begin(), frames.begin() + i1, frames.begin() + i2);
 			return result;
 		}

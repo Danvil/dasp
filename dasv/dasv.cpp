@@ -39,7 +39,7 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
-constexpr int CLUSTER_TIME_RADIUS = 10; // TR=15 -> 0.5 s
+constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
 constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
@@ -440,11 +440,12 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 {
 	const float mc = (p.color - c.color).squaredNorm();
-	const float dt = static_cast<float>(std::abs(p_time-c.time));
+	const int dti = std::abs(p_time-c.time);
+	const float dt = static_cast<float>(std::max(0, dti - CLUSTER_TIME_RADIUS));
 	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
-	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*dt;
+	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*static_cast<float>(dti);
 	const float mx = (p.position - c.position).squaredNorm() / (r*r);
-	return 0.67f*mc + 0.33f*(mt + mx);
+	return 0.67f*mc + 0.33f*(1000.0f*mt + mx);
 }
 
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
@@ -486,16 +487,16 @@ struct ClusterCenterAccumulator
 	}
 };
 
-void UpdateClusterCenters(Timeseries& timeseries)
+void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 {
 	// init cluster center accumulators
-	std::vector<std::vector<ClusterCenterAccumulator>> ccas(timeseries.frames.size());
+	std::vector<std::vector<ClusterCenterAccumulator>> ccas(frames.size());
 	for(int t=0; t<ccas.size(); ++t) {
-		ccas[t].resize(timeseries.frames[t]->clusters.size());
+		ccas[t].resize(frames[t]->clusters.size());
 	}
-	int t0 = timeseries.getBeginTime();
+	int t0 = frames.front()->time;
 	// do cluster box
-	ClusterBox(timeseries.frames,
+	ClusterBox(frames,
 		[&ccas,t0](const ClusterPtr& c, int p_time, const Point& p, Assignment& a) {
 			if(a.cluster == c) {
 				ccas[c->time - t0][c->id].add(p);
@@ -505,7 +506,7 @@ void UpdateClusterCenters(Timeseries& timeseries)
 	for(int t=0; t<ccas.size(); ++t) {
 		const auto& v = ccas[t];
 		for(int k=0; k<v.size(); k++) {
-			Cluster& c = *timeseries.frames[t]->clusters[k];
+			Cluster& c = *frames[t]->clusters[k];
 			const ClusterCenterAccumulator& cca = v[k];
 			if(cca.num == 0) {
 				c.valid = false;
@@ -532,7 +533,7 @@ void UpdateClusters(int time, Timeseries& timeseries)
 		// update cluster assignment for frames in range
 		UpdateClusterAssignment(frames);
 		// update cluster centers
-		UpdateClusterCenters(timeseries);
+		UpdateClusterCenters(frames);
 	}
 }
 
@@ -669,13 +670,16 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 	const FrameAssignment& assignment = frame->assignment;
 	const int rows = frame->rgbd.rows();
 	const int cols = frame->rgbd.cols();
+	int ct_min = 1000000, ct_max = -1000000;
 	for(int y=0; y<cols; y++) {
 		for(int x=0; x<rows; x++) {
 			const ClusterPtr& c = assignment(x,y).cluster;
 			if(c && c->valid) {
+				ct_min = std::min(ct_min, c->time);
+				ct_max = std::max(ct_max, c->time);
 				// cluster color for pixel
-				auto q = ColorToImage(c->color);
-				img(x,y) = {{q[0],q[1],q[2]}};
+				const auto pc = ColorToImage(c->color);
+				img(x,y) = {{pc[0],pc[1],pc[2]}};
 
 				// mark new clusters
 				if(c->time == frame->time) {
@@ -684,9 +688,15 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 
 				// age to color
 				{
-					int dt = frame->time - c->time;
-					int q = std::max(-255, std::min(255, (dt*255)/CLUSTER_TIME_RADIUS));
-					if(q < 0) {
+					const int dt = frame->time - c->time;
+					const int q = (dt*255)/CLUSTER_TIME_RADIUS;
+					if(q < -255) {
+						img(x,y) = {{ 0,96,0 }};
+					}
+					else if(q > +255) {
+						img(x,y) = {{ (unsigned char)((510-q)/2), 0, 0 }};
+					}
+					else if(q < 0) {
 						img(x,y) = {{ (unsigned char)(255+q), 255, 0 }};
 					}
 					else {
@@ -696,10 +706,14 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 
 			}
 			else {
-				img(x,y) = {{0,0,0}};
+				if(x%2==y%2)
+					img(x,y) = {{96,0,96}};
+				else
+					img(x,y) = {{0,0,0}};
 			}
 		}
 	}
+	std::cout << "cluster time range [" << ct_min << "," << ct_max << "]" << std::endl;
 	if(borders) {
 		for(int y=1; y<cols-1; y++) {
 			for(int x=1; x<rows-1; x++) {
