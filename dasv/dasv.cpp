@@ -40,7 +40,7 @@ constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
-constexpr int CLUSTER_ITERATIONS = 1;
+constexpr int CLUSTER_ITERATIONS = 5;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
 constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
 constexpr uint16_t DEPTH_MIN = 0;
@@ -445,7 +445,7 @@ inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
 	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*static_cast<float>(dti);
 	const float mx = (p.position - c.position).squaredNorm() / (r*r);
-	return 0.67f*mc + 0.33f*(1000.0f*mt + mx);
+	return 0.67f*mc + 0.33f*(mt + mx);
 }
 
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
