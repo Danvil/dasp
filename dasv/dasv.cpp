@@ -69,6 +69,32 @@ Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
 	return last;
 }
 
+inline float ClusterWorldRadius(int time, const Cluster& c)
+{
+	const int dti = std::abs(time-c.time);
+	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*static_cast<float>(dti);
+	return r;	
+}
+
+inline float ClusterPixelRadius(int time, const Cluster& c)
+{
+	const float r = ClusterWorldRadius(time, c);
+	const float p = r / CLUSTER_RADIUS;
+	return p*c.cluster_radius_px;
+}
+
+inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
+{
+	const float mc = (p.color - c.color).squaredNorm();
+	const int dti = std::abs(p_time-c.time);
+	//const float dt = static_cast<float>(std::max(0, dti - CLUSTER_TIME_RADIUS));
+	const float dt = static_cast<float>(dti);
+	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
+	const float r = ClusterWorldRadius(p_time, c);
+	const float mx = (p.position - c.position).squaredNorm() / (r*r);
+	return 0.67f*mc + 0.33f*(mt + mx);
+}
+
 void ComputeRgbdDataNormals(RgbdData& rgbd)
 {
 	const int NY = rgbd.cols();
@@ -143,7 +169,7 @@ Eigen::MatrixXf ComputeFrameDensity(const RgbdData& rgbd)
 				// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
 				// TODO n_z should always be negative so abs(n_z) should equal -n_z.
 				const float A = p.cluster_radius_px * p.cluster_radius_px * PI * std::abs(p.normal.z());
-				const float rho = 1.0f / A;
+				const float rho = 1.0f / A / static_cast<float>(CLUSTER_TIME_RADIUS);
 				density(x,y) = rho; // FIXME is density(i) correct?
 			}
 			else {
@@ -154,35 +180,78 @@ Eigen::MatrixXf ComputeFrameDensity(const RgbdData& rgbd)
 	return density;
 }
 
+/** Iterates over a box with radius r centered around (sx,sy) */
+template<typename F>
+void Box(int rows, int cols, float sx, float sy, float r, F f)
+{
+	// box range
+	const int xmin = std::max<int>(static_cast<float>(sx - r + 0.5f), 0);
+	const int xmax = std::min<int>(static_cast<float>(sx + r + 0.5f), rows - 1);
+	const int ymin = std::max<int>(static_cast<float>(sy - r + 0.5f), 0);
+	const int ymax = std::min<int>(static_cast<float>(sy + r + 0.5f), cols - 1);
+	// iterate over box pixels
+	for(int yi=ymin; yi<=ymax; ++yi) {
+		for(int xi=xmin; xi<=xmax; ++xi) {
+			f(xi, yi);
+		}
+	}
+}
+
 Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Cluster>& clusters)
 {
-	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
 	for(const Cluster& c : clusters) {
 		if(!c.valid) {
 			continue;
 		}
-		const int sx = static_cast<int>(c.pixel.x() + 0.5f);
-		const int sy = static_cast<int>(c.pixel.y() + 0.5f);
-		const float sxf = c.pixel.x();
-		const float syf = c.pixel.y();
-		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
 		const float rho = 1.0f / (c.cluster_radius_px*c.cluster_radius_px*PI*std::abs(c.normal.z()));
 		// kernel influence range
-		const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho)));
-		const int xmin = std::max<int>(sx - R, 0);
-		const int xmax = std::min<int>(sx + R, rows - 1);
-		const int ymin = std::max<int>(sy - R, 0);
-		const int ymax = std::min<int>(sy + R, cols - 1);
-		for(int yi=ymin; yi<=ymax; yi++) {
-			for(int xi=xmin; xi<=xmax; xi++) {
+		const float r = cRange / std::sqrt(rho);
+		// write kernel
+		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
+		float sxf = c.pixel.x();
+		float syf = c.pixel.y();
+		Box(rows, cols, sxf, syf, r,
+			[&density, sxf, syf, rho](int xi, int yi) {
 				const float dx = static_cast<float>(xi) - sxf;
 				const float dy = static_cast<float>(yi) - syf;
 				const float d2 = dx*dx + dy*dy;
 				const float delta = rho * std::exp(-PI*rho*d2);// BlueNoise::KernelFunctorSquare(rho*d2);
 				density(xi, yi) += delta;
-			}
+		});
+	}
+	return density;
+}
+
+Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
+{
+	std::vector<FramePtr> frames = series.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
+	const float sqrtPI = std::sqrt(PI);
+	const int rows = series.rows();
+	const int cols = series.cols();
+	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
+	for(int i=0; i<frames.size(); i++) {
+		for(const ClusterPtr& c : frames[i]->clusters) {
+			const float r = ClusterPixelRadius(time, *c);
+			const float sx2 = r*r*std::abs(c->normal.z());
+			const float sx2_inv = 1.0f / sx2;
+			const float st = static_cast<float>(CLUSTER_TIME_RADIUS);
+			const float dt_over_st = static_cast<float>(time - frames[i]->time) / st;
+			const float dt2_st2 = dt_over_st*dt_over_st;
+			const float A = 1.0f / (sqrtPI * sx2 * st);
+			const float sxf = c->pixel.x();
+			const float syf = c->pixel.y();
+			const float kernel_r = 2.48f * std::max(std::sqrt(sx2), st);
+			Box(rows, cols, sxf, syf, kernel_r,
+				[&density, sxf, syf, A, sx2_inv, dt2_st2](int xi, int yi) {
+					const float dx = static_cast<float>(xi) - sxf;
+					const float dy = static_cast<float>(yi) - syf;
+					const float d2 = dx*dx + dy*dy;
+					const float delta = A * std::exp(-(d2*sx2_inv + dt2_st2));
+					density(xi, yi) += delta;
+			});
 		}
 	}
 	return density;
@@ -412,40 +481,20 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 				float rpx = CLUSTER_RADIUS_MULT
 					* c->cluster_radius_px
 					* (1.0f + SPATIAL_TIME_INCREASE*static_cast<float>(std::abs(frame_time - c->time)) / CLUSTER_RADIUS);
-				// compute cluster bounding box
-				const int R = static_cast<float>(rpx + 0.5f);
-				const int xc = static_cast<float>(c->pixel.x() + 0.5f);
-				const int yc = static_cast<float>(c->pixel.y() + 0.5f);
-				const int x1 = std::max(   0, xc - R);
-				const int x2 = std::min(NX-1, xc + R);
-				const int y1 = std::max(   0, yc - R);
-				const int y2 = std::min(NY-1, yc + R);
-				// iterate over box at time
-				for(int y=y1; y<=y2; y++) {
-					for(int x=x1; x<=x2; x++) {
+				// iterate over cluster box
+				Box(NX, NY, c->pixel.x(), c->pixel.y(), rpx,
+					[&f, &rgbd, &c, &frame_time, &assignment](int x, int y) {
 						const Point& p = rgbd(x,y);
 						// skip invalid points
 						if(!p.valid) {
-							continue;
+							return;
 						}
 						// call functor
 						f(c, frame_time, p, assignment(x,y));
-					}
-				}
+					});
 			}
 		}
 	}
-}
-
-inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
-{
-	const float mc = (p.color - c.color).squaredNorm();
-	const int dti = std::abs(p_time-c.time);
-	const float dt = static_cast<float>(std::max(0, dti - CLUSTER_TIME_RADIUS));
-	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
-	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*static_cast<float>(dti);
-	const float mx = (p.position - c.position).squaredNorm() / (r*r);
-	return 0.67f*mc + 0.33f*(mt + mx);
 }
 
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
@@ -546,7 +595,7 @@ void ContinuousSupervoxels::start(int rows, int cols)
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
-	constexpr float DEBUG_DENSITY_SCALE = 100.0f;
+	constexpr float DEBUG_DENSITY_SCALE = 200.0f;
 
 	// create rgbd data
 	RgbdData rgbd = CreateRgbdData(color, depth);
@@ -554,37 +603,48 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// compute frame density and sample frame clusters
 	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
-	// computes cluster sample density
-	constexpr float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
-	Eigen::MatrixXf sample_density;
+
 	if(is_first_) {
-		// use target density
-		sample_density = target_density;
+		last_density_ = Eigen::MatrixXf::Zero(rgbd.rows(), rgbd.cols());
 	}
 	else {
-		// recent clusters provide density via last_density
-		sample_density = target_density - LAMBDA*last_density_;
+		last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
 	}
+
+	Eigen::MatrixXf sample_density = target_density - last_density_;
+
+	// // computes cluster sample density
+	// constexpr float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
+	// Eigen::MatrixXf sample_density;
+	// if(is_first_) {
+	// 	// use target density
+	// 	sample_density = target_density;
+	// }
+	// else {
+	// 	// recent clusters provide density via last_density
+	// 	sample_density = target_density - LAMBDA*last_density_;
+	// }
 	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
+	std::cout << "Num clusters: " << new_clusters.size() << std::endl;
 	// computes density of generated clusters
 	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
 	// debug
-#ifdef GUI_DEBUG_VERBOSE
-	if(!is_first_) {
+#ifdef GUI_DEBUG_NORMAL
+	//if(!is_first_) {
 		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
-	}
+	//}
 	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
 	DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
 	DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
 #endif
-	// updates last density
-	if(is_first_) {
-		last_density_ = current_density;
-	}
-	else {
-		last_density_ = LAMBDA*last_density_ + current_density;
-	}
+	// // updates last density
+	// if(is_first_) {
+	// 	last_density_ = current_density;
+	// }
+	// else {
+	// 	last_density_ = LAMBDA*last_density_ + current_density;
+	// }
 
 	// creates a frame and adds it to the series
 	FramePtr new_frame = CreateFrame(series_.getEndTime(), rgbd, new_clusters);

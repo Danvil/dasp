@@ -106,6 +106,18 @@ namespace dasv
 	{
 		std::vector<FramePtr> frames;
 
+		int slices() const {
+			return frames.size();
+		}
+
+		int rows() const {
+			return frames.front()->rgbd.rows();
+		}
+
+		int cols() const {
+			return frames.front()->rgbd.cols();
+		}
+
 		int getBeginTime() const {
 			return frames.empty() ? 0 : frames.front()->time;
 		}

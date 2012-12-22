@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
-//#include <Slimage/Gui.hpp>
+#include <Slimage/Gui.hpp>
 
 int main(int argc, char** argv)
 {
@@ -18,11 +18,22 @@ int main(int argc, char** argv)
 
 	std::cout << "Uniform test" << std::endl;
 	slimage::Image3ub color(WIDTH, HEIGHT, {{0,128,128}});
-	slimage::Image1ui16 depth(WIDTH, HEIGHT); for(int i=0; i<WIDTH*HEIGHT; i++) depth[i] = 1000;
+	slimage::Image1ui16 depth(WIDTH, HEIGHT);
+	for(int i=0; i<HEIGHT; i++) {
+		for(int j=0; j<WIDTH; j++) {
+			depth(j,i) = 2000;
+			// int di = i - HEIGHT/2;
+			// int dj = j - WIDTH/2;
+			// depth(j,i) = static_cast<uint16_t>(1000 + (di*di + dj*dj)/100);
+		}
+	}
 	ContinuousSupervoxels sv;
 	sv.start(WIDTH,HEIGHT);
 	for(int t=0; t<1000; t++) {
+		slimage::gui::Show("color", color, 0);
+		slimage::gui::Show("depth", depth, 500, 3000, 0);
 		sv.step(color, depth);
+		slimage::gui::WaitForKeypress();
 	}
 
 
