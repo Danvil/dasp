@@ -231,6 +231,7 @@ Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Clus
 
 Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 {
+	constexpr float OMA = 0.617284f;
 //	std::vector<FramePtr> frames = series.getFrameRange(time, time+1);
 	std::vector<FramePtr> frames = series.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
 	const float sqrtPI = std::sqrt(PI);
@@ -242,7 +243,7 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 			const float r = ClusterPixelRadius(time, *c);
 			const float sx2 = PI*r*r*std::abs(c->normal.z());
 			const float sx2_inv = 1.0f / sx2;
-			const float st = static_cast<float>(CLUSTER_TIME_RADIUS);
+			const float st = static_cast<float>(2*CLUSTER_TIME_RADIUS);
 			const float dt_over_st = static_cast<float>(time - frames[i]->time) / st;
 			const float dt2_st2 = dt_over_st*dt_over_st;
 			const float A = 1.0f / (sx2 * st);
@@ -254,7 +255,7 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 					const float dx = static_cast<float>(xi) - sxf;
 					const float dy = static_cast<float>(yi) - syf;
 					const float d2 = dx*dx + dy*dy;
-					const float delta = A * std::exp(-PI*(d2*sx2_inv + dt2_st2));
+					const float delta = OMA * A * std::exp(-OMA*PI*(d2*sx2_inv + dt2_st2));
 					density(xi, yi) += delta;
 			});
 		}
@@ -310,18 +311,31 @@ void DrawBox(const slimage::Image3ub& img, int x, int y, int w, int h, const sli
 	}
 }
 
+void WriteMipmap(std::vector<Eigen::MatrixXf>& mipmaps, int level, int x, int y, float d)
+{
+	for(int k=level,s=1; k>=1; k--,s*=2) {
+		Eigen::MatrixXf& mm = mipmaps[k];
+		const float ds = d / static_cast<float>(s*s);
+		for(int i=0; i<s; i++) {
+			for(int j=0; j<s; j++) {
+				mm(x+j,y+i) += ds;
+			}
+		}
+	}
+}
+
 void SampleDensityImplRec(
 		const RgbdData& rgbd,
 		std::vector<Eigen::Vector2f>& seeds,
-		const std::vector<Eigen::MatrixXf>& mipmaps,
+		std::vector<Eigen::MatrixXf>& mipmaps,
 		std::vector<Eigen::MatrixXf>& carry_mipmaps,
 		int level, int x, int y)
 {
-	const Eigen::MatrixXf& mm = mipmaps[level];
+	Eigen::MatrixXf& mm = mipmaps[level];
 	Eigen::MatrixXf& carry_mm = carry_mipmaps[level];
 
 	// compute density by multiplying percentage with parent total
-	float v = mm(x, y) + carry_mm(x, y);
+	float v = mm(x, y);// + carry_mm(x, y);
 
 	// FIXME if low density is carried over on a low-res mipmap
 	// FIXME and the target cell has a high density
@@ -329,8 +343,9 @@ void SampleDensityImplRec(
 
 	static std::uniform_real_distribution<float> rnd01(0.0f, 1.0f); // FIXME
 
-	if(level <= 1 || v <= 1.0f) {
-		if(rnd01(random_engine) < v) {
+	if(level <= 1 || v <= 1.5f) {
+		//if(rnd01(random_engine) < v) {
+		if(v >= 0.5f) {
 			// set seed point in the cell
 			int half = (1 << (level - 1));
 			int sx = (x << level) + half;
@@ -346,31 +361,31 @@ void SampleDensityImplRec(
 #endif
 			}
 		}
-		// // distribute remaining density to neighbours
-		// // mm(x+1,y  ) += 7.0f / 16.0f * v;
-		// // mm(x-1,y+1) += 3.0f / 16.0f * v;
-		// // mm(x  ,y+1) += 5.0f / 16.0f * v;
-		// // mm(x+1,y+1) += 1.0f / 16.0f * v;
-		// // with range test *sigh*
-		// float q = 0.0f;
-		// bool xm1ok = (0 < x);
-		// bool xp1ok = (x+1 < mm.rows());
-		// bool yp1ok = (y+1 < mm.cols());
-		// if(xp1ok) 			q += 7.0f;
-		// if(yp1ok) {
-		// 	if(xm1ok) 		q += 3.0f;			
-		// 					q += 5.0f;
-		// 	if(xp1ok) 		q += 1.0f;
-		// }
-		// if(q > 0) {
-		// 	float scl = v / q;
-		// 	if(xp1ok) 		carry_mm(x+1,y  ) += 7.0f * scl;
-		// 	if(yp1ok) {
-		// 		if(xm1ok) 	carry_mm(x-1,y+1) += 3.0f * scl;			
-		// 					carry_mm(x  ,y+1) += 5.0f * scl;
-		// 		if(xp1ok) 	carry_mm(x+1,y+1) += 1.0f * scl;
-		// 	}
-		// }
+		// distribute remaining density to neighbours
+		// mm(x+1,y  ) += 7.0f / 16.0f * v;
+		// mm(x-1,y+1) += 3.0f / 16.0f * v;
+		// mm(x  ,y+1) += 5.0f / 16.0f * v;
+		// mm(x+1,y+1) += 1.0f / 16.0f * v;
+		// with range test *sigh*
+		float q = 0.0f;
+		bool xm1ok = (0 < x);
+		bool xp1ok = (x+1 < mm.rows());
+		bool yp1ok = (y+1 < mm.cols());
+		if(xp1ok) 			q += 7.0f;
+		if(yp1ok) {
+			if(xm1ok) 		q += 3.0f;			
+							q += 5.0f;
+			if(xp1ok) 		q += 1.0f;
+		}
+		if(q > 0) {
+			float scl = v / q;
+			if(xp1ok) 		WriteMipmap(mipmaps, level, x+1, y  , 7.0f*scl);//carry_mm(x+1,y  ) += 7.0f * scl;
+			if(yp1ok) {
+				if(xm1ok) 	WriteMipmap(mipmaps, level, x-1, y+1, 3.0f*scl);//carry_mm(x-1,y+1) += 3.0f * scl;			
+							WriteMipmap(mipmaps, level, x  , y+1, 5.0f*scl);//carry_mm(x  ,y+1) += 5.0f * scl;
+				if(xp1ok) 	WriteMipmap(mipmaps, level, x+1, y+1, 1.0f*scl);//carry_mm(x+1,y+1) += 1.0f * scl;
+			}
+		}
 	}
 	else {
 		// go down
@@ -652,32 +667,27 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
-	float target_density_sum = target_density.sum();
 
-	// density with from all clusters up to now
+	// density from all clusters up to now
 	if(is_first_) {
 		last_density_ = Eigen::MatrixXf::Zero(rgbd.rows(), rgbd.cols());
 	}
 	else {
 		last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
 	}
-	// sample density
-	Eigen::MatrixXf sample_density = target_density - last_density_;
+	// compute sample density
 	// -> avoid sampling at same positions as last frame!
-	//sample_density.coeffClamp(0.0f, 10000.0f);
-	for(int i=0; i<sample_density.cols(); i++) {
-		for(int j=0; j<sample_density.rows(); j++) {
-			sample_density(j,i) = std::max(0.0f, sample_density(j,i));
-		}
-	}
 	// -> but total density shall not change!
-	float mult = target_density_sum / sample_density.sum();
-	sample_density *= mult;
+	float target_density_sum = target_density.sum();
+	float last_density_sum = last_density_.sum();
+	float mult = 1.0f + last_density_sum / target_density_sum;
+	Eigen::MatrixXf sample_density = mult*target_density - last_density_;
 	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
 
 #ifdef ENABLE_SAMPLING_DEBUG
 	slimage::gui::Show("sampling debug", sampling_debug, 0);
+	std::cout << "sample_density_sum=" << sample_density.sum() << std::endl;
 #endif
 
 	std::cout << "Num clusters: " << new_clusters.size() << std::endl;
@@ -705,6 +715,10 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
+
+	Eigen::MatrixXf density_now = ComputeSeriesDensity(t, series_);
+	DebugShowMatrix("density_now", density_now, DEBUG_DENSITY_SCALE);
+	std::cout << "density_now_sum=" << density_now.sum() << std::endl;
 
 	// Debug
 	std::cout << "f=" << new_frame->time << ", t=" << t
