@@ -169,8 +169,9 @@ Eigen::MatrixXf ComputeFrameDensity(const RgbdData& rgbd)
 				// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
 				// TODO n_z should always be negative so abs(n_z) should equal -n_z.
 				const float A = p.cluster_radius_px * p.cluster_radius_px * PI * std::abs(p.normal.z());
-				const float rho = 1.0f / A / static_cast<float>(CLUSTER_TIME_RADIUS);
-				density(x,y) = rho; // FIXME is density(i) correct?
+				const float rho = 1.0f / A / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
+				if(y==0&&x==0) std::cout << "rho " << rho << std::endl;
+				density(x,y) = rho;
 			}
 			else {
 				density(x,y) = 0.0f;
@@ -219,7 +220,7 @@ Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Clus
 				const float dy = static_cast<float>(yi) - syf;
 				const float d2 = dx*dx + dy*dy;
 				const float delta = rho * std::exp(-PI*rho*d2);// BlueNoise::KernelFunctorSquare(rho*d2);
-				density(xi, yi) += delta;
+				density(xi, yi) += delta / static_cast<float>(CLUSTER_TIME_RADIUS);
 		});
 	}
 	return density;
@@ -227,6 +228,7 @@ Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Clus
 
 Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 {
+//	std::vector<FramePtr> frames = series.getFrameRange(time, time+1);
 	std::vector<FramePtr> frames = series.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
 	const float sqrtPI = std::sqrt(PI);
 	const int rows = series.rows();
@@ -235,12 +237,12 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 	for(int i=0; i<frames.size(); i++) {
 		for(const ClusterPtr& c : frames[i]->clusters) {
 			const float r = ClusterPixelRadius(time, *c);
-			const float sx2 = r*r*std::abs(c->normal.z());
+			const float sx2 = PI*r*r*std::abs(c->normal.z());
 			const float sx2_inv = 1.0f / sx2;
 			const float st = static_cast<float>(CLUSTER_TIME_RADIUS);
 			const float dt_over_st = static_cast<float>(time - frames[i]->time) / st;
 			const float dt2_st2 = dt_over_st*dt_over_st;
-			const float A = 1.0f / (sqrtPI * sx2 * st);
+			const float A = 1.0f / (sx2 * st);
 			const float sxf = c->pixel.x();
 			const float syf = c->pixel.y();
 			const float kernel_r = 2.48f * std::max(std::sqrt(sx2), st);
@@ -249,7 +251,7 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 					const float dx = static_cast<float>(xi) - sxf;
 					const float dy = static_cast<float>(yi) - syf;
 					const float d2 = dx*dx + dy*dy;
-					const float delta = A * std::exp(-(d2*sx2_inv + dt2_st2));
+					const float delta = A * std::exp(-PI*(d2*sx2_inv + dt2_st2));
 					density(xi, yi) += delta;
 			});
 		}
@@ -595,7 +597,7 @@ void ContinuousSupervoxels::start(int rows, int cols)
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
-	constexpr float DEBUG_DENSITY_SCALE = 200.0f;
+	constexpr float DEBUG_DENSITY_SCALE = 800.0f;
 
 	// create rgbd data
 	RgbdData rgbd = CreateRgbdData(color, depth);
@@ -604,14 +606,14 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// computes frame target density
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
 
-	if(is_first_) {
-		last_density_ = Eigen::MatrixXf::Zero(rgbd.rows(), rgbd.cols());
-	}
-	else {
-		last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
-	}
+	// if(is_first_) {
+	// 	last_density_ = Eigen::MatrixXf::Zero(rgbd.rows(), rgbd.cols());
+	// }
+	// else {
+	// 	last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
+	// }
 
-	Eigen::MatrixXf sample_density = target_density - last_density_;
+	Eigen::MatrixXf sample_density = target_density;// - last_density_;
 
 	// // computes cluster sample density
 	// constexpr float LAMBDA = 1.0f - 1.0f / static_cast<float>(2*CLUSTER_TIME_RADIUS+1);
@@ -632,11 +634,15 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// debug
 #ifdef GUI_DEBUG_NORMAL
 	//if(!is_first_) {
-		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
+		// DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
+		// std::cout << "last_density=" << last_density_.sum() << std::endl;
 	//}
 	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
-	DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
+	std::cout << "target_density=" << target_density.sum() << std::endl;
+	// DebugShowMatrix("sample_density", sample_density, DEBUG_DENSITY_SCALE);
+	// std::cout << "sample_density=" << sample_density.sum() << std::endl;
 	DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
+	std::cout << "current_density=" << current_density.sum() << std::endl;
 #endif
 	// // updates last density
 	// if(is_first_) {
@@ -656,6 +662,10 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
+
+	Eigen::MatrixXf now_density = ComputeSeriesDensity(t, series_);
+	DebugShowMatrix("now_density", now_density, DEBUG_DENSITY_SCALE);
+	std::cout << "now_density=" << now_density.sum() << std::endl;
 
 	// Debug
 	std::cout << "f=" << new_frame->time << ", t=" << t

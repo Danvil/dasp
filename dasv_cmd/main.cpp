@@ -21,10 +21,10 @@ int main(int argc, char** argv)
 	slimage::Image1ui16 depth(WIDTH, HEIGHT);
 	for(int i=0; i<HEIGHT; i++) {
 		for(int j=0; j<WIDTH; j++) {
-			depth(j,i) = 2000;
+			depth(j,i) = 1000;
 			// int di = i - HEIGHT/2;
 			// int dj = j - WIDTH/2;
-			// depth(j,i) = static_cast<uint16_t>(1000 + (di*di + dj*dj)/100);
+			// depth(j,i) = static_cast<uint16_t>(800 + (di*di + dj*dj)/100);
 		}
 	}
 	ContinuousSupervoxels sv;
