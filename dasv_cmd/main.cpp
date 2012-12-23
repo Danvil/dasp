@@ -33,7 +33,6 @@ int main(int argc, char** argv)
 	// 	slimage::gui::Show("color", color, 0);
 	// 	slimage::gui::Show("depth", depth, 500, 3000, 0);
 	// 	sv.step(color, depth);
-	// 	slimage::gui::WaitForKeypress();
 	// }
 
 
@@ -62,7 +61,6 @@ int main(int argc, char** argv)
 	// 	slimage::gui::Show("color", color, 0);
 	// 	slimage::gui::Show("depth", depth, 500, 3000, 0);
 	// 	sv.step(color, depth);
-	// 	slimage::gui::WaitForKeypress();
 	// }
 
 
@@ -77,7 +75,6 @@ int main(int argc, char** argv)
 	sv.start(WIDTH,HEIGHT);
 	for(int t=0; t<200; t++) {
 		sv.step(color, depth);
-		slimage::gui::WaitForKeypress();
 	}
 
 
@@ -102,7 +99,6 @@ int main(int argc, char** argv)
 	DebugWriteClusters("clusters.tsv", clusters);
 
 	std::cout << "Finished." << std::endl;
-//	slimage::gui::WaitForKeypress();
 
 	return 1;
 }

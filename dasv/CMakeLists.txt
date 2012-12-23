@@ -10,6 +10,10 @@ target_link_libraries(dasv
 	opencv_highgui
 )
 
+include_directories(
+	${DT_DIR}/CT/src
+)
+
 #if (DASP_HAS_CANDY)
 #	add_definitions(-DDASP_HAS_CANDY)
 #	include_directories(

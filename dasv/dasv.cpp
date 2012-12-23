@@ -17,6 +17,8 @@
  */
 
 #include "dasv.hpp"
+#define DANVIL_ENABLE_BENCHMARK
+#include <Danvil/Tools/Benchmark.h>
 #include <Slimage/Gui.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/lexical_cast.hpp>
@@ -663,19 +665,26 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	constexpr float DEBUG_DENSITY_SCALE = 800.0f;
 
 	// create rgbd data
+	DANVIL_BENCHMARK_START(dasv_rgbd)
 	RgbdData rgbd = CreateRgbdData(color, depth);
+	DANVIL_BENCHMARK_STOP(dasv_rgbd)
 
 	// computes frame target density
+	DANVIL_BENCHMARK_START(dasv_density)
 	Eigen::MatrixXf target_density = ComputeFrameDensity(rgbd);
+	DANVIL_BENCHMARK_STOP(dasv_density)
 
 	// density from all clusters up to now
+	DANVIL_BENCHMARK_START(dasv_series_density)
 	if(is_first_) {
 		last_density_ = Eigen::MatrixXf::Zero(rgbd.rows(), rgbd.cols());
 	}
 	else {
 		last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
 	}
+	DANVIL_BENCHMARK_STOP(dasv_series_density)
 	// compute sample density
+	DANVIL_BENCHMARK_START(dasv_sampling)
 	// -> avoid sampling at same positions as last frame!
 	// -> but total density shall not change!
 	float target_density_sum = target_density.sum();
@@ -684,6 +693,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	Eigen::MatrixXf sample_density = mult*target_density - last_density_;
 	// samples clusters from sample density
 	std::vector<Cluster> new_clusters = SampleClustersFromDensity(rgbd, sample_density);
+	DANVIL_BENCHMARK_STOP(dasv_sampling)
 
 #ifdef ENABLE_SAMPLING_DEBUG
 	slimage::gui::Show("sampling debug", sampling_debug, 0);
@@ -691,8 +701,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 #endif
 
 	std::cout << "Num clusters: " << new_clusters.size() << std::endl;
-	// computes density of generated clusters
-	Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
+	// // computes density of generated clusters
+	// Eigen::MatrixXf current_density = ComputeClusterDensity(rgbd.rows(), rgbd.cols(), new_clusters);
 	// debug
 #ifdef ENABLE_SAMPLING_DEBUG
 	//if(!is_first_) {
@@ -701,13 +711,15 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	//}
 	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
 	std::cout << "target_density_sum=" << target_density.sum() << std::endl;
-	DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
-	std::cout << "current_density_sum=" << current_density.sum() << std::endl;
+	// DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
+	// std::cout << "current_density_sum=" << current_density.sum() << std::endl;
 #endif
 
 	// creates a frame and adds it to the series
+	DANVIL_BENCHMARK_START(dasv_create_frame)
 	FramePtr new_frame = CreateFrame(series_.getEndTime(), rgbd, new_clusters);
 	series_.add(new_frame);
+	DANVIL_BENCHMARK_STOP(dasv_create_frame)
 
 	// purge old frames to limit time interval
 	std::vector<ClusterPtr> purged_clusters = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
@@ -716,9 +728,13 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
 
-	Eigen::MatrixXf density_now = ComputeSeriesDensity(t, series_);
-	DebugShowMatrix("density_now", density_now, DEBUG_DENSITY_SCALE);
-	std::cout << "density_now_sum=" << density_now.sum() << std::endl;
+	{
+		DANVIL_BENCHMARK_START(dasv_series_density)
+		Eigen::MatrixXf density_now = ComputeSeriesDensity(t, series_);
+		DANVIL_BENCHMARK_STOP(dasv_series_density)
+		DebugShowMatrix("density_now", density_now, DEBUG_DENSITY_SCALE);
+		std::cout << "density_now_sum=" << density_now.sum() << std::endl;
+	}
 
 	// Debug
 	std::cout << "f=" << new_frame->time << ", t=" << t
@@ -732,16 +748,21 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
 
 	// update clusters around active time
+	DANVIL_BENCHMARK_START(dasv_update_clusters)
 	UpdateClusters(t, series_);
+	DANVIL_BENCHMARK_STOP(dasv_update_clusters)
 
 #ifdef GUI_DEBUG_NORMAL
+	DANVIL_BENCHMARK_START(dasv_debug_svimg)
 	slimage::Image3ub img = DebugCreateSuperpixelImage(series_.getFrame(t), true);
 	slimage::gui::Show("superpixel", img, 0);
+	DANVIL_BENCHMARK_STOP(dasv_debug_svimg)
 #endif
 
-//#ifdef GUI_DEBUG_NORMAL
-//	slimage::gui::WaitForKeypress();
-//#endif
+#ifdef GUI_DEBUG_NORMAL
+	DANVIL_BENCHMARK_PRINTALL_COUT
+	slimage::gui::WaitForKeypress();
+#endif
 
 	is_first_ = false;
 }
