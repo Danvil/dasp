@@ -20,8 +20,8 @@
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Slimage/Gui.hpp>
-#include <boost/multi_array.hpp>
-#include <boost/lexical_cast.hpp>
+#include <Slimage/IO.hpp>
+#include <boost/format.hpp>
 #include <random>
 #include <algorithm>
 #include <iostream>
@@ -30,12 +30,14 @@
 
 //#define GUI_DEBUG_VERBOSE
 #define GUI_DEBUG_NORMAL
+//#define ENABLE_SAMPLING_DEBUG
 
 namespace dasv
 {
 
-#define ENABLE_SAMPLING_DEBUG
+#ifdef ENABLE_SAMPLING_DEBUG
 slimage::Image3ub sampling_debug;
+#endif
 
 std::mt19937 random_engine;
 
@@ -45,7 +47,7 @@ constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
-constexpr int CLUSTER_ITERATIONS = 3;
+constexpr int CLUSTER_ITERATIONS = 1;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
 constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
 constexpr uint16_t DEPTH_MIN = 0;
@@ -233,9 +235,10 @@ Eigen::MatrixXf ComputeClusterDensity(int rows, int cols, const std::vector<Clus
 
 Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 {
-	constexpr float OMA = 0.617284f;
+	constexpr float OMA = 0.618034f; // golden ratio ...
+	constexpr float KERNEL_R_MULT = 1.21f; // ? ...
 //	std::vector<FramePtr> frames = series.getFrameRange(time, time+1);
-	std::vector<FramePtr> frames = series.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
+	std::vector<FramePtr> frames = series.getFrameRange(time-2*CLUSTER_TIME_RADIUS, time+2*CLUSTER_TIME_RADIUS+1);
 	const float sqrtPI = std::sqrt(PI);
 	const int rows = series.rows();
 	const int cols = series.cols();
@@ -251,7 +254,7 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 			const float A = 1.0f / (sx2 * st);
 			const float sxf = c->pixel.x();
 			const float syf = c->pixel.y();
-			const float kernel_r = 2.48f * std::max(std::sqrt(sx2), st);
+			const float kernel_r = KERNEL_R_MULT * std::sqrt(sx2);
 			Box(rows, cols, sxf, syf, kernel_r,
 				[&density, sxf, syf, A, sx2_inv, dt2_st2](int xi, int yi) {
 					const float dx = static_cast<float>(xi) - sxf;
@@ -438,7 +441,8 @@ std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& data, int min
 #ifdef GUI_DEBUG_VERBOSE
 		float xmax = x.maxCoeff();
 		std::cout << "Mipmap " << mm.size() << ": min=" << x.minCoeff() << ", max=" << xmax << std::endl;
-		DebugShowMatrix("x_" + boost::lexical_cast<std::string>(x.rows()), DebugDoubleMatrixSize(x,mm.size()-1), 1.0f/xmax);
+		boost::format fmt("x_%05d");
+		DebugShowMatrix((fmt % x.rows()).str(), DebugDoubleMatrixSize(x,mm.size()-1), 1.0f/xmax);
 #endif
 		mm.push_back(x);
 	}
@@ -728,6 +732,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
 
+#ifdef ENABLE_SAMPLING_DEBUG
 	{
 		DANVIL_BENCHMARK_START(dasv_series_density)
 		Eigen::MatrixXf density_now = ComputeSeriesDensity(t, series_);
@@ -735,6 +740,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		DebugShowMatrix("density_now", density_now, DEBUG_DENSITY_SCALE);
 		std::cout << "density_now_sum=" << density_now.sum() << std::endl;
 	}
+#endif
 
 	// Debug
 	std::cout << "f=" << new_frame->time << ", t=" << t
@@ -754,14 +760,20 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 #ifdef GUI_DEBUG_NORMAL
 	DANVIL_BENCHMARK_START(dasv_debug_svimg)
-	slimage::Image3ub img = DebugCreateSuperpixelImage(series_.getFrame(t), true);
-	slimage::gui::Show("superpixel", img, 0);
+	slimage::Image3ub img_col = DebugCreateSuperpixelImage(series_.getFrame(t), true, false);
+	slimage::Image3ub img_age = DebugCreateSuperpixelImage(series_.getFrame(t), true, true);
+	slimage::gui::Show("superpixel color", img_col, 10);
+	slimage::gui::Show("superpixel age", img_age, 10);
+	boost::format fmt_col("/tmp/dasv/%05d_age.png");
+	boost::format fmt_age("/tmp/dasv/%05d_col.png");
+	slimage::Save(img_col, (fmt_col % new_frame->time).str());
+	slimage::Save(img_age, (fmt_age % new_frame->time).str());
 	DANVIL_BENCHMARK_STOP(dasv_debug_svimg)
 #endif
 
 #ifdef GUI_DEBUG_NORMAL
 	DANVIL_BENCHMARK_PRINTALL_COUT
-	slimage::gui::WaitForKeypress();
+//	slimage::gui::WaitForKeypress();
 #endif
 
 	is_first_ = false;
@@ -809,7 +821,7 @@ void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clust
 	}
 }
 
-slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders)
+slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors)
 {
 	slimage::Image3ub img(frame->rgbd.rows(), frame->rgbd.cols(), {{0,0,0}});
 	const FrameAssignment& assignment = frame->assignment;
@@ -826,13 +838,13 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 				const auto pc = ColorToImage(c->color);
 				img(x,y) = {{pc[0],pc[1],pc[2]}};
 
-				// mark new clusters
-				if(c->time == frame->time) {
-					img(x,y) = {{0,0,255}};
-				}
+				// // mark new clusters
+				// if(c->time == frame->time) {
+				// 	img(x,y) = {{0,0,255}};
+				// }
 
 				// age to color
-				{
+				if(age_colors) {
 					const int dt = frame->time - c->time;
 					const int q = (dt*255)/CLUSTER_TIME_RADIUS;
 					if(q < -255) {

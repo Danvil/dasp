@@ -199,7 +199,7 @@ namespace dasv
 	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 	/** Computes superpixel image from clusters and assignment */
-	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders);
+	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors);
 
 	/** Computes compression error
 	 *   sum_i (mu_{a(i)} - mu)^2 / sum_i (x_i - mu)^2
