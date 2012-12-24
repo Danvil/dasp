@@ -23,6 +23,7 @@
 #include <Slimage/IO.hpp>
 #include <boost/format.hpp>
 #include <random>
+#include <set>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -657,6 +658,58 @@ void UpdateClusters(int time, Timeseries& timeseries)
 	}
 }
 
+struct Edge
+{
+	ClusterPtr a, b;
+
+	int id() const {
+		int ia = (a->time << 16) + a->id;
+		int ib = (b->time << 16) + b->id;
+		return ia | ib;
+	}
+};
+
+bool operator==(const Edge& x, const Edge& y) {
+	return (x.a == y.a && x.b == y.b) || (x.a == y.b && x.b == y.a);
+}
+
+bool operator<(const Edge& x, const Edge& y) {
+	return x.id() < y.id();
+}
+
+std::set<Edge> ComputeClusterEdges(const FramePtr& frame)
+{
+	const int rows = frame->rgbd.rows();
+	const int cols = frame->rgbd.cols();
+	const FrameAssignment& assignment = frame->assignment;
+	std::set<Edge> edges;
+//	edges.reserve(6*frame->clusters.size()); // guess number of edges
+	for(int y=1; y<cols-1; y++) {
+		for(int x=1; x<rows-1; x++) {
+			const ClusterPtr& c = assignment(x,y).cluster;
+			if(!c) continue;
+			ClusterPtr cy0 = assignment(x,y-1).cluster;
+			ClusterPtr cy1 = assignment(x,y+1).cluster;
+			ClusterPtr cx0 = assignment(x-1,y).cluster;
+			ClusterPtr cx1 = assignment(x+1,y).cluster;
+			if(cy0 && c != cy0) edges.insert({c,cy0});
+			if(cy1 && c != cy1) edges.insert({c,cy1});
+			if(cx0 && c != cx0) edges.insert({c,cx0});
+			if(cx1 && c != cx1) edges.insert({c,cx1});
+		}
+	}
+	return edges;
+}
+
+void DebugWriteEdges(const std::string& fn, const std::set<Edge>& edges)
+{
+	std::ofstream ofs(fn);
+	for(const Edge& e : edges) {
+		ofs << e.a->time << " " << e.a->id << " "
+			<< e.b->time << " " << e.b->id << std::endl;
+	}
+}
+
 void ContinuousSupervoxels::start(int rows, int cols)
 {
 	is_first_ = true;
@@ -759,16 +812,26 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	DANVIL_BENCHMARK_STOP(dasv_update_clusters)
 
 #ifdef GUI_DEBUG_NORMAL
-	DANVIL_BENCHMARK_START(dasv_debug_svimg)
-	slimage::Image3ub img_col = DebugCreateSuperpixelImage(series_.getFrame(t), true, false);
-	slimage::Image3ub img_age = DebugCreateSuperpixelImage(series_.getFrame(t), true, true);
-	slimage::gui::Show("superpixel color", img_col, 10);
-	slimage::gui::Show("superpixel age", img_age, 10);
-	boost::format fmt_col("/tmp/dasv/%05d_age.png");
-	boost::format fmt_age("/tmp/dasv/%05d_col.png");
-	slimage::Save(img_col, (fmt_col % new_frame->time).str());
-	slimage::Save(img_age, (fmt_age % new_frame->time).str());
-	DANVIL_BENCHMARK_STOP(dasv_debug_svimg)
+	{
+		boost::format fmt_col("/tmp/dasv/%05d_age.png");
+		boost::format fmt_age("/tmp/dasv/%05d_col.png");
+		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
+		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
+		DANVIL_BENCHMARK_START(dasv_eval)
+		FramePtr frame = series_.getFrame(t);
+		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
+		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
+		slimage::gui::Show("superpixel color", img_col, 10);
+		slimage::gui::Show("superpixel age", img_age, 10);
+		slimage::Save(img_col, (fmt_col % frame->time).str());
+		slimage::Save(img_age, (fmt_age % frame->time).str());
+		// clusters
+		DebugWriteClusters((fmt_clusters % frame->time).str(), frame->clusters);
+		// graph edges
+		std::set<Edge> edges = ComputeClusterEdges(frame);
+		DebugWriteEdges((fmt_edges % frame->time).str(), edges);
+		DANVIL_BENCHMARK_STOP(dasv_eval)
+	}
 #endif
 
 #ifdef GUI_DEBUG_NORMAL
@@ -790,6 +853,11 @@ int ContinuousSupervoxels::numInactiveClusters() const
 	return inactive_clusters_.size();
 }
 
+int ContinuousSupervoxels::numClusters() const
+{
+	return numActiveClusters() + numInactiveClusters();
+}
+
 std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 {
 	std::vector<Cluster> result;
@@ -805,10 +873,12 @@ std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 	return result;
 }
 
-void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters)
+void DebugWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters)
 {
 	std::ofstream ofs(fn);
-	for(const Cluster& c : clusters) {
+	for(const ClusterPtr& cp : clusters) {
+		if(!cp) continue;
+		const Cluster& c = *cp;
 		ofs << c.time
 			<< "\t" << c.id
 			<< "\t" << (c.valid ? 1 : 0)
@@ -1000,6 +1070,5 @@ Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
 		cluster_error_position / pixel_error_position
 	};
 }
-
 
 }

@@ -37,32 +37,32 @@ int main(int argc, char** argv)
 	// }
 
 
-	// std::cout << "moving sphere test" << std::endl;
-	// ContinuousSupervoxels sv;
-	// sv.start(WIDTH,HEIGHT);
-	// for(int t=0; t<100; t++) {
-	// 	slimage::Image3ub color(WIDTH, HEIGHT, {{0,128,128}});
-	// 	slimage::Image1ui16 depth(WIDTH, HEIGHT);
-	// 	for(int i=0; i<HEIGHT; i++) {
-	// 		for(int j=0; j<WIDTH; j++) {
-	// 			depth(j,i) = 1200;
-	// 			float phi = 2.0f*3.1415f*static_cast<float>(t)/100;
-	// 			const float r_move = 70.0f;
-	// 			int cx = WIDTH/2 + r_move*std::cos(phi);
-	// 			int cy = HEIGHT/2 + r_move*std::sin(phi);
-	// 			int dj = j - cx;
-	// 			int di = i - cy;
-	// 			int d = std::sqrt(di*di + dj*dj);
-	// 			if(d < 80) {
-	// 				depth(j,i) = 800;
-	// 				color(j,i) = {{255,0,0}};
-	// 			}
-	// 		}
-	// 	}
-	// 	slimage::gui::Show("color", color, 0);
-	// 	slimage::gui::Show("depth", depth, 500, 3000, 0);
-	// 	sv.step(color, depth);
-	// }
+	std::cout << "moving sphere test" << std::endl;
+	ContinuousSupervoxels sv;
+	sv.start(WIDTH,HEIGHT);
+	for(int t=0; t<100; t++) {
+		slimage::Image3ub color(WIDTH, HEIGHT, {{0,128,128}});
+		slimage::Image1ui16 depth(WIDTH, HEIGHT);
+		for(int i=0; i<HEIGHT; i++) {
+			for(int j=0; j<WIDTH; j++) {
+				depth(j,i) = 1200;
+				float phi = 2.0f*3.1415f*static_cast<float>(t)/100;
+				const float r_move = 70.0f;
+				int cx = WIDTH/2 + r_move*std::cos(phi);
+				int cy = HEIGHT/2 + r_move*std::sin(phi);
+				int dj = j - cx;
+				int di = i - cy;
+				int d = std::sqrt(di*di + dj*dj);
+				if(d < 80) {
+					depth(j,i) = 800;
+					color(j,i) = {{255,0,0}};
+				}
+			}
+		}
+		slimage::gui::Show("color", color, 0);
+		slimage::gui::Show("depth", depth, 500, 3000, 0);
+		sv.step(color, depth);
+	}
 
 
 // 	std::cout << "Loading frame data" << std::endl;
@@ -79,25 +79,23 @@ int main(int argc, char** argv)
 // 	}
 
 
-	std::cout << "Loading ONI data" << std::endl;
-	std::shared_ptr<dasp::KinectGrabber> grabber = std::make_shared<dasp::KinectGrabber>();
-	grabber->OpenFile(ds_path + "/2012-10-12 cogwatch dasp/SlowVelocity/C15_c01_slow.oni");
-	grabber->SeekToFrame(100);
-	ContinuousSupervoxels sv;
-	sv.start(WIDTH,HEIGHT);
-	for(int i=0; i<100; i++) {
-		bool ok = grabber->Grab();
-		if(!ok) {
-			break;
-		}
-		auto color = grabber->GetLastColor().clone();
-		auto depth = grabber->GetLastDepth().clone();
-		sv.step(color, depth);
-	}
+	// std::cout << "Loading ONI data" << std::endl;
+	// std::shared_ptr<dasp::KinectGrabber> grabber = std::make_shared<dasp::KinectGrabber>();
+	// grabber->OpenFile(ds_path + "/2012-10-12 cogwatch dasp/SlowVelocity/C15_c01_slow.oni");
+	// grabber->SeekToFrame(100);
+	// ContinuousSupervoxels sv;
+	// sv.start(WIDTH,HEIGHT);
+	// for(int i=0; i<100; i++) {
+	// 	bool ok = grabber->Grab();
+	// 	if(!ok) {
+	// 		break;
+	// 	}
+	// 	auto color = grabber->GetLastColor().clone();
+	// 	auto depth = grabber->GetLastDepth().clone();
+	// 	sv.step(color, depth);
+	// }
 
-	std::vector<Cluster> clusters = sv.getAllClusters();
-	std::cout << "Supervoxel count = " << clusters.size() << std::endl;
-	DebugWriteClusters("clusters.tsv", clusters);
+	std::cout << "Supervoxel count = " << sv.numClusters() << std::endl;
 
 	std::cout << "Finished." << std::endl;
 

@@ -182,6 +182,8 @@ namespace dasv
 		/** Gets number of inactive clusters */
 		int numInactiveClusters() const;
 
+		int numClusters() const;
+
 		/** Gets all clusters */
 		std::vector<Cluster> getAllClusters() const;
 
@@ -196,7 +198,7 @@ namespace dasv
 	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
 
 	/** Writes clusters to a file */
-	void DebugWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
+	void DebugWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters);
 
 	/** Computes superpixel image from clusters and assignment */
 	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors);
