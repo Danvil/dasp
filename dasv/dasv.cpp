@@ -813,8 +813,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 #ifdef GUI_DEBUG_NORMAL
 	{
-		boost::format fmt_col("/tmp/dasv/%05d_age.png");
-		boost::format fmt_age("/tmp/dasv/%05d_col.png");
+		boost::format fmt_col("/tmp/dasv/%05d_color.png");
+		boost::format fmt_age("/tmp/dasv/%05d_age.png");
 		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
 		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
 		DANVIL_BENCHMARK_START(dasv_eval)
