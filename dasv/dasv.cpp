@@ -22,6 +22,7 @@
 #include <Slimage/Gui.hpp>
 #include <Slimage/IO.hpp>
 #include <boost/format.hpp>
+#include <boost/array.hpp>
 #include <random>
 #include <set>
 #include <algorithm>
@@ -47,7 +48,7 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
-constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
+constexpr int CLUSTER_TIME_RADIUS = 30; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
 constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
@@ -802,9 +803,9 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 			<< std::endl;
 
 	// computes compression error
-	// Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
-	// Eigen::Vector2f ref_compression_error = EvaluateComputeDownsampleCompressionError(series_.getFrame(t));
-	// std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
+	Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
+	Eigen::Vector2f ref_compression_error = EvaluateComputeDownsampleCompressionError(series_.getFrame(t));
+	std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
 
 	// update clusters around active time
 	DANVIL_BENCHMARK_START(dasv_update_clusters)

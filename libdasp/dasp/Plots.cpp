@@ -20,6 +20,14 @@
 #include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
+
+/*
+* Selbstvergleich mit Parametern (R, T)
+* Compression Error
+* Static image -> supervoxel -> slices -> BR, USE
+* "Isoperimetric/3D", Homogenitaet, Groesse
+*/
+
 //----------------------------------------------------------------------------//
 namespace dasp {
 namespace plots {

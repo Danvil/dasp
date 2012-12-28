@@ -3,7 +3,6 @@
 
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
-#include <boost/multi_array.hpp>
 #include <vector>
 #include <string>
 #include <memory>
