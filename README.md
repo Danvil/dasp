@@ -91,7 +91,7 @@ Issues
 
 `/usr/include/arpack++/arrssym.h:278:7: error: ‘class ARrcSymStdEig<double>’ has no member named ‘EigVecp’`
 
-There seems to be a bug in arpack++. Apply this patch to fix the issue:
+There seems to be a bug in arpack++. Apply this patch to the file `/usr/include/arpack++/arrssym.h` to fix the issue.
 
 	--- /usr/include/arpack++/arrssym.h
 	+++ /home/david/arrssym.h
@@ -118,13 +118,24 @@ There seems to be a bug in arpack++. Apply this patch to fix the issue:
 	     this->EigVec  = NULL;
 	     this->EigValR = NULL;
 
-Open the file `/usr/include/arpack++/arrssym.h` and go to the function `template<class ARFLOAT> int ARrcSymStdEig<ARFLOAT>::EigenValVectors(ARFLOAT* &EigVecp, ARFLOAT* &EigValp, bool ischur)`. In this function replace all occurrences of `this->EigVecp` with `EigVecp` and all occurrences of `this->EigValp` with `EigValp`.
-
 #### Compiler errors with OpenNI
 
-There seems to be a bug that the operating system platform is not correctly identified.
+There seems to be a bug that the operating system platform is not correctly identified. Apply this patch to the file `/usr/include/ni/XnPlatform.h` to fix the issue.
 
-OpenNI only works for me under Ubuntu/Linux, if I edit the file `/usr/include/ni/XnPlatform.h` and replace line 74 with `#include "Linux-x86/XnPlatformLinux-x86.h"`
+	--- /usr/include/ni/XnPlatform.h	2012-12-29 11:56:25.873983019 +0100
+	+++ /home/david/XnPlatform.h	2012-12-29 12:35:40.666070961 +0100
+	@@ -62,9 +62,9 @@
+	 	#include "Win32/XnPlatformWin32.h"
+	 #elif defined(ANDROID) && defined(__arm__)
+	 	#include "Android-Arm/XnPlatformAndroid-Arm.h"
+	-#elif (linux && (i386 || __x86_64__))
+	+#elif (__linux__ && (__i386__ || __x86_64__))
+	 	#include "Linux-x86/XnPlatformLinux-x86.h"
+	-#elif (linux && __arm__)
+	+#elif (__linux__ && __arm__)
+	 	#include "Linux-Arm/XnPlatformLinux-Arm.h"
+	 #elif _ARC
+	 	#include "ARC/XnPlatformARC.h"
 
 
 Links
