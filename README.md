@@ -91,7 +91,34 @@ Issues
 
 `/usr/include/arpack++/arrssym.h:278:7: error: ‘class ARrcSymStdEig<double>’ has no member named ‘EigVecp’`
 
-There seems to be a bug in arpack++. Open the file `/usr/include/arpack++/arrssym.h` and go to the function `template<class ARFLOAT> int ARrcSymStdEig<ARFLOAT>::EigenValVectors(ARFLOAT* &EigVecp, ARFLOAT* &EigValp, bool ischur)`. In this function replace all occurrences of `this->EigVecp` with `EigVecp` and all occurrences of `this->EigValp` with `EigValp`.
+There seems to be a bug in arpack++. Apply this patch to fix the issue:
+
+	--- /usr/include/arpack++/arrssym.h
+	+++ /home/david/arrssym.h
+	@@ -275,8 +275,8 @@
+	   }
+	   else {                           // Eigenvalues and vectors are not available.
+	     try {
+	-      if (this->EigVecp == NULL) this->EigVecp = new ARFLOAT[this->ValSize()*this->n];
+	-      if (this->EigValp == NULL) this->EigValp = new ARFLOAT[this->ValSize()];
+	+      if (EigVecp == NULL) EigVecp = new ARFLOAT[this->ValSize()*this->n];
+	+      if (EigValp == NULL) EigValp = new ARFLOAT[this->ValSize()];
+	     }
+	     catch (ArpackError) { return 0; }
+	     if (this->newVec) {
+	@@ -287,8 +287,8 @@
+	       delete[] this->EigValR;
+	       this->newVal = false;
+	     }
+	-    this->EigVec  = this->EigVecp;
+	-    this->EigValR = this->EigValp;
+	+    this->EigVec  = EigVecp;
+	+    this->EigValR = EigValp;
+	     this->nconv   = this->FindEigenvectors(ischur);
+	     this->EigVec  = NULL;
+	     this->EigValR = NULL;
+
+Open the file `/usr/include/arpack++/arrssym.h` and go to the function `template<class ARFLOAT> int ARrcSymStdEig<ARFLOAT>::EigenValVectors(ARFLOAT* &EigVecp, ARFLOAT* &EigValp, bool ischur)`. In this function replace all occurrences of `this->EigVecp` with `EigVecp` and all occurrences of `this->EigValp` with `EigValp`.
 
 #### Compiler errors with OpenNI
 
