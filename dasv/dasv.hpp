@@ -236,6 +236,9 @@ namespace dasv
 	/** Writes a cluster graph to files */ 
 	void IOWriteGraph(const std::string& fn_vertices, const std::string& fn_edges, const ClusterGraph& graph);
 
+	/** Reads a cluster graph from files */ 
+	ClusterGraph IOReadGraph(const std::string& fn_vertices, const std::string& fn_edges);
+
 	/** Control structure for continuous temporal-depth-adative superpoint generation */
 	struct ContinuousSupervoxels
 	{

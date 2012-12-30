@@ -764,6 +764,13 @@ void IOWriteGraph(const std::string& fn_vertices, const std::string& fn_edges, c
 	}
 }
 
+ClusterGraph IOReadGraph(const std::string& fn_vertices, const std::string& fn_edges)
+{
+	// std::vector<Cluster> clusters = IOReadClusters(const std::string& fn_vertices);
+	// std::vector<Edge> edges = ;
+	// ClusterGraph G;
+}
+
 void ContinuousSupervoxels::start(int rows, int cols)
 {
 	is_first_ = true;
