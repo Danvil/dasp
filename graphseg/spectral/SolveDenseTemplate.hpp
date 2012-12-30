@@ -5,24 +5,27 @@
  *      Author: david
  */
 
-#ifndef DASP_IMPL_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
-#define DASP_IMPL_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
+#ifndef DASP_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
+#define DASP_SPECTRAL_SOLVEDENSETEMPLATE_HPP_
 
-#include "Types.hpp"
+#include "../Common.hpp"
+#include "../as_range.hpp"
+#include <boost/graph/adjacency_list.hpp>
 #include <iostream>
+#include <vector>
 
-namespace dasp { namespace detail {
+namespace graphseg { namespace detail {
 
 template<typename Graph>
-PartialEigenSolution SolveDenseTemplate(const Graph& graph, unsigned int num_ev)
+std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int num_ev)
 {
 	unsigned int dim = boost::num_vertices(graph);
-	if(cVerbose) {
-		unsigned int num_edges = boost::num_edges(graph);
-		std::cout << "SpectralSegmentation: dimension=" << dim
-				<< ", num_edges=" << num_edges
-				<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
-	}
+#ifdef SPECTRAL_VERBOSE
+	unsigned int num_edges = boost::num_edges(graph);
+	std::cout << "SpectralSegmentation: dimension=" << dim
+			<< ", num_edges=" << num_edges
+			<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
+#endif
 	// creating matrices
 	Mat W = Mat::Zero(dim,dim);
 	std::vector<float> Di(dim, 0.0f);
@@ -48,8 +51,9 @@ PartialEigenSolution SolveDenseTemplate(const Graph& graph, unsigned int num_ev)
 	for(unsigned int i=0; i<dim; i++) {
 		float& di = Di[i];
 		if(di == 0) {
-			if(cVerbose)
-				std::cout << "Node " << i << " has no connections! " << std::endl;
+#ifdef SPECTRAL_VERBOSE
+			std::cout << "Node " << i << " has no connections! " << std::endl;
+#endif
 			// connect the disconnected cluster to all other clusters with a very small weight
 			di = 1.0f;
 			float q = di / static_cast<float>(dim-1);
@@ -72,14 +76,16 @@ PartialEigenSolution SolveDenseTemplate(const Graph& graph, unsigned int num_ev)
 	// solve eigensystem
 	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
 	solver.compute(A, D);
-	if(cVerbose)
-		std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "SpectralSegmentation: GeneralizedSelfAdjointEigenSolver says " << solver.info() << std::endl;
+#endif
 	// return eigenvectors and eigenvalues
-	PartialEigenSolution solution(std::min(dim, num_ev));
+	std::vector<EigenComponent> solution(std::min(dim, num_ev));
 	for(unsigned int i=0; i<solution.size(); i++) {
 		solution[i].eigenvalue = solver.eigenvalues()[i];
-		if(cVerbose)
-			std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
+#ifdef SPECTRAL_VERBOSE
+		std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
+#endif
 		solution[i].eigenvector = solver.eigenvectors().col(i);
 	}
 	return solution;
