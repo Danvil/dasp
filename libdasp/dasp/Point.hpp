@@ -9,7 +9,8 @@
 #define DASP_POINT_HPP_
 
 #include "Parameters.hpp"
-#include <eigen3/Eigen/Dense>
+#include <Danvil/Tools/MoreMath.h>
+#include <Eigen/Dense>
 #include <vector>
 #include <ctype.h>
 
@@ -17,38 +18,23 @@ namespace dasp
 {
 	struct Point
 	{
-		/** pixel image position */
+		/** pixel image position of point */
 		Eigen::Vector2f pos;
 
 		/** point color */
 		Eigen::Vector3f color;
 
-		/** depth in mm as integer (0 if invalid) */
-		uint16_t depth_i16;
-
 		/** position [m] of world source point */
 		Eigen::Vector3f world;
 
-		/** local depth gradient (depth[m]/distance[m]) */
-		Eigen::Vector2f gradient;
-
-		/** circularity = b/a = 1/sqrt(||gradient||^2 + 1) = sqrt(1 - ecc*ecc) */
-		float circularity;
+		/** point surface normal */
+		Eigen::Vector3f normal;
 
 		/** estimated radius [px] on the image screen of a super pixel at point depth */
 		float image_super_radius;
 
-//		float spatial_normalizer;
-
-		/** Invalid points have a kinect depth of 0 */
-		bool isInvalid() const {
-			return depth_i16 == 0;
-		}
-
-		/** Valid points have a kinect depth > 0 */
-		bool isValid() const {
-			return depth_i16 > 0;
-		}
+		/** Invalid points are ignored during point to cluster assignment */
+		bool is_valid;
 
 		/** Image x coordinate [px] */
 		int spatial_x() const {
@@ -65,29 +51,54 @@ namespace dasp
 			return world[2];
 		}
 
-		/** Computes the normal from the gradient */
-		Eigen::Vector3f computeNormal() const {
-			// compute (normalized) normal from gradient
-			Eigen::Vector3f normal = circularity * Eigen::Vector3f(gradient[0], gradient[1], -1.0f);
+		/** Sets the normal and assures that it points towards the camera (=origin) */
+		void setNormal(const Eigen::Vector3f& n) {
+			normal = n;
 			// force normal to look towards the camera
 			// check if point to camera direction and normal are within 90 deg
 			// enforce: normal * (cam_pos - pos) > 0
 			// do not need to normalize (cam_pos - pos) as only sign is considered
-			float q = normal.dot(-world);
+			const float q = normal.dot(-world);
 			if(q < 0) {
 				normal *= -1.0f;
 			}
-//			if(q == 0) { // FIXME
-//				// difficult to fix ...
-//				std::cerr << "FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME" << std::endl;
-//				std::cerr << "FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME" << std::endl;
-//			}
-			return normal;
+			else if(q == 0) {
+				// this should not happen ...
+				normal = Eigen::Vector3f(0,0,-1);
+			}
 		}
 
-		void setGradientFromNormal(const Eigen::Vector3f& normal) {
-			gradient[0] = - normal[0] / normal[2];
-			gradient[1] = - normal[1] / normal[2];
+		/** Sets normal from gradient */
+		void setNormalFromGradient(const Eigen::Vector2f& g) {
+			const float gx = g.x();
+			const float gy = g.y();
+			const float scl = Danvil::MoreMath::FastInverseSqrt(gx*gx + gy*gy + 1.0f);
+			setNormal(Eigen::Vector3f(scl*gx, scl*gy, -scl));
+		}
+
+		/** Computes local depth gradient (depth[m]/distance[m]) */
+		Eigen::Vector2f computeGradient() const {
+			return Eigen::Vector2f(normal.x() / normal.z(), normal.y() / normal.z());
+		}
+
+		/** Computes direction of local depth gradient */
+		Eigen::Vector2f computeGradientDirection() const {
+			const float nx = normal.x();
+			const float ny = normal.y();
+			if(nx == 0.0f && ny == 0.0f) {
+				return Eigen::Vector2f::Unit(0);
+			}
+			else {
+				const float scl = Danvil::MoreMath::FastInverseSqrt(nx*nx + ny*ny);
+				return scl * Eigen::Vector2f(nx, ny);
+			}
+		}
+
+		/** Computes "circularity"
+		  * This is |n_z| = 1/sqrt(||gradient||^2 + 1) = ea/eb = sqrt(1 - ecc*ecc)
+		  */
+		float computeCircularity() const {
+			return std::abs(normal.z());
 		}
 
 //	public:

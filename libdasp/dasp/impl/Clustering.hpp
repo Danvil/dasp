@@ -32,7 +32,7 @@ namespace dasp
 				const Point& px2 = points(x+1, y);
 				const Point& py1 = points(x, y-1);
 				const Point& py2 = points(x, y+1);
-				if(p0.isInvalid() || px1.isInvalid() || px2.isInvalid() || py1.isInvalid() || py2.isInvalid()) {
+				if(!p0.is_valid || !px1.is_valid || !px2.is_valid || !py1.is_valid || !py2.is_valid) {
 					v = 1e6; // dont want to be here
 				}
 				else {
@@ -66,7 +66,7 @@ namespace dasp
 				for(unsigned int x=xmin; x<=xmax; x++/*, pnt_index++*/) {
 					unsigned int pnt_index = points.index(x, y);
 					const Point& p = points[pnt_index];
-					if(p.isInvalid()) {
+					if(!p.is_valid) {
 						// omit invalid points
 						continue;
 					}

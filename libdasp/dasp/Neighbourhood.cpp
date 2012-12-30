@@ -24,7 +24,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph&
 				p.px = center.pos;
 				p.position = center.world;
 				p.color = center.color;
-				p.normal = center.computeNormal();
+				p.normal = center.normal;
 			}
 		)
 		.edge_copy(

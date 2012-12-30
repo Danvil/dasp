@@ -26,10 +26,10 @@ slimage::Image1f ComputeDepthDensity(const ImagePoints& points, const Parameters
 		 * point location is R*R*pi and the superpixel density is 1/A.
 		 * If the depth information is invalid, the density is 0.
 		 */
-		float cnt = p.isInvalid() ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
+		float cnt = !p.is_valid ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
 		// Additionally the local gradient has to be considered.
 		if(opt.gradient_adaptive_density) {
-			cnt /= p.circularity;
+			cnt /= p.computeCircularity();
 		}
 		density[i] = cnt;
 	}
@@ -141,7 +141,11 @@ std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt
 bool FindValidSeedPoint(const ImagePoints& points, int& sx0, int& sy0, int range)
 {
 	if(range == 0) {
-		return (sx0 < int(points.width()) && sy0 < int(points.height()) && points(sx0,sy0).isValid());
+		return (
+			sx0 < static_cast<int>(points.width())
+			&& sy0 < static_cast<int>(points.height())
+			&& points(sx0,sy0).is_valid
+		);
 	}
 	// add random offset to add noise
 	boost::variate_generator<boost::mt19937&, boost::uniform_int<> > delta(
@@ -150,7 +154,10 @@ bool FindValidSeedPoint(const ImagePoints& points, int& sx0, int& sy0, int range
 	while(trials < 100) {
 		int sx = sx0 + delta();
 		int sy = sy0 + delta();
-		if(sx < int(points.width()) && sy < int(points.height()) && points(sx,sy).isValid()) {
+		if(sx < static_cast<int>(points.width())
+			&& sy < static_cast<int>(points.height())
+			&& points(sx,sy).is_valid
+		) {
 			sx0 = sx;
 			sy0 = sy;
 			return true;
