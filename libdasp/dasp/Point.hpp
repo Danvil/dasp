@@ -19,7 +19,7 @@ namespace dasp
 	struct Point
 	{
 		/** pixel image position of point */
-		Eigen::Vector2f pos;
+		Eigen::Vector2f pixel;
 
 		/** point color */
 		Eigen::Vector3f color;
@@ -38,12 +38,12 @@ namespace dasp
 
 		/** Image x coordinate [px] */
 		int spatial_x() const {
-			return static_cast<int>(pos[0] + 0.5f);
+			return static_cast<int>(pixel[0] + 0.5f);
 		}
 
 		/** Image y coordinate [px] */
 		int spatial_y() const {
-			return static_cast<int>(pos[1] + 0.5f);
+			return static_cast<int>(pixel[1] + 0.5f);
 		}
 
 		/** Depth [m] of point */
@@ -116,8 +116,8 @@ namespace dasp
 			for(unsigned int y=0; y<height; y++) {
 				for(unsigned int x=0; x<width; x++, ++it) {
 					Point& p = *it;
-					p.pos[0] = float(x);
-					p.pos[1] = float(y);
+					p.pixel[0] = float(x);
+					p.pixel[1] = float(y);
 				}
 			}
 		}

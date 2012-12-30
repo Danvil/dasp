@@ -78,7 +78,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		center.color = mean_color / float(pixel_ids.size());
 		center.world = mean_world / float(pixel_ids.size());
 		// compute screen position and depth by projection
-		center.pos = opt.camera.project(center.world);
+		center.pixel = opt.camera.project(center.world);
 	}
 
 //	// FIXME change or not change? (SLIC mode does not allow change!)
@@ -662,8 +662,8 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 		Cluster c;
 		c.seed_id = k;
 		c.is_fixed = p.is_fixed;
-		c.center.pos[0] = float(p.x);
-		c.center.pos[1] = float(p.y);
+		c.center.pixel[0] = float(p.x);
+		c.center.pixel[1] = float(p.y);
 		c.center.is_valid = true;
 		c.center.image_super_radius = p.scala;
 		if(c.is_fixed) {
