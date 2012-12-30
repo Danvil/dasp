@@ -17,6 +17,7 @@
  */
 
 #include "dasv.hpp"
+#include <graphseg/IO.hpp>
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Slimage/Gui.hpp>
@@ -739,6 +740,23 @@ void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clust
 	}
 }
 
+std::vector<Cluster> IOReadClusters(const std::string& fn)
+{
+	std::vector<Cluster> clusters;
+	std::ifstream ifs(fn);
+	while(ifs) {
+		Cluster c;
+		ifs
+			>> c.time >> c.id >> c.valid >> c.cluster_radius_px
+			>> c.pixel.x() >> c.pixel.y()
+			>> c.color.x() >> c.color.y() >> c.color.z()
+			>> c.position.x() >> c.position.y() >> c.position.z()
+			>> c.normal.x() >> c.normal.y() >> c.normal.z();
+		clusters.push_back(c);
+	}
+	return clusters;
+}
+
 void IOWriteEdges(const std::string& fn, const std::vector<Edge>& edges)
 {
 	std::ofstream ofs(fn);
@@ -756,19 +774,18 @@ void IOWriteGraph(const std::string& fn_vertices, const std::string& fn_edges, c
 		ofsv << graph[vid] << std::endl;
 	}
 	// write edges
-	std::ofstream ofse(fn_edges);
-	for(auto eid : as_range(boost::edges(graph))) {
-		ofse << static_cast<int>(boost::source(eid, graph)) << "\t"
-			<< static_cast<int>(boost::target(eid, graph)) << "\t"
-			<< boost::get(boost::edge_weight, graph, eid) << std::endl;
-	}
+	graphseg::WriteEdges(fn_edges, graph, boost::get(boost::edge_weight, graph));
 }
 
 ClusterGraph IOReadGraph(const std::string& fn_vertices, const std::string& fn_edges)
 {
-	// std::vector<Cluster> clusters = IOReadClusters(const std::string& fn_vertices);
-	// std::vector<Edge> edges = ;
-	// ClusterGraph G;
+	std::vector<Cluster> clusters = IOReadClusters(fn_vertices);
+	ClusterGraph graph(clusters.size());
+	for(std::size_t i=0; i<clusters.size(); i++) {
+		graph[i] = clusters[i];
+	}
+	graphseg::ReadEdges(fn_edges, graph, boost::get(boost::edge_weight, graph));
+	return graph;
 }
 
 void ContinuousSupervoxels::start(int rows, int cols)

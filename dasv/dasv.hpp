@@ -230,6 +230,9 @@ namespace dasv
 	/** Writes clusters to a file */
 	void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters);
 
+	/** Reads clusters from a file */
+	std::vector<Cluster> IOReadClusters(const std::string& fn);
+
 	/** Writes edges to a file */
 	void IOWriteEdges(const std::string& fn, const std::vector<Edge>& edges);
 
