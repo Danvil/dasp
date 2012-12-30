@@ -73,12 +73,12 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 			const Point& p = points[i];
 			assert(p.isValid());
 			mean_color += p.color;
-			mean_world += p.world;
+			mean_world += p.position;
 		}
 		center.color = mean_color / float(pixel_ids.size());
-		center.world = mean_world / float(pixel_ids.size());
+		center.position = mean_world / float(pixel_ids.size());
 		// compute screen position and depth by projection
-		center.pixel = opt.camera.project(center.world);
+		center.pixel = opt.camera.project(center.position);
 	}
 
 //	// FIXME change or not change? (SLIC mode does not allow change!)
@@ -92,7 +92,10 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 //	}
 
 	if(pixel_ids.size() >= 3) {
-		cov = PointCovariance(pixel_ids, [this,&points](unsigned int i) { return points[i].world - center.world; });
+		cov = PointCovariance(pixel_ids,
+			[this,&points](unsigned int i) {
+				return points[i].position - center.position;
+			});
 	}
 	else {
 //		std::cerr << "Not enough points!" << std::endl;
@@ -129,7 +132,7 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 	std::vector<float> dist;
 	dist.reserve(pixel_ids.size());
 	for(unsigned int id : pixel_ids) {
-		Eigen::Vector3f p = points[id].world - center.world;
+		Eigen::Vector3f p = points[id].position - center.position;
 		float d = p.dot(center.normal);
 		dist.push_back(d);
 	}
@@ -152,7 +155,7 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 			for(unsigned int x=xmin; x<=xmax; x++) {
 				unsigned int i = points.index(x,y);
 				const Point& p = points[i];
-				Eigen::Vector3f t = p.world - center.world;
+				Eigen::Vector3f t = p.position - center.position;
 				float lam = t.dot(center.normal);
 				float d2 = t.squaredNorm() - lam*lam;
 				bool expected = lam < thickness_plane && d2 < opt.base_radius*opt.base_radius;
@@ -258,7 +261,7 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 			uint16_t depth_i16 = *p_depth;
 			p.is_valid = (depth_i16 != 0);
 			if(!p.is_valid) {
-				p.world = Eigen::Vector3f::Zero();
+				p.position = Eigen::Vector3f::Zero();
 				p.image_super_radius = 0.0f;
 				p.normal = Eigen::Vector3f(0,0,-1);
 			}
@@ -272,16 +275,16 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 	//			p.world = opt.camera.unproject(x, y, p.depth_i16);
 	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
 	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
-				p.world = opt.camera.unprojectUsingScala(x, y, scala);
+				p.position = opt.camera.unprojectUsingScala(x, y, scala);
 
 				if(is_clipping) {
-					if(    p.world.x() < opt.clip_x_min || opt.clip_x_max < p.world.x()
-						|| p.world.y() < opt.clip_y_min || opt.clip_y_max < p.world.y()
-						|| p.world.z() < opt.clip_z_min || opt.clip_z_max < p.world.z()
+					if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
+						|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
+						|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()
 					) {
 						// point is clipped
 						p.is_valid = false;
-						p.world = Eigen::Vector3f::Zero();
+						p.position = Eigen::Vector3f::Zero();
 						p.image_super_radius = 0.0f;
 						p.normal = Eigen::Vector3f(0,0,-1);
 						continue;
@@ -327,7 +330,7 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 		for(unsigned int i=0; i<points.size(); i++) {
 			Point& p = points[i];
 			if(p.is_valid) {
-				if(p.world[2] * threshold > opt.base_radius * p.computeCircularity()) {
+				if(p.position[2] * threshold > opt.base_radius * p.computeCircularity()) {
 					p.is_valid = false;
 				}
 			}
@@ -584,7 +587,7 @@ void Superpixels::ConquerMiniEnclaves()
 					if(neighbors[i] == -1) {
 						continue;
 					}
-					float d2 = (points[index].world - points[index + offset[i]].world).squaredNorm();
+					float d2 = (points[index].position - points[index + offset[i]].position).squaredNorm();
 					if(d2 < best_dist) {
 						best_lab = neighbors[i];
 						best_dist = d2;
@@ -668,7 +671,7 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 		c.center.image_super_radius = p.scala;
 		if(c.is_fixed) {
 			// use fixed world position (and compute depth from it)
-			c.center.world = p.fixed_world;
+			c.center.position = p.fixed_world;
 			c.center.color = p.fixed_color;
 			c.center.normal = p.fixed_normal;
 		}

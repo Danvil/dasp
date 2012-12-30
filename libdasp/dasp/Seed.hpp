@@ -30,9 +30,9 @@ namespace dasp
 			return Seed{x, y, scala, false,
 				Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
 		}
-		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& world, const Eigen::Vector3f& color, const Eigen::Vector3f& normal) {
+		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& position, const Eigen::Vector3f& color, const Eigen::Vector3f& normal) {
 			return Seed{x, y, scala, true,
-				world, color, normal};
+				position, color, normal};
 		}
 	};
 

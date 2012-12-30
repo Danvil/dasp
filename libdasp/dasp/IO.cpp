@@ -19,7 +19,7 @@ namespace dasp
 			const Point& p = c.center;
 			std::vector<float> v {
 				p.pixel.x(), p.pixel.y(),
-				p.world.x(), p.world.y(), p.world.z(),
+				p.position.x(), p.position.y(), p.position.z(),
 				p.color.x(), p.color.y(), p.color.z(),
 				p.normal.x(), p.normal.y(), p.normal.z()
 			};

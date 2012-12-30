@@ -22,7 +22,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph&
 				const auto& center = superpixels.cluster[i].center;
 				DaspPoint& p = result[dst];
 				p.px = center.pixel;
-				p.position = center.world;
+				p.position = center.position;
 				p.color = center.color;
 				p.normal = center.normal;
 			}
@@ -159,7 +159,7 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 			// early test if the two superpixels are even near to each other
 			if(settings.cut_by_spatial) {
 				// spatial distance
-				float d = (c_i.world - c_j.world).norm();
+				float d = (c_i.position - c_j.position).norm();
 				// only test if distance is smaller than threshold
 				if(d > spatial_distance_threshold) {
 					continue;
