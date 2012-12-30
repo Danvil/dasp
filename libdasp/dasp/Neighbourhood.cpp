@@ -21,7 +21,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph&
 				const unsigned int i = src;
 				const auto& center = superpixels.cluster[i].center;
 				DaspPoint& p = result[dst];
-				p.px = center.pos;
+				p.px = center.pixel;
 				p.position = center.world;
 				p.color = center.color;
 				p.normal = center.normal;
@@ -167,7 +167,7 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 			}
 			else {
 				// pixel distance on camera image plane
-				float d = (c_i.pos - c_j.pos).norm();
+				float d = (c_i.pixel - c_j.pixel).norm();
 				// only test if pixel distance is smaller then C * pixel_radius
 				float r = std::max(c_i.image_super_radius, c_j.image_super_radius);
 				if(d > pixel_distance_mult_threshold * r) {
