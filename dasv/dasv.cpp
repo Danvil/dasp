@@ -33,6 +33,7 @@
 //#define GUI_DEBUG_VERBOSE
 #define GUI_DEBUG_NORMAL
 //#define ENABLE_SAMPLING_DEBUG
+//#define EVAL_COMPRESSION_ERROR
 
 namespace dasv
 {
@@ -48,7 +49,7 @@ constexpr float CENTER_X = 320.0f;
 constexpr float CENTER_Y = 240.0f;
 constexpr float PX_FOCAL = 528.0f;
 constexpr float CLUSTER_RADIUS = 0.025f;
-constexpr int CLUSTER_TIME_RADIUS = 30; // TR=15 -> 0.5 s
+constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
 constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
@@ -646,39 +647,7 @@ void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 	}
 }
 
-void UpdateClusters(int time, Timeseries& timeseries)
-{
-	// compute frame range for assignment update
-	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
-	// iterate some times
-	for (int k = 0; k < CLUSTER_ITERATIONS; ++k) {
-		// update cluster assignment for frames in range
-		UpdateClusterAssignment(frames);
-		// update cluster centers
-		UpdateClusterCenters(frames);
-	}
-}
-
-struct Edge
-{
-	ClusterPtr a, b;
-
-	int id() const {
-		int ia = (a->time << 16) + a->id;
-		int ib = (b->time << 16) + b->id;
-		return ia | ib;
-	}
-};
-
-bool operator==(const Edge& x, const Edge& y) {
-	return (x.a == y.a && x.b == y.b) || (x.a == y.b && x.b == y.a);
-}
-
-bool operator<(const Edge& x, const Edge& y) {
-	return x.id() < y.id();
-}
-
-std::set<Edge> ComputeClusterEdges(const FramePtr& frame)
+std::vector<Edge> ComputeClusterEdges(const FramePtr& frame)
 {
 	const int rows = frame->rgbd.rows();
 	const int cols = frame->rgbd.cols();
@@ -699,15 +668,99 @@ std::set<Edge> ComputeClusterEdges(const FramePtr& frame)
 			if(cx1 && c != cx1) edges.insert({c,cx1});
 		}
 	}
-	return edges;
+	// return as vector
+	return std::vector<Edge>(edges.begin(), edges.end());
 }
 
-void DebugWriteEdges(const std::string& fn, const std::set<Edge>& edges)
+void UpdateClusterEdges(const std::vector<FramePtr>& frames)
+{
+	for(const FramePtr& frame : frames) {
+		frame->edges = ComputeClusterEdges(frame);
+	}
+}
+
+void UpdateClusters(int time, Timeseries& timeseries)
+{
+	// compute frame range for assignment update
+	std::vector<FramePtr> frames = timeseries.getFrameRange(time-CLUSTER_TIME_RADIUS, time+CLUSTER_TIME_RADIUS+1);
+	// iterate some times
+	for (int k = 0; k < CLUSTER_ITERATIONS; ++k) {
+		// update cluster assignment for frames in range
+		UpdateClusterAssignment(frames);
+		// update cluster centers
+		UpdateClusterCenters(frames);
+		// compute edges
+		UpdateClusterEdges(frames);
+	}
+}
+
+ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
+{
+	// count number of clusters
+	int num_clusters = 0;
+	for(const FramePtr& f : frames) {
+		num_clusters += f->clusters.size();
+	}
+	// create vertices
+	ClusterGraph G(num_clusters);
+	std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
+	int i = 0;
+	for(const FramePtr& f : frames) {
+		for(const ClusterPtr& c : f->clusters) {
+			G[i] = *c;
+			cid_to_vid[c->unique_id()] = i;
+			i++;
+		}
+	}
+	// create edges
+	for(const FramePtr& f : frames) {
+		for(const Edge& e : f->edges) {
+			auto ea_it = cid_to_vid.find(e.a->unique_id());
+			auto eb_it = cid_to_vid.find(e.b->unique_id());
+			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
+				continue;
+			}
+			ClusterGraph::edge_descriptor eid;
+			bool ok;
+			boost::tie(eid,ok) = boost::add_edge(ea_it->second, eb_it->second, G);
+			boost::put(boost::edge_weight, G, eid, 1.0f);
+		}
+	}
+	// ready
+	return G;
+}
+
+void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters)
+{
+	std::ofstream ofs(fn);
+	for(const ClusterPtr& cp : clusters) {
+		if(!cp) continue;
+		ofs << *cp << std::endl;
+	}
+}
+
+void IOWriteEdges(const std::string& fn, const std::vector<Edge>& edges)
 {
 	std::ofstream ofs(fn);
 	for(const Edge& e : edges) {
 		ofs << e.a->time << " " << e.a->id << " "
 			<< e.b->time << " " << e.b->id << std::endl;
+	}
+}
+
+void IOWriteGraph(const std::string& fn_vertices, const std::string& fn_edges, const ClusterGraph& graph)
+{
+	// write clusters
+	std::ofstream ofsv(fn_vertices);
+	for(auto vid : as_range(boost::vertices(graph))) {
+		ofsv << graph[vid] << std::endl;
+	}
+	// write edges
+	std::ofstream ofse(fn_edges);
+	for(auto eid : as_range(boost::edges(graph))) {
+		ofse << static_cast<int>(boost::source(eid, graph)) << "\t"
+			<< static_cast<int>(boost::target(eid, graph)) << "\t"
+			<< boost::get(boost::edge_weight, graph, eid) << std::endl;
 	}
 }
 
@@ -780,8 +833,74 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	DANVIL_BENCHMARK_STOP(dasv_create_frame)
 
 	// purge old frames to limit time interval
-	std::vector<ClusterPtr> purged_clusters = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-	inactive_clusters_.insert(inactive_clusters_.end(), purged_clusters.begin(), purged_clusters.end());
+	std::vector<FramePtr> purged_frames = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
+	// save purged clusters
+	for(const FramePtr& f : purged_frames) {
+		inactive_clusters_.insert(inactive_clusters_.end(), f->clusters.begin(), f->clusters.end());
+	}
+	// store purged frames in graph
+	{
+		// count number of clusters
+		int num_clusters = inactive_clusters_.size();
+		// create vertices
+		ClusterGraph G(num_clusters);
+		std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
+		int i = 0;
+		for(auto vid : as_range(boost::vertices(graph_))) {
+			const Cluster& c = graph_[vid];
+			G[i] = c;
+//			std::cout << "VO " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
+			cid_to_vid[c.unique_id()] = i;
+			i++;
+		}
+		for(const FramePtr& f : purged_frames) {
+			for(const ClusterPtr& cp : f->clusters) {
+				const Cluster& c = *cp;
+//				std::cout << "VN " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
+				G[i] = c;
+				cid_to_vid[c.unique_id()] = i;
+				i++;
+			}
+		}
+		// create edges
+		for(auto eid : as_range(boost::edges(graph_))) {
+			ClusterGraph::edge_descriptor neid;
+			bool ok;
+			boost::tie(neid,ok) = boost::add_edge(
+				boost::source(eid,graph_),
+				boost::target(eid,graph_),
+				G);
+//			std::cout << "EO " << boost::source(eid,graph_) << " " << boost::target(eid,graph_) << std::endl;
+			boost::put(boost::edge_weight, G, neid,
+				boost::get(boost::edge_weight, graph_, eid));
+		}
+		for(const FramePtr& f : purged_frames) {
+			delayed_edges_.insert(delayed_edges_.end(), f->edges.begin(), f->edges.end());
+		}
+		std::vector<Edge> still_delayed_edges;
+		for(const Edge& e : delayed_edges_) {
+			auto ea_it = cid_to_vid.find(e.a->unique_id());
+			auto eb_it = cid_to_vid.find(e.b->unique_id());
+			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
+				still_delayed_edges.push_back(e);
+//				std::cout << "ED " << e.a->unique_id() << " " << e.b->unique_id() << std::endl;
+			}
+			else {
+				ClusterGraph::edge_descriptor eid;
+				bool ok;
+				boost::tie(eid,ok) = boost::add_edge(ea_it->second, eb_it->second, G);
+				boost::put(boost::edge_weight, G, eid, 1.0f);
+//				std::cout << "EN " << ea_it->second << " " << eb_it->second << std::endl;
+			}
+		}
+		// ready
+		graph_ = G;
+		delayed_edges_ = still_delayed_edges;
+		std::cout << "Graph: num_vertices=" << boost::num_vertices(graph_)
+				<< ", num_edges=" << boost::num_edges(graph_)
+				<< ", num_delayed_edges=" << delayed_edges_.size()
+				<< std::endl;
+	}
 
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
@@ -796,28 +915,31 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	}
 #endif
 
+	// update clusters around active time
+	DANVIL_BENCHMARK_START(dasv_update_clusters)
+	UpdateClusters(t, series_);
+	DANVIL_BENCHMARK_STOP(dasv_update_clusters)
+
 	// Debug
 	std::cout << "f=" << new_frame->time << ", t=" << t
 			<< ", span=[" << series_.getBeginTime() << "," << series_.getEndTime() << "["
 			<< ", clusters active=" << numActiveClusters() << "/inactive=" << numInactiveClusters()
 			<< std::endl;
 
-	// computes compression error
-	Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
-	Eigen::Vector2f ref_compression_error = EvaluateComputeDownsampleCompressionError(series_.getFrame(t));
-	std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
-
-	// update clusters around active time
-	DANVIL_BENCHMARK_START(dasv_update_clusters)
-	UpdateClusters(t, series_);
-	DANVIL_BENCHMARK_STOP(dasv_update_clusters)
+#ifdef EVAL_COMPRESSION_ERROR
+	{
+		// computes compression error
+		Eigen::Vector2f compression_error = EvaluateComputeCompressionError(series_.getFrame(t));
+		Eigen::Vector2f ref_compression_error = EvaluateComputeDownsampleCompressionError(series_.getFrame(t));
+		std::cout << "Compression Error: " << compression_error.transpose() << "(ref=" << ref_compression_error.transpose() << ")" << std::endl;
+	}
+#endif
 
 #ifdef GUI_DEBUG_NORMAL
 	{
+		// superpixel image
 		boost::format fmt_col("/tmp/dasv/%05d_color.png");
 		boost::format fmt_age("/tmp/dasv/%05d_age.png");
-		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
-		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
 		DANVIL_BENCHMARK_START(dasv_eval)
 		FramePtr frame = series_.getFrame(t);
 		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
@@ -826,11 +948,13 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		slimage::gui::Show("superpixel age", img_age, 10);
 		slimage::Save(img_col, (fmt_col % frame->time).str());
 		slimage::Save(img_age, (fmt_age % frame->time).str());
-		// clusters
-		DebugWriteClusters((fmt_clusters % frame->time).str(), frame->clusters);
-		// graph edges
-		std::set<Edge> edges = ComputeClusterEdges(frame);
-		DebugWriteEdges((fmt_edges % frame->time).str(), edges);
+		// cluster graph
+		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
+		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
+		IOWriteGraph(
+			(fmt_clusters % frame->time).str(),
+			(fmt_edges % frame->time).str(),
+			graph_);
 		DANVIL_BENCHMARK_STOP(dasv_eval)
 	}
 #endif
@@ -872,24 +996,6 @@ std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 		}
 	}
 	return result;
-}
-
-void DebugWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters)
-{
-	std::ofstream ofs(fn);
-	for(const ClusterPtr& cp : clusters) {
-		if(!cp) continue;
-		const Cluster& c = *cp;
-		ofs << c.time
-			<< "\t" << c.id
-			<< "\t" << (c.valid ? 1 : 0)
-			<< "\t" << c.cluster_radius_px
-			<< "\t" << c.pixel.x() << "\t" << c.pixel.y()
-			<< "\t" << c.color.x() << "\t" << c.color.y() << "\t" << c.color.z()
-			<< "\t" << c.position.x() << "\t" << c.position.y() << "\t" << c.position.z()
-			<< "\t" << c.normal.x() << "\t" << c.normal.y() << "\t" << c.normal.z()
-			<< std::endl;
-	}
 }
 
 slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors)

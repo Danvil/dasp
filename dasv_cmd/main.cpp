@@ -124,8 +124,7 @@ private:
 
 int main(int argc, char** argv)
 {
-//	const std::string ds_path = "/home/david/Documents/DataSets";
-	const std::string ds_path = "/home/david/Dokumente/DataSets";
+	const std::string ds_path = "/home/david/Documents/DataSets";
 
 	std::string p_mode;
 

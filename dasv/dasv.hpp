@@ -3,7 +3,9 @@
 
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
+#include <boost/graph/adjacency_list.hpp>
 #include <vector>
+#include <ostream>
 #include <string>
 #include <memory>
 
@@ -63,6 +65,24 @@ namespace dasv
 		int time;
 		int id;
 		bool valid;
+
+		int unique_id() const {
+			return time * (1<<16) + id;
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Cluster& c)
+		{
+			os << c.time
+				<< "\t" << c.id
+				<< "\t" << (c.valid ? 1 : 0)
+				<< "\t" << c.cluster_radius_px
+				<< "\t" << c.pixel.x() << "\t" << c.pixel.y()
+				<< "\t" << c.color.x() << "\t" << c.color.y() << "\t" << c.color.z()
+				<< "\t" << c.position.x() << "\t" << c.position.y() << "\t" << c.position.z()
+				<< "\t" << c.normal.x() << "\t" << c.normal.y() << "\t" << c.normal.z();
+			return os;
+		}
+
 	};
 
 	typedef std::shared_ptr<Cluster> ClusterPtr;
@@ -77,6 +97,24 @@ namespace dasv
 	/** Frame pixel to cluster assignment */
 	typedef Vector2D<Assignment> FrameAssignment;
 
+	/** An edge connecting to clusters */
+	struct Edge
+	{
+		ClusterPtr a, b;
+
+		int id() const {
+			return a->unique_id() | b->unique_id();
+		}
+		
+		friend bool operator==(const Edge& x, const Edge& y) {
+			return (x.a == y.a && x.b == y.b) || (x.a == y.b && x.b == y.a);
+		}
+
+		friend bool operator<(const Edge& x, const Edge& y) {
+			return x.id() < y.id();
+		}
+	};
+
 	/** Various data related to one timestamp */
 	struct Frame
 	{
@@ -84,6 +122,7 @@ namespace dasv
 		RgbdData rgbd;
 		std::vector<ClusterPtr> clusters;
 		FrameAssignment assignment;
+		std::vector<Edge> edges;
 	};
 
 	typedef std::shared_ptr<Frame> FramePtr;
@@ -151,20 +190,51 @@ namespace dasv
 			frames.push_back(f);
 		}
 
-		std::vector<ClusterPtr> purge(int tmin) {
-			std::vector<ClusterPtr> clusters;
+		std::vector<FramePtr> purge(int tmin) {
 			int i;
-			for(i=0; i<frames.size() && frames[i]->time < tmin; ++i) {
-				clusters.insert(clusters.begin(), frames[i]->clusters.begin(), frames[i]->clusters.end());
-			}
+			for(i=0; i<frames.size() && frames[i]->time < tmin; ++i);
+			std::vector<FramePtr> purged_frames(frames.begin(), frames.begin() + i);
 			frames.erase(frames.begin(), frames.begin() + i);
-			return clusters;
+			return purged_frames;
 		}
 
 	};
 
 	/** Updates clusters near a given timestep */
 	void UpdateClusters(int time, Timeseries& timeseries);
+
+	/** Graph structure for weighted cluster graph */
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
+		Cluster, // vertex annotation
+		boost::property<boost::edge_weight_t, float> // edge annotation
+	> ClusterGraph;
+
+	namespace detail
+	{
+		template<class Iter> struct iter_pair_range : std::pair<Iter,Iter>
+		{
+			iter_pair_range(const std::pair<Iter,Iter>& x) : std::pair<Iter,Iter>(x) {}
+			Iter begin() const { return this->first; }
+			Iter end() const { return this->second; }
+		};
+	}
+
+	template<class Iter>
+	inline detail::iter_pair_range<Iter> as_range(const std::pair<Iter,Iter>& x) {
+		return detail::iter_pair_range<Iter>(x);
+	}
+
+	/** Computes cluster graph of frames */
+	ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames);
+
+	/** Writes clusters to a file */
+	void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters);
+
+	/** Writes edges to a file */
+	void IOWriteEdges(const std::string& fn, const std::vector<Edge>& edges);
+
+	/** Writes a cluster graph to files */ 
+	void IOWriteGraph(const std::string& fn_vertices, const std::string& fn_edges, const ClusterGraph& graph);
 
 	/** Control structure for continuous temporal-depth-adative superpoint generation */
 	struct ContinuousSupervoxels
@@ -181,23 +251,28 @@ namespace dasv
 		/** Gets number of inactive clusters */
 		int numInactiveClusters() const;
 
+		/** Gets total number of clusters */
 		int numClusters() const;
 
 		/** Gets all clusters */
 		std::vector<Cluster> getAllClusters() const;
+
+		/** Gets total cluster graph */
+		const ClusterGraph& getGraph() const {
+			return graph_;
+		}
 
 	private:
 		bool is_first_;
 		Eigen::MatrixXf last_density_;
 		Timeseries series_;
 		std::vector<ClusterPtr> inactive_clusters_;
+		ClusterGraph graph_;
+		std::vector<Edge> delayed_edges_;
 	};
 
 	/** Opens a window to display matrix data */
 	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
-
-	/** Writes clusters to a file */
-	void DebugWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters);
 
 	/** Computes superpixel image from clusters and assignment */
 	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors);
