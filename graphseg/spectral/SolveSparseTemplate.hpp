@@ -5,21 +5,25 @@
  *      Author: david
  */
 
-#ifndef DASP_IMPL_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
-#define DASP_IMPL_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
+#ifndef DASP_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
+#define DASP_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
 
-#include "Types.hpp"
+#include "../Common.hpp"
+#include "../as_range.hpp"
+#include <boost/graph/adjacency_list.hpp>
 #include <arpack++/arlssym.h>
-#include <cmath>
 #include <iostream>
+#include <vector>
+#include <cmath>
 
-namespace dasp { namespace detail {
+namespace graphseg { namespace detail {
 
 template<typename Graph>
-PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev)
+std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int num_ev)
 {
-	if(cVerbose)
-		std::cout << "Sparse Solver: started" << std::endl;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "Sparse Solver: started" << std::endl;
+#endif
 
 	// We want to solve the EV problem: (D - W) x = \lamda D x.
 	// Each edge of the graph defines two entries into the symmetric matrix W.
@@ -30,8 +34,9 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 	// Thus the EV problem is: L^{-1} (D - W) L^{-T} y = \lambda y.
 	// Eigenvectors can be transformed using x = L^{-T} y.
 
-	if(cVerbose)
-		std::cout << "Sparse Solver: preparing problem" << std::endl;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "Sparse Solver: preparing problem" << std::endl;
+#endif
 
 	// The dimension of the problem
 	int n = boost::num_vertices(graph);
@@ -131,8 +136,9 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 	});
 
 	// define ARPACK matrix (see p. 119 in ARPACK++ manual)
-	if(cVerbose)
-		std::cout << "Sparse Solver: defining matrix" << std::endl;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "Sparse Solver: defining matrix" << std::endl;
+#endif
 	int nnz = entries.size();
 	std::vector<Real> nzval(nnz);
 	std::vector<int> irow(nnz);
@@ -188,8 +194,9 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 	ARluSymMatrix<Real> mat(n, nnz, nzval.data(), irow.data(), pcol.data());
 
 	// solve ARPACK problem (see p. 82 in ARPACK++ manual)
-	if(cVerbose)
-		std::cout << "Sparse Solver: solving ..." << std::flush;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "Sparse Solver: solving ..." << std::flush;
+#endif
 	num_ev = std::min<unsigned int>(num_ev, n);
 	if(static_cast<float>(num_ev)/static_cast<float>(n) > 0.1f) {
 		std::cout << "Warning: Using sparse eigensolver, but trying to get a huge number of eigenvectors!" << std::endl;
@@ -200,17 +207,18 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 	Real* p_ew = v_ew.data();
 	Real* p_ev = v_ev.data();
 	solv.EigenValVectors(p_ev, p_ew, false);
-	if(cVerbose)
-		std::cout << " finished." << std::endl;
-	if(cVerbose)
-		std::cout << "Sparse Solver: collecting results" << std::endl;
-	PartialEigenSolution solution(num_ev);
+#ifdef SPECTRAL_VERBOSE
+	std::cout << " finished." << std::endl;
+	std::cout << "Sparse Solver: collecting results" << std::endl;
+#endif
+	std::vector<EigenComponent> solution(num_ev);
 	for(unsigned int i=0; i<num_ev; i++) {
 		EigenComponent& cmp = solution[i];
 		cmp.eigenvalue = p_ew[i];
-		if(cVerbose)
-			std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
+#ifdef SPECTRAL_VERBOSE
+		std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
 		cmp.eigenvector = Vec(n);
+#endif
 		for(unsigned int j=0; j<n; j++) {
 			Real v = p_ev[i*n + j];
 			// convert back to generalized eigenvalue problem!
@@ -218,8 +226,9 @@ PartialEigenSolution SolveSparseTemplate(const Graph& graph, unsigned int num_ev
 			cmp.eigenvector[j] = v;
 		}
 	}
-	if(cVerbose)
-		std::cout << "Sparse Solver: returning" << std::endl;
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "Sparse Solver: returning" << std::endl;
+#endif
 	return solution;
 
 	//return SpectralDenseEigenSolve(graph, num_ev);

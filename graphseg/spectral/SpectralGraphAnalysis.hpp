@@ -1,28 +1,31 @@
 /*
- * SolveTemplate.hpp
+ * SpectralGraphAnalysis.hpp
  *
- *  Created on: Okt 20, 2012
+ *  Created on: Dec 30, 2012
  *      Author: david
  */
 
-#ifndef DASP_IMPL_SPECTRAL_SOLVETEMPLATE_HPP_
-#define DASP_IMPL_SPECTRAL_SOLVETEMPLATE_HPP_
+#ifndef DASP_SPECTRAL_SPECTRALGRAPHANALYSIS_HPP_
+#define DASP_SPECTRAL_SPECTRALGRAPHANALYSIS_HPP_
 
-#include "../../Graph.hpp"
-#include "Types.hpp"
-#include "SolveDenseTemplate.hpp"
-#include "SolveSparseTemplate.hpp"
+#include "../Common.hpp"
+#include "../as_range.hpp"
+#include "SolveTemplate.hpp"
+#include <boost/graph/adjacency_list.hpp>
+#include <iostream>
+#include <vector>
+#ifdef SEGS_DBG_PRINT
+#include <fstream>
+#endif
 
-namespace dasp
+namespace graphseg
 {
 	namespace detail
 	{
 		/** Assembles edge weights from eigenvalues and eigenvectors */
 		template<typename Graph>
-		Vec AssembleEdgeWeights(const Graph& graph, const PartialEigenSolution& solution)
+		Vec AssembleEdgeWeights(const Graph& graph, const std::vector<EigenComponent>& solution)
 		{
-			using namespace dasp::detail;
-
 			Vec edge_weight = Vec::Zero(boost::num_edges(graph));
 		//	// later we weight by eigenvalues
 		//	// find a positive eigenvalue (need to do this because of ugly instabilities ...
@@ -69,51 +72,45 @@ namespace dasp
 					e_k[eid_index] = std::abs(ev[boost::source(eid, graph)] - ev[boost::target(eid, graph)]);
 					eid_index++;
 				}
-				if(cVerbose)
-					std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
+#ifdef SPECTRAL_VERBOSE
+				std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
+#endif
 		//		e_k /= e_k.maxCoeff();
 		//		for(unsigned int i=0; i<e_k.rows(); i++) {
 		//			e_k[i] = std::exp(-e_k[i]);
 		//		}
 				e_k *= w;
 
-		#ifdef SEGS_DBG_PRINT
+#ifdef SEGS_DBG_PRINT
 				{
 					std::ofstream ofs((boost::format("/tmp/edge_weights_%03d.txt") % k).str());
 					for(unsigned int i=0; i<e_k.rows(); i++) {
 						ofs << e_k[i] << std::endl;
 					}
 				}
-		#endif
+#endif
 				//
 				edge_weight += e_k;
 			}
 			return edge_weight;
 		}
+	}
 
-		/** Applies spectral graph theory fu to a weighted undirected graph */
-		template<typename Graph>
-		Graph SolveTemplate(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
-			// pick one more because the first one is omitted
-			detail::PartialEigenSolution solution;
-			if(use_dense_solver) {
-				solution = detail::SolveDenseTemplate(graph, num_ev + 1);
-			}
-			else {
-				solution = detail::SolveSparseTemplate(graph, num_ev + 1);
-			}
-			detail::Vec weights = AssembleEdgeWeights(graph, solution);
-			// create new graph with resulting edge strength
-			Graph result = graph;
-			// FIXME proper edge indexing
-			unsigned int eid_index = 0;
-			for(auto eid : as_range(boost::edges(result))) {
-				boost::put(boost::edge_weight, result, eid, weights[eid_index]);
-				eid_index++;
-			}
-			return result;
+	/** Applies graphseg graph theory fu to a weighted undirected graph */
+	template<typename Graph>
+	Graph SpectralGraphAnalysis(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
+		// pick one more because the first one is omitted
+		std::vector<detail::EigenComponent> solution = detail::SolveTemplate(graph, num_ev);
+		detail::Vec weights = AssembleEdgeWeights(graph, solution);
+		// create new graph with resulting edge strength
+		Graph result = graph;
+		// FIXME proper edge indexing
+		unsigned int eid_index = 0;
+		for(auto eid : as_range(boost::edges(result))) {
+			boost::put(boost::edge_weight, result, eid, weights[eid_index]);
+			eid_index++;
 		}
-
+		return result;
 	}
 
 }

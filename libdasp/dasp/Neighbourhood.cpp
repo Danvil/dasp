@@ -18,7 +18,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph&
 	boost::copy_graph(weighted_graph, result,
 		boost::vertex_copy(
 			[&superpixels,&weighted_graph,&result](EdgeWeightGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
-				const SuperpixelId i = boost::get(superpixel_id_t(), weighted_graph, src);
+				const unsigned int i = src;
 				const auto& center = superpixels.cluster[i].center;
 				DaspPoint& p = result[dst];
 				p.px = center.pos;
@@ -146,7 +146,7 @@ std::vector<unsigned int> FindCommonBorder(const std::vector<std::vector<BorderP
 BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings)
 {
 	// create one node for each superpixel
-	BorderPixelGraph neighbourhood_graph = detail::CreateSuperpixelGraph<BorderPixelGraph>(superpixels.clusterCount());
+	BorderPixelGraph neighbourhood_graph(superpixels.clusterCount());
 	// compute superpixel borders
 	std::vector<std::vector<BorderPixel> > border = ComputeBorderLabels(superpixels);
 	// connect superpixels

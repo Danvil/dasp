@@ -3,9 +3,6 @@ add_library(libdasp SHARED
 	dasp/impl/Mipmaps.cpp
 	dasp/impl/RepairDepth.cpp
 	dasp/impl/Sampling.cpp
-	dasp/impl/Spectral.cpp
-	dasp/impl/Spectral/SolveSparseTemplate.cpp
-	dasp/impl/Spectral/SolveTemplate.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp
@@ -15,7 +12,12 @@ add_library(libdasp SHARED
 
 set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 
+include_directories(
+	${dasp_SOURCE_DIR}
+)
+
 target_link_libraries(libdasp
+	graphseg
 	boost_thread
 	parpack
 	arpack

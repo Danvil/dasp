@@ -6,7 +6,7 @@
  */
 
 #include "Plots.hpp"
-#include "impl/Spectral.hpp"
+#include "graphseg/Spectral.hpp"
 #include <Eigen/Dense>
 //#include <Eigen/Sparse>
 #include <boost/format.hpp>
@@ -104,27 +104,24 @@ ClusterLabeling impl::ComputeSegmentLabels_UCM(const Graph& graph, float thresho
 template<typename SuperpixelGraph, typename WeightMap>
 EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int cNEV)
 {
-	using namespace detail;
-
 	// create graph for spectral solving
-	SpectralGraph spectral;
+	graphseg::SpectralGraph spectral;
 	boost::copy_graph(graph, spectral,
-			boost::edge_copy([&graph,&spectral,&weights](typename SuperpixelGraph::edge_descriptor src, SpectralGraph::edge_descriptor dst) {
-				boost::put(boost::edge_weight, spectral, dst, boost::get(weights, src));
-	}));
-
-	// do spectral graph fu
-	SpectralGraph solved = SolveSpectral(spectral, cNEV);
-
+			boost::edge_copy(
+				[&spectral,&weights](typename SuperpixelGraph::edge_descriptor src, typename graphseg::SpectralGraph::edge_descriptor dst) {
+					boost::put(boost::edge_weight, spectral, dst, boost::get(weights, src));
+				}
+	));
+	// do spectral graph foo
+	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, cNEV);
 	// create superpixel neighbourhood graph with edge strength
 	EdgeWeightGraph result;
 	boost::copy_graph(solved, result,
-			boost::vertex_copy([&solved,&result](SpectralGraph::vertex_descriptor src, SpectralGraph::vertex_descriptor dst) {
-				boost::put(superpixel_id_t(), result, dst, dst); // FIXME HACK!!! vertex_descriptor is used as superpixel id
-			}).
-			edge_copy([&solved,&result](SpectralGraph::edge_descriptor src, SpectralGraph::edge_descriptor dst) {
-				boost::put(boost::edge_weight, result, dst, boost::get(boost::edge_weight, solved, src));
-	}));
+			boost::edge_copy(
+				[&solved,&result](typename graphseg::SpectralGraph::edge_descriptor src, typename EdgeWeightGraph::edge_descriptor dst) {
+					boost::put(boost::edge_weight, result, dst, boost::get(boost::edge_weight, solved, src));
+				}
+	));
 	return result;
 }
 

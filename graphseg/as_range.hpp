@@ -1,7 +1,7 @@
-#ifndef DASP_IMPL_ASRANGE_HPP_
-#define DASP_IMPL_ASRANGE_HPP_
+#ifndef DASP_SPECTRAL_ASRANGE_HPP_
+#define DASP_SPECTRAL_ASRANGE_HPP_
 
-#include <boost/graph/adjacency_list.hpp>
+//#include <boost/graph/adjacency_list.hpp>
 #include <tuple>
 
 namespace detail
@@ -29,14 +29,14 @@ inline detail::iter_pair_range<Iter> as_range(const std::pair<Iter,Iter>& x) {
 	return detail::iter_pair_range<Iter>(x);
 }
 
-template<class Graph>
-inline detail::iter_pair_range<typename Graph::edge_iterator> edges_range(const Graph& graph) {
-	return as_range(boost::edges(graph));
-}
+// template<class Graph>
+// inline detail::iter_pair_range<typename Graph::edge_iterator> edges(const Graph& graph) {
+// 	return as_range(boost::edges(graph));
+// }
 
-template<class Graph>
-inline detail::iter_pair_range<typename Graph::vertex_iterator> vertices_range(const Graph& graph) {
-	return as_range(boost::vertices(graph));
-}
+// template<class Graph>
+// inline detail::iter_pair_range<typename Graph::vertex_iterator> vertices(const Graph& graph) {
+// 	return as_range(boost::vertices(graph));
+// }
 
 #endif
