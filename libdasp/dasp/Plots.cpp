@@ -81,16 +81,9 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 	int cx = cluster.center.spatial_x();
 	int cy = cluster.center.spatial_y();
 
-	Eigen::Vector2f g0 = cluster.center.gradient;
-	float g_norm_sq = g0.squaredNorm();
-	if(g_norm_sq == 0.0f) {
-		g0 = Eigen::Vector2f::Unit(0);
-	}
-	else {
-		g0 /= std::sqrt(g_norm_sq);
-	}
+	Eigen::Vector2f g0 = cluster.center.computeGradientDirection();
 	float sp_0 = cluster.center.image_super_radius;
-	float sp_small = sp_0 / std::sqrt(g_norm_sq + 1.0f);
+	float sp_small = sp_0 * cluster.center.computeCircularity();
 	int p1x = static_cast<int>(sp_small * g0[0]);
 	int p1y = static_cast<int>(sp_small * g0[1]);
 	int p2x = static_cast<int>(- sp_0 * g0[1]);
@@ -204,7 +197,9 @@ namespace detail
 
 	template<>
 	slimage::Pixel3ub ComputePointColor<Valid>(const Point& p) {
-		return p.isValid() ? slimage::Pixel3ub{{0,128,0}} : slimage::Pixel3ub{{255,128,128}};
+		return p.is_valid
+			? slimage::Pixel3ub{{0,128,0}}
+			: slimage::Pixel3ub{{255,128,128}};
 	}
 
 	template<>
@@ -214,15 +209,14 @@ namespace detail
 
 	template<>
 	slimage::Pixel3ub ComputePointColor<Depth>(const Point& p) {
-		return DepthColor(p.depth_i16);
+		return DepthColor(p.depth());
 	}
 
 	template<>
 	slimage::Pixel3ub ComputePointColor<Gradient>(const Point& p) {
-		if(p.isInvalid()) {
-			return slimage::Pixel3ub{{0,0,0}};
-		}
-		return GradientColor(p.gradient);
+		return p.is_valid
+			? GradientColor(p.computeGradient())
+			: slimage::Pixel3ub{{0,0,0}};
 	}
 
 	template<int M>
@@ -441,7 +435,7 @@ void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub&
 	glPolygonMode(GL_BACK, GL_LINE);
 	// render circle at position
 	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.world);
-	Eigen::Vector3f n = cluster.center.computeNormal();
+	const Eigen::Vector3f& n = cluster.center.normal;
 	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
 	Eigen::Vector3f u = v.cross(n);
 	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);

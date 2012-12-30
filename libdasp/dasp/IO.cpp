@@ -17,12 +17,11 @@ namespace dasp
 		data.reserve(superpixels.cluster.size());
 		for(const Cluster& c : superpixels.cluster) {
 			const Point& p = c.center;
-			Eigen::Vector3f n = p.computeNormal();
 			std::vector<float> v {
 				p.pos.x(), p.pos.y(),
 				p.world.x(), p.world.y(), p.world.z(),
 				p.color.x(), p.color.y(), p.color.z(),
-				n.x(), n.y(), n.z()
+				p.normal.x(), p.normal.y(), p.normal.z()
 			};
 			data.push_back(v);
 		}

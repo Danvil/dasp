@@ -40,21 +40,21 @@ inline slimage::Pixel3ub GradientColor(const Eigen::Vector2f& g)
 }
 
 /** Color visualization of kinect depth */
-inline slimage::Pixel3ub DepthColor(uint16_t d16)
+inline slimage::Pixel3ub DepthColor(float d)
 {
 	// base gradient: blue -> red -> yellow
-	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, uint16_t>::Factor_Blue_Red_Yellow_Green();
-	cm.setRange(750,2500);
-	if(d16 == 0) {
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow_Green();
+	cm.setRange(0.750f,2.500f);
+	if(d == 0) {
 		return slimage::Pixel3ub{{0,0,0}};
 	}
 	else {
-		if(d16 > 2500) {
-			return slimage::Pixel3ub{{0,static_cast<unsigned char>(255/(1 + (static_cast<float>(d16) - 2500)/500)),0}};
+		if(d > 2.500f) {
+			return slimage::Pixel3ub{{0, static_cast<unsigned char>(255/(1.0f + (d - 2.500f)/0.500f)), 0}};
 		}
 		else {
-			Danvil::Colorub color = cm(d16);
-			return slimage::Pixel3ub{{color.r,color.g,color.b}};
+			Danvil::Colorub color = cm(d);
+			return slimage::Pixel3ub{{color.r, color.g, color.b}};
 		}
 //		Danvil::Colorub color = cm(d16);
 //		unsigned int q = d16 % 25;

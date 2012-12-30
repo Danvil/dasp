@@ -39,14 +39,12 @@ namespace dasp
 		}
 
 		inline float NormalDistanceRaw(const Eigen::Vector3f& u, const Eigen::Vector3f& v) {
+			// this is an approximation to the angle between the normals
 			return 1.0f - u.dot(v);
 		}
 
 		inline float NormalDistanceRaw(const Point& u, const Point& v) {
-			// we want to compute 1 - dot(n(u), n(v))
-			// the normal is implicitly given by the gradient
-			// multiplying with the circularity yields the required normalization
-			return 1.0f - (u.gradient.dot(v.gradient) + 1.0f) * u.circularity * v.circularity;
+			return NormalDistanceRaw(u.normal, v.normal);
 		}
 
 	}
@@ -129,8 +127,8 @@ namespace dasp
 			const Eigen::Vector3f& y_pos = y.world;
 			const Eigen::Vector3f& x_col = x.color;
 			const Eigen::Vector3f& y_col = y.color;
-			Eigen::Vector3f x_norm = x.computeNormal();
-			Eigen::Vector3f y_norm = y.computeNormal();
+			const Eigen::Vector3f& x_norm = x.normal;
+			const Eigen::Vector3f& y_norm = y.normal;
 			// spatial distance
 			float scl_d_spatial = metric::SpatialDistanceRaw(x_pos, y_pos) * scl_spatial_;
 			scl_d_spatial = std::max(0.0f, scl_d_spatial - 1.2f); // distance of 1 indicates estimated distance
