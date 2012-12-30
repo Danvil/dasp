@@ -434,9 +434,9 @@ void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub&
 	glPolygonMode(GL_FRONT, GL_FILL);
 	glPolygonMode(GL_BACK, GL_LINE);
 	// render circle at position
-	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.world);
+	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.position);
 	const Eigen::Vector3f& n = cluster.center.normal;
-	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
+	Eigen::Vector3f v = cluster.center.position.cross(n).normalized();
 	Eigen::Vector3f u = v.cross(n);
 	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);
 	Danvil::ctLinAlg::Vec3f minor = r * Danvil::ctLinAlg::Convert(u);
@@ -465,18 +465,18 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 	Candy::Primitives::RenderEllipsoid(le3, le2, le1);
 	// construct local transformation
 //	Eigen::Vector3f n = cluster.center.normal.normalized();
-//	Eigen::Vector3f v = cluster.center.world.cross(n).normalized();
+//	Eigen::Vector3f v = cluster.center.position.cross(n).normalized();
 //	Eigen::Vector3f u = v.cross(n);
 //	Eigen::Matrix3f R; R << n, v, u;
 	auto t =
-			Eigen::Translation3f(cluster.center.world)
+			Eigen::Translation3f(cluster.center.position)
 			* cluster.ev * Eigen::AngleAxisf(M_PI*0.5f, Eigen::Vector3f{0,1,0}).inverse();
 	t = t.inverse();
 	// render points
 	glBegin(GL_LINES);
 //	for(unsigned int id : cluster.pixel_ids)
 	{	unsigned int id = cluster.pixel_ids[0];
-		Eigen::Vector3f p = t * points[id].world;
+		Eigen::Vector3f p = t * points[id].position;
 		glVertex3f(p[0], p[1], p[2]);
 		glVertex3f(p[0], p[1], 0);
 	}
@@ -485,7 +485,7 @@ void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float 
 	glBegin(GL_POINTS);
 //	for(unsigned int id : cluster.pixel_ids) {
 	{	unsigned int id = cluster.pixel_ids[0];
-		Eigen::Vector3f p = t * points[id].world;
+		Eigen::Vector3f p = t * points[id].position;
 		glVertex3f(p[0], p[1], p[2]);
 	}
 	glEnd();

@@ -181,8 +181,8 @@ template<typename Graph>
 void RenderGraph(const Superpixels& clustering, const Graph& graph) {
 	glBegin(GL_LINES);
 	for(auto eid : as_range(boost::edges(graph))) {
-		glVertex3fv(clustering.cluster[boost::source(eid, graph)].center.world.data());
-		glVertex3fv(clustering.cluster[boost::target(eid, graph)].center.world.data());
+		glVertex3fv(clustering.cluster[boost::source(eid, graph)].center.position.data());
+		glVertex3fv(clustering.cluster[boost::target(eid, graph)].center.position.data());
 	}
 	glEnd();
 }

@@ -25,7 +25,7 @@ namespace dasp
 		Eigen::Vector3f color;
 
 		/** position [m] of world source point */
-		Eigen::Vector3f world;
+		Eigen::Vector3f position;
 
 		/** point surface normal */
 		Eigen::Vector3f normal;
@@ -48,7 +48,7 @@ namespace dasp
 
 		/** Depth [m] of point */
 		float depth() const {
-			return world[2];
+			return position[2];
 		}
 
 		/** Sets the normal and assures that it points towards the camera (=origin) */
@@ -58,7 +58,7 @@ namespace dasp
 			// check if point to camera direction and normal are within 90 deg
 			// enforce: normal * (cam_pos - pos) > 0
 			// do not need to normalize (cam_pos - pos) as only sign is considered
-			const float q = normal.dot(-world);
+			const float q = normal.dot(-position);
 			if(q < 0) {
 				normal *= -1.0f;
 			}

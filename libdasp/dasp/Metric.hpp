@@ -27,7 +27,7 @@ namespace dasp
 		}
 
 		inline float SpatialDistanceRaw(const Point& x, const Point& y) {
-			return SpatialDistanceRaw(x.world, y.world);
+			return SpatialDistanceRaw(x.position, y.position);
 		}
 
 		inline float ColorDistanceRaw(const Eigen::Vector3f& u, const Eigen::Vector3f& v) {
@@ -123,8 +123,8 @@ namespace dasp
 		}
 
 		float operator()(const Point& x, const Point& y) const {
-			const Eigen::Vector3f& x_pos = x.world;
-			const Eigen::Vector3f& y_pos = y.world;
+			const Eigen::Vector3f& x_pos = x.position;
+			const Eigen::Vector3f& y_pos = y.position;
 			const Eigen::Vector3f& x_col = x.color;
 			const Eigen::Vector3f& y_col = y.color;
 			const Eigen::Vector3f& x_norm = x.normal;
