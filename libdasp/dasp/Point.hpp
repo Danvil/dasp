@@ -19,8 +19,8 @@ namespace dasp
 {
 	struct Point
 	{
-		/** pixel image position of point */
-		Eigen::Vector2f pixel;
+		/** image pixel coordinate of point */
+		int px, py;
 
 		/** point color */
 		Eigen::Vector3f color;
@@ -37,14 +37,20 @@ namespace dasp
 		/** Invalid points are ignored during point to cluster assignment */
 		bool is_valid;
 
-		/** Image x coordinate [px] */
-		int spatial_x() const {
-			return static_cast<int>(pixel[0] + 0.5f);
-		}
+		// /** Image x coordinate [px] */
+		// int spatial_x() const {
+		// 	return static_cast<int>(pixel[0] + 0.5f);
+		// }
 
-		/** Image y coordinate [px] */
-		int spatial_y() const {
-			return static_cast<int>(pixel[1] + 0.5f);
+		// /** Image y coordinate [px] */
+		// int spatial_y() const {
+		// 	return static_cast<int>(pixel[1] + 0.5f);
+		// }
+
+		friend int PixelDistanceSquared(const Point& a, const Point& b) {
+			const int dx = a.px - b.px;
+			const int dy = a.py - b.py;
+			return dx*dx + dy*dy;
 		}
 
 		/** Depth [m] of point */

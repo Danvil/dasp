@@ -55,7 +55,7 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, con
 	// plot all pixels belonging to the cluster in the color of the cluster center
 	for(unsigned int i : cluster.pixel_ids) {
 		const Point& p = points[i];
-		img(p.spatial_x(), p.spatial_y()) = color;
+		img(p.px, p.py) = color;
 	}
 //	// plot the cluster center (using some kind of inverse color)
 //	int cx = cluster.center.spatial_x();
@@ -78,8 +78,8 @@ void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, c
 
 void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled)
 {
-	int cx = cluster.center.spatial_x();
-	int cy = cluster.center.spatial_y();
+	int cx = cluster.center.px;
+	int cy = cluster.center.py;
 
 	Eigen::Vector2f g0 = cluster.center.computeGradientDirection();
 	float sp_0 = cluster.center.cluster_radius_px;
@@ -373,7 +373,7 @@ void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, Colo
 			if(!cluster.isValid()) {
 				color = {{255,0,0}};
 			}
-			slimage::PaintPoint(img, cluster.center.spatial_x(), cluster.center.spatial_y(), color, size);
+			slimage::PaintPoint(img, cluster.center.px, cluster.center.py, color, size);
 		}
 	}
 }

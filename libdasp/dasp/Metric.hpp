@@ -19,7 +19,7 @@ namespace dasp
 	namespace metric
 	{
 		inline float ImageDistanceRaw(const Point& x, const Point& y) {
-			return (x.pixel - y.pixel).squaredNorm() / (y.cluster_radius_px * y.cluster_radius_px);
+			return static_cast<float>(PixelDistanceSquared(x,y)) / (y.cluster_radius_px * y.cluster_radius_px);
 		}
 
 		inline float SpatialDistanceRaw(const Eigen::Vector3f& x, const Eigen::Vector3f& y) {
