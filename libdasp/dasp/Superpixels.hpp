@@ -43,7 +43,7 @@ namespace dasp
 
 		ImagePoints points;
 
-		slimage::Image1f density;
+		Eigen::MatrixXf density;
 
 		std::vector<Cluster> cluster;
 

@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------//
 #include <Slimage/Slimage.hpp>
 #include <Danvil/Tools/FunctionCache.h>
+#include <Eigen/Dense>
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -65,8 +66,8 @@ namespace BlueNoise
 	}
 
 	inline
-	float ZeroBorderAccess(const slimage::Image1f& density, int x, int y) {
-		if(0 <= x && x < int(density.width()) && 0 <= y && y < int(density.height())) {
+	float ZeroBorderAccess(const Eigen::MatrixXf& density, int x, int y) {
+		if(0 <= x && x < int(density.rows()) && 0 <= y && y < int(density.cols())) {
 			return density(x, y);
 		}
 		else {
@@ -88,17 +89,17 @@ namespace BlueNoise
 
 	float EnergyApproximation(const std::vector<Point>& pnts, float x, float y);
 
-	float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density);
+	float Energy(const std::vector<Point>& pnts, const Eigen::MatrixXf& density);
 
-	float EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y);
+	float EnergyDerivative(const std::vector<Point>& pnts, const Eigen::MatrixXf& density, unsigned int i, float& result_dE_x, float& result_dE_y);
 
-	std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p);
+	std::vector<Point> PlacePoints(const Eigen::MatrixXf& density, unsigned int p);
 
-	void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigned int iterations);
+	void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned int iterations);
 
-	std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density, bool& result_added);
+	std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf& density, bool& result_added);
 
-	std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_steps=0);
+	std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_steps=0);
 
 	struct Color {
 		unsigned char r,g,b;
