@@ -240,6 +240,8 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 			Point& p = points[i];
 			// write point pixel coordinate
 			p.pixel = Eigen::Vector2f(static_cast<float>(x), py);
+			// p.pixel[0] = static_cast<float>(x);
+			// p.pixel[1] = py;
 			p.is_valid = false;
 			// get depth and compute z/f
 			const uint16_t depth_i16 = depth[i];
@@ -263,11 +265,15 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 			// convert color
 			{
 				const auto& cub = image[i];
-				Eigen::Vector3f cf(
-					float(cub[0]) / 255.0f,
-					float(cub[1]) / 255.0f,
-					float(cub[2]) / 255.0f);
-				p.color = ColorFromRGB(cf);
+				// p.color[0] = float(cub[0]) / 255.0f;
+				// p.color[1] = float(cub[1]) / 255.0f;
+				// p.color[2] = float(cub[2]) / 255.0f;
+				p.color = Eigen::Vector3f(
+					float(cub[0]),
+					float(cub[1]),
+					float(cub[2])) / 255.0f;
+				if(opt.color_space != ColorSpaces::RGB)
+					p.color = ColorFromRGB(p.color);
 			}
 			// compute cluster radius [px]
 			p.image_super_radius = opt.base_radius / z_over_f;
