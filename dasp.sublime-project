@@ -1,0 +1,22 @@
+{
+	"folders":
+	[
+		{
+			"path": "/home/david/git/dasp",
+			"file_exclude_patterns": ["*.sublime*"]
+		}
+	],
+    "build_systems":
+	[
+		{
+		"name": "DASP make",
+		"cmd": ["make","-j4"],
+		"working_dir": "/home/david/Projects/dasp/release/" 
+		},
+		{
+		"name": "DASP run dasp_gui",
+		"cmd": ["dasp_gui/dasp_gui","--rgbd","/home/david/Documents/DataSets/dasp_rgbd_dataset/images/001"],
+		"working_dir": "/home/david/Projects/dasp/release/" 
+		}
+	]
+}
