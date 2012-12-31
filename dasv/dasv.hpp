@@ -1,6 +1,7 @@
 #ifndef DASV_DASV_HPP
 #define DASV_DASV_HPP
 
+#include <dasp/Array.hpp>
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
@@ -11,36 +12,6 @@
 
 namespace dasv
 {
-	/** 2D data structure implemented with an std::vector */
-	template<typename T>
-	struct Vector2D
-	{
-	public:
-		typedef std::vector<T> Container;
-		typedef typename Container::iterator it;
-		typedef typename Container::const_iterator const_it;
-		Vector2D() : rows_(0), cols_(0) {}
-		Vector2D(int rows, int cols) : rows_(rows), cols_(cols), data_(rows*cols) { }
-		Vector2D(int rows, int cols, const T& t) : rows_(rows), cols_(cols), data_(rows*cols, t) { }
-		Container& data() { return data_; }
-		const Container& data() const { return data_; }
-		it begin() { return data_.begin(); }
-		const_it begin() const { return data_.begin(); }
-		it end() { return data_.end(); }
-		const_it end() const { return data_.end(); }
-		int size() const { return rows_*cols_; }
-		T& operator[](int i) { return data_[i]; }
-		const T& operator[](int i) const { return data_[i]; }
-		int rows() const { return rows_; }
-		int cols() const { return cols_; }
-		bool isValid(int i, int j) const { return (0 <= i && i < rows_ && 0 <= j && j < cols_); }
-		T& operator()(int i, int j) { return data_[i + j*rows_]; }
-		const T& operator()(int i, int j) const { return data_[i + j*rows_]; }
-	private:
-		int rows_, cols_;
-		std::vector<T> data_;
-	};
-
 	/** Voxel data */
 	struct Point
 	{
@@ -52,7 +23,7 @@ namespace dasv
 	};
 
 	/** A frame of voxels at a given timestamp */
-	typedef Vector2D<Point> RgbdData;
+	typedef dasp::Array<Point> RgbdData;
 
 	/** A voxel cluster (supervoxel) */
 	struct Cluster
@@ -95,7 +66,7 @@ namespace dasv
 	};
 
 	/** Frame pixel to cluster assignment */
-	typedef Vector2D<Assignment> FrameAssignment;
+	typedef dasp::Array<Assignment> FrameAssignment;
 
 	/** An edge connecting to clusters */
 	struct Edge

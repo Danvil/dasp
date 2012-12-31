@@ -8,7 +8,7 @@
  *     for(int i=0; i<cols; i++)
  *       for(int j=0; j<rows; j++)
  *	       m(j,i) = 42.0f;
- * - 2D arrays with user types use Vector2D which behaves like Eigen::MatrixXf
+ * - 2D arrays with user types use dasp::Array which behaves like Eigen::MatrixXf
  * - With (x,y) coordinates these correspondences should be used:
  *     width -> rows
  *     height -> cols
@@ -1159,9 +1159,9 @@ Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
 	const int sclrows = static_cast<int>(3.464f*std::sqrt(num_clusters) + 0.5f);
 	const int sclcols = static_cast<int>(2.598f*std::sqrt(num_clusters) + 0.5f);
 	std::cout << sclrows << " " << sclcols << std::endl;
-	Vector2D<Eigen::Vector3f> cluster_color(sclrows, sclcols, Eigen::Vector3f::Zero());
-	Vector2D<Eigen::Vector3f> cluster_position(sclrows, sclcols, Eigen::Vector3f::Zero());
-	Vector2D<int> num(sclrows, sclcols, 0);
+	dasp::Array<Eigen::Vector3f> cluster_color(sclrows, sclcols, Eigen::Vector3f::Zero());
+	dasp::Array<Eigen::Vector3f> cluster_position(sclrows, sclcols, Eigen::Vector3f::Zero());
+	dasp::Array<int> num(sclrows, sclcols, 0);
 	for(int i=0; i<cols; i++) {
 		for(int j=0; j<rows; j++) {
 			const Point& p = rgbd(j,i);

@@ -3,6 +3,7 @@ add_definitions(-DSLIMAGE_IO_OPENCV)
 include_directories(
 	${DT_DIR}/CT/src
 	${CANDY_DIR}/libcandy/src
+	${dasp_SOURCE_DIR}/libdasp
 	${dasp_SOURCE_DIR}/dasv
 )
 

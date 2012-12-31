@@ -12,13 +12,5 @@ target_link_libraries(dasv
 
 include_directories(
 	${DT_DIR}/CT/src
+	${dasp_SOURCE_DIR}/libdasp
 )
-
-#if (DASP_HAS_CANDY)
-#	add_definitions(-DDASP_HAS_CANDY)
-#	include_directories(
-#		${DT_DIR}/CT/src
-#		${CANDY_DIR}/libcandy/src
-#	)
-#	target_link_libraries(libdasp candy)
-#endif (DASP_HAS_CANDY)
