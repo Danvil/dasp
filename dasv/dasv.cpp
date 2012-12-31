@@ -814,8 +814,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		FramePtr frame = series_.getFrame(t);
 		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
 		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
-		slimage::gui::Show("superpixel color", img_col, 10);
-		slimage::gui::Show("superpixel age", img_age, 10);
+		slimage::gui::Show("superpixel color", img_col, 1);
+		slimage::gui::Show("superpixel age", img_age, 1);
 		slimage::Save(img_col, (fmt_col % frame->time).str());
 		slimage::Save(img_age, (fmt_age % frame->time).str());
 		// cluster graph
