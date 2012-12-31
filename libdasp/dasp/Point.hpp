@@ -112,14 +112,6 @@ namespace dasp
 		: width_(0), height_(0) {}
 		ImagePoints(unsigned int width, unsigned int height)
 		: width_(width), height_(height), points_(width*height) {
-			auto it = points_.begin();
-			for(unsigned int y=0; y<height; y++) {
-				for(unsigned int x=0; x<width; x++, ++it) {
-					Point& p = *it;
-					p.pixel[0] = float(x);
-					p.pixel[1] = float(y);
-				}
-			}
 		}
 		unsigned int width() const {
 			return width_;
