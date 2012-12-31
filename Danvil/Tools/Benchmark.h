@@ -23,7 +23,7 @@ namespace Danvil {
 class Benchmark
 {
 public:
-	static constexpr double cDecayMeanFactor = 0.25;
+	static constexpr double cDecayMeanFactor = 0.05;
 
 	struct Data {
 		Data()
@@ -55,6 +55,7 @@ public:
 				sum += t;
 //			}
 			last = t;
+			if(n==1) decay_mean = t;
 			decay_mean = cDecayMeanFactor*t + (1.0 - cDecayMeanFactor)*decay_mean;
 		}
 
