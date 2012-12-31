@@ -17,6 +17,7 @@
  */
 
 #include "dasv.hpp"
+#include <dasp/impl/Sampling.hpp>
 #include <graphseg/IO.hpp>
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
@@ -143,8 +144,8 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 			Point& point = rgbd(x,y);
 			const uint16_t depth = img_depth[i];
 			// valid
-			point.valid = depth != 0 && DEPTH_MIN <= depth && depth <= DEPTH_MAX;
-			if(point.valid) {
+			point.is_valid = depth != 0 && DEPTH_MIN <= depth && depth <= DEPTH_MAX;
+			if(point.is_valid) {
 				const float z_over_f = DEPTH_TO_Z * static_cast<float>(depth) / PX_FOCAL;
 				// RGB color
 				const slimage::Pixel3ub& color = img_color[i];
@@ -175,7 +176,7 @@ Eigen::MatrixXf ComputeFrameDensity(const RgbdData& rgbd)
 	for(int y=0; y<NY; y++) {
 		for(int x=0; x<NX; x++) {
 			const Point& p = rgbd(x,y);
-			if(p.valid) {
+			if(p.is_valid) {
 				// rho = r_px|^2 * pi / sqrt(||g||^2+1)
 				// 1/sqrt(||g||^2+1) = n_z because g = -(n_x/n_z, n_y/n_z)
 				// TODO n_z should always be negative so abs(n_z) should equal -n_z.
@@ -272,235 +273,66 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 	return density;
 }
 
-bool FindValidSeedPoint(const RgbdData& rgbd, int& sx0, int& sy0, int range)
-{
-	const int NY = rgbd.cols();
-	const int NX = rgbd.rows();
-	if(range == 0) {
-		return 0 <= sx0 && sx0 < NX
-			&& 0 <= sy0 && sy0 < NY
-			&& rgbd(sx0,sy0).valid;
-	}
-	// add random offset to add noise
-	std::uniform_int_distribution<int> delta(-range, +range); // FIXME
-	unsigned int trials = 0;
-	while(trials < 100) {
-		int sx = sx0 + delta(random_engine);
-		int sy = sy0 + delta(random_engine);
-		if(    0 <= sx && sx < NX
-			&& 0 <= sy && sy < NY
-			&& rgbd(sx,sy).valid
-		) {
-			sx0 = sx;
-			sy0 = sy;
-			return true;
-		}
-		trials++;
-	}
-	return false;
-}
+// void DrawBox(const slimage::Image3ub& img, int x, int y, int w, int h, const slimage::Pixel3ub& color)
+// {
+// 	const int x0 = std::max<int>(0, x);
+// 	const int x1 = std::min<int>(img.width(), x+w+1);
+// 	const int y0 = std::max<int>(0, y);
+// 	const int y1 = std::min<int>(img.height(), y+h+1);
+// 	for(int i=x0; i<x1; i++) {
+// 		if(y >= 0 && y < img.height())
+// 			img(i,y) = color;
+// 		if(y+h >= 0 && y+h < img.height())
+// 			img(i,y+h) = color;
+// 	}
+// 	for(int i=y0; i<y1; i++) {
+// 		if(x >= 0 && x < img.width())
+// 			img(x,i) = color;
+// 		if(x+w >= 0 && x+w < img.width())
+// 			img(x+w,i) = color;
+// 	}
+// }
 
-void DrawBox(const slimage::Image3ub& img, int x, int y, int w, int h, const slimage::Pixel3ub& color)
-{
-	const int x0 = std::max<int>(0, x);
-	const int x1 = std::min<int>(img.width(), x+w+1);
-	const int y0 = std::max<int>(0, y);
-	const int y1 = std::min<int>(img.height(), y+h+1);
-	for(int i=x0; i<x1; i++) {
-		if(y >= 0 && y < img.height())
-			img(i,y) = color;
-		if(y+h >= 0 && y+h < img.height())
-			img(i,y+h) = color;
-	}
-	for(int i=y0; i<y1; i++) {
-		if(x >= 0 && x < img.width())
-			img(x,i) = color;
-		if(x+w >= 0 && x+w < img.width())
-			img(x+w,i) = color;
-	}
-}
+// #ifdef ENABLE_SAMPLING_DEBUG
+// 	float density_max = density.maxCoeff();
+// 	float density_min = density.minCoeff();
+// 	float density_rng = std::max(std::abs(density_max), std::abs(density_min));
+// 	sampling_debug = slimage::Image3ub(rgbd.rows(), rgbd.cols());
+// 	for(int i=0; i<rgbd.cols(); i++) {
+// 		for(int j=0; j<rgbd.rows(); j++) {
+// 			const float q = 255.0f * density(j,i) / density_rng;
+// 			if(q > 0) {
+// 				sampling_debug(j,i) = {{ (unsigned char)(q), 0, 0 }};
+// 			}
+// 			else {
+// 				sampling_debug(j,i) = {{ 0, 0, (unsigned char)(-q) }};	
+// 			}
+// 		}
+// 	}
+// #endif
 
-void WriteMipmap(std::vector<Eigen::MatrixXf>& mipmaps, int level, int x, int y, float d)
-{
-	for(int k=level,s=1; k>=1; k--,s*=2) {
-		Eigen::MatrixXf& mm = mipmaps[k];
-		const float ds = d / static_cast<float>(s*s);
-		for(int i=0; i<s; i++) {
-			for(int j=0; j<s; j++) {
-				mm(x+j,y+i) += ds;
-			}
-		}
-	}
-}
-
-void SampleDensityImplRec(
-		const RgbdData& rgbd,
-		std::vector<Eigen::Vector2f>& seeds,
-		std::vector<Eigen::MatrixXf>& mipmaps,
-		std::vector<Eigen::MatrixXf>& carry_mipmaps,
-		int level, int x, int y)
-{
-	Eigen::MatrixXf& mm = mipmaps[level];
-	Eigen::MatrixXf& carry_mm = carry_mipmaps[level];
-
-	// compute density by multiplying percentage with parent total
-	float v = mm(x, y);// + carry_mm(x, y);
-
-	// FIXME if low density is carried over on a low-res mipmap
-	// FIXME and the target cell has a high density
-	// FIXME the carried over density is not considered on a high-res mipmap level
-
-	static std::uniform_real_distribution<float> rnd01(0.0f, 1.0f); // FIXME
-
-	if(level <= 1 || v <= 1.5f) {
-		//if(rnd01(random_engine) < v) {
-		if(v >= 0.5f) {
-			// set seed point in the cell
-			int half = (1 << (level - 1));
-			int sx = (x << level) + half;
-			int sy = (y << level) + half;
-			if(FindValidSeedPoint(rgbd, sx, sy, half)) {
-				seeds.push_back(Eigen::Vector2f(sx, sy));
-				// reduce density by 1
-				v -= 1.0f;
-#ifdef ENABLE_SAMPLING_DEBUG
-				const int s = (1 << level) - 1;
-				DrawBox(sampling_debug, x<<level, y<<level, s, s, slimage::Pixel3ub{{0,255,0}});
-				sampling_debug(sx, sy) = slimage::Pixel3ub{{255,255,0}};
-#endif
-			}
-		}
-		// distribute remaining density to neighbours
-		// mm(x+1,y  ) += 7.0f / 16.0f * v;
-		// mm(x-1,y+1) += 3.0f / 16.0f * v;
-		// mm(x  ,y+1) += 5.0f / 16.0f * v;
-		// mm(x+1,y+1) += 1.0f / 16.0f * v;
-		// with range test *sigh*
-		float q = 0.0f;
-		bool xm1ok = (0 < x);
-		bool xp1ok = (x+1 < mm.rows());
-		bool yp1ok = (y+1 < mm.cols());
-		if(xp1ok) 			q += 7.0f;
-		if(yp1ok) {
-			if(xm1ok) 		q += 3.0f;			
-							q += 5.0f;
-			if(xp1ok) 		q += 1.0f;
-		}
-		if(q > 0) {
-			float scl = v / q;
-			if(xp1ok) 		WriteMipmap(mipmaps, level, x+1, y  , 7.0f*scl);//carry_mm(x+1,y  ) += 7.0f * scl;
-			if(yp1ok) {
-				if(xm1ok) 	WriteMipmap(mipmaps, level, x-1, y+1, 3.0f*scl);//carry_mm(x-1,y+1) += 3.0f * scl;			
-							WriteMipmap(mipmaps, level, x  , y+1, 5.0f*scl);//carry_mm(x  ,y+1) += 5.0f * scl;
-				if(xp1ok) 	WriteMipmap(mipmaps, level, x+1, y+1, 1.0f*scl);//carry_mm(x+1,y+1) += 1.0f * scl;
-			}
-		}
-	}
-	else {
-		// go down
-		SampleDensityImplRec(rgbd, seeds, mipmaps, carry_mipmaps, level - 1, 2*x,     2*y    );
-		SampleDensityImplRec(rgbd, seeds, mipmaps, carry_mipmaps, level - 1, 2*x,     2*y + 1);
-		SampleDensityImplRec(rgbd, seeds, mipmaps, carry_mipmaps, level - 1, 2*x + 1, 2*y    );
-		SampleDensityImplRec(rgbd, seeds, mipmaps, carry_mipmaps, level - 1, 2*x + 1, 2*y + 1);
-	}
-}
-
-inline int find_next_pow2(int x)
-{
-	int a = 1;
-	while(a < x) a *= 2;
-	return a;
-}
-
-Eigen::MatrixXf ComputeMipmap(const Eigen::MatrixXf& data)
-{
-	const int rows = data.rows();
-	const int cols = data.cols();
-//	std::cout << "high: " << rows << " " << cols << std::endl;
-	assert(rows % 2 == 0);
-	assert(cols % 2 == 0);
-	const int size = find_next_pow2(std::max(rows,cols))/2;
-//	std::cout << "low: " << mm_rows << " " << mm_cols << std::endl;
-	Eigen::MatrixXf mm = Eigen::MatrixXf::Zero(size, size);
-	for(int y=0; y<cols; y+=2) {
-		for(int x=0; x<rows; x+=2) {
-			float q = data(x,y) + data(x,y+1) + data(x+1,y) + data(x+1,y+1);
-			mm(x/2, y/2) = q;
-		}
-	}
-	return mm;
-}
-
-std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& data, int min_size)
-{
-	std::vector<Eigen::MatrixXf> mm;
-	mm.reserve(10); // 2^10 = 1024
-	mm.push_back(data);
-	while(true) {
-		const Eigen::MatrixXf& q = mm.back();
-		if(q.rows() <= min_size || q.cols() <= min_size) {
-			break;
-		}
-		Eigen::MatrixXf x = ComputeMipmap(q);
-#ifdef GUI_DEBUG_VERBOSE
-		float xmax = x.maxCoeff();
-		std::cout << "Mipmap " << mm.size() << ": min=" << x.minCoeff() << ", max=" << xmax << std::endl;
-		boost::format fmt("x_%05d");
-		DebugShowMatrix((fmt % x.rows()).str(), DebugDoubleMatrixSize(x,mm.size()-1), 1.0f/xmax);
-#endif
-		mm.push_back(x);
-	}
-	return mm;
-}
-
-std::vector<Eigen::Vector2f> SampleDensityImpl(const RgbdData& rgbd, const Eigen::MatrixXf& density)
-{
-	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = ComputeMipmaps(density, 1);
-	std::vector<Eigen::MatrixXf> carry_mipmaps(mipmaps.size());
-	for(unsigned int i=1; i<mipmaps.size(); i++) { // HACK: skip first as we never use it
-		carry_mipmaps[i] = Eigen::MatrixXf::Zero(mipmaps[i].rows(), mipmaps[i].cols());
-	}
-	// now create pixel seeds
-	std::vector<Eigen::Vector2f> seeds;
-	seeds.reserve(1000);
-#ifdef ENABLE_SAMPLING_DEBUG
-	float density_max = density.maxCoeff();
-	float density_min = density.minCoeff();
-	float density_rng = std::max(std::abs(density_max), std::abs(density_min));
-	sampling_debug = slimage::Image3ub(rgbd.rows(), rgbd.cols());
-	for(int i=0; i<rgbd.cols(); i++) {
-		for(int j=0; j<rgbd.rows(); j++) {
-			const float q = 255.0f * density(j,i) / density_rng;
-			if(q > 0) {
-				sampling_debug(j,i) = {{ (unsigned char)(q), 0, 0 }};
-			}
-			else {
-				sampling_debug(j,i) = {{ 0, 0, (unsigned char)(-q) }};	
-			}
-		}
-	}
-#endif
-	SampleDensityImplRec(rgbd, seeds, mipmaps, carry_mipmaps, mipmaps.size() - 1, 0, 0);
-	return seeds;
-}
+// #ifdef ENABLE_SAMPLING_DEBUG
+// 				const int s = (1 << level) - 1;
+// 				DrawBox(sampling_debug, x<<level, y<<level, s, s, slimage::Pixel3ub{{0,255,0}});
+// 				sampling_debug(sx, sy) = slimage::Pixel3ub{{255,255,0}};
+// #endif
 
 std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen::MatrixXf& density)
 {
-	std::vector<Eigen::Vector2f> points = SampleDensityImpl(rgbd, density);
+	std::vector<dasp::Seed> seeds = dasp::FindSeedsDepthMipmapFS(rgbd, density);
 	// clusters 
-	std::vector<Cluster> clusters(points.size());
+	std::vector<Cluster> clusters(seeds.size());
 	for(int i=0; i<clusters.size(); i++) {
-		Eigen::Vector2f px = points[i];
-		int x = static_cast<int>(px.x());
-		int y = static_cast<int>(px.y());
+		const auto& seed = seeds[i];
+		const int x = seed.x;
+		const int y = seed.y;
 		if(!rgbd.isValid(x,y)) {
 			// skip
 			continue;
 		}
 		const Point& fp = rgbd(x,y);
 		Cluster& c = clusters[i];
-		c.pixel = px;
+		c.pixel = Eigen::Vector2f(static_cast<float>(x),static_cast<float>(y));
 		// FIXME use small neighbourhood
 		c.color = fp.color;
 		c.position = fp.position;
@@ -560,7 +392,7 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 					[&f, &rgbd, &c, &frame_time, &assignment](int x, int y) {
 						const Point& p = rgbd(x,y);
 						// skip invalid points
-						if(!p.valid) {
+						if(!p.is_valid) {
 							return;
 						}
 						// call functor
@@ -1105,7 +937,7 @@ Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
 	int num_pixels = 0;
 	for(int i=0; i<n; i++) {
 		const Point& p = rgbd[i];
-		if(!p.valid) continue;
+		if(!p.is_valid) continue;
 		pixel_mean_color += p.color;
 		pixel_mean_position += p.position;
 		num_pixels ++;
@@ -1121,7 +953,7 @@ Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
 	for(int i=0; i<n; i++) {
 		const ClusterPtr& c = assignment[i].cluster;
 		const Point& p = rgbd[i];
-		if(!c || !p.valid) continue;
+		if(!c || !p.is_valid) continue;
 		cluster_error_color += (c->color - pixel_mean_color).squaredNorm();
 		cluster_error_position += (c->position - pixel_mean_position).squaredNorm();
 		pixel_error_color += (p.color - pixel_mean_color).squaredNorm();
@@ -1144,7 +976,7 @@ Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
 	const int n = rgbd.size();
 	for(int i=0; i<n; i++) {
 		const Point& p = rgbd[i];
-		if(!p.valid) continue;
+		if(!p.is_valid) continue;
 		pixel_mean_color += p.color;
 		pixel_mean_position += p.position;
 		num_pixels ++;
@@ -1165,7 +997,7 @@ Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
 	for(int i=0; i<cols; i++) {
 		for(int j=0; j<rows; j++) {
 			const Point& p = rgbd(j,i);
-			if(!p.valid) continue;
+			if(!p.is_valid) continue;
 			const int si = (i * sclcols) / cols;
 			const int sj = (j * sclrows) / rows;
 			cluster_color(sj,si) += p.color;
@@ -1189,7 +1021,7 @@ Eigen::Vector2f EvaluateComputeDownsampleCompressionError(const FramePtr& frame)
 			const int si = (i * sclcols) / cols;
 			const int sj = (j * sclrows) / rows;
 			const Point& p = rgbd(j,i);
-			if(num(sj,si) == 0 || !p.valid) continue;
+			if(num(sj,si) == 0 || !p.is_valid) continue;
 			cluster_error_color += (cluster_color(sj,si) - pixel_mean_color).squaredNorm();
 			cluster_error_position += (cluster_position(sj,si) - pixel_mean_position).squaredNorm();
 			pixel_error_color += (p.color - pixel_mean_color).squaredNorm();

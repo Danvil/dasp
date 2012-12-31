@@ -5,6 +5,7 @@ add_library(dasv SHARED
 )
 
 target_link_libraries(dasv
+	libdasp
 	boost_thread
 	opencv_core
 	opencv_highgui

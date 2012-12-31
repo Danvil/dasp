@@ -2,6 +2,7 @@
 #define DASV_DASV_HPP
 
 #include <dasp/Array.hpp>
+#include <dasp/Point.hpp>
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
@@ -12,18 +13,20 @@
 
 namespace dasv
 {
-	/** Voxel data */
-	struct Point
-	{
-		Eigen::Vector3f color;
-		Eigen::Vector3f position;
-		Eigen::Vector3f normal;
-		float cluster_radius_px;
-		bool valid;
-	};
+	// /** Voxel data */
+	// struct Point
+	// {
+	// 	Eigen::Vector3f color;
+	// 	Eigen::Vector3f position;
+	// 	Eigen::Vector3f normal;
+	// 	float cluster_radius_px;
+	// 	bool valid;
+	// };
+	typedef dasp::Point Point;
 
 	/** A frame of voxels at a given timestamp */
-	typedef dasp::Array<Point> RgbdData;
+//	typedef dasp::Array<Point> RgbdData;
+	typedef dasp::ImagePoints RgbdData;
 
 	/** A voxel cluster (supervoxel) */
 	struct Cluster
