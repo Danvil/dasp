@@ -78,7 +78,9 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		center.color = mean_color / float(pixel_ids.size());
 		center.position = mean_world / float(pixel_ids.size());
 		// compute screen position and depth by projection
-		center.pixel = opt.camera.project(center.position);
+		Eigen::Vector2f pixel = opt.camera.project(center.position);
+		center.px = static_cast<float>(pixel.x() + 0.5f);
+		center.py = static_cast<float>(pixel.y() + 0.5f);
 	}
 
 //	// FIXME change or not change? (SLIC mode does not allow change!)
@@ -144,8 +146,8 @@ void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)
 		area_actual = 0.0f;
 		area_expected = 0.0f;
 		float error_area = 0;
-		int cx = center.spatial_x();
-		int cy = center.spatial_y();
+		int cx = center.px;
+		int cy = center.py;
 		int R = int(center.cluster_radius_px * opt.coverage * 1.5f);
 		unsigned int xmin = std::max(0, cx - R);
 		unsigned int xmax = std::min(int(points.width()-1), cx + R);
@@ -196,7 +198,7 @@ std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 	std::vector<Seed> seeds(cluster.size());
 	for(std::size_t i=0; i<cluster.size(); i++) {
 		const Cluster& c = cluster[i];
-		seeds[i] = Seed{c.center.spatial_x(), c.center.spatial_y(), c.center.cluster_radius_px, c.is_fixed};
+		seeds[i] = Seed{c.center.px, c.center.py, c.center.cluster_radius_px, c.is_fixed};
 	}
 	return seeds;
 }
@@ -235,11 +237,11 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 
 	unsigned int i=0;
 	for(unsigned int y=0; y<height; y++) {
-		const float py = static_cast<float>(y);
 		for(unsigned int x=0; x<width; x++, i++) {
 			Point& p = points[i];
 			// write point pixel coordinate
-			p.pixel = Eigen::Vector2f(static_cast<float>(x), py);
+			p.px = x;
+			p.py = y;
 			// p.pixel[0] = static_cast<float>(x);
 			// p.pixel[1] = py;
 			p.is_valid = false;
@@ -250,7 +252,9 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 			p.is_valid = (depth_i16 != 0);
 			if(!p.is_valid) goto label_pixel_invalid_omg;
 			// compute position
-			p.position = opt.camera.unprojectImpl(p.pixel.x(), p.pixel.y(), z_over_f); // will give 0 if depth==0
+			p.position = opt.camera.unprojectImpl(
+				static_cast<float>(p.px), static_cast<float>(p.py),
+				z_over_f); // will give 0 if depth==0
 			// clip points which are outside of bounding box
 			if(is_clipping) {
 				if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
@@ -655,8 +659,8 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 		Cluster c;
 		c.seed_id = k;
 		c.is_fixed = p.is_fixed;
-		c.center.pixel[0] = float(p.x);
-		c.center.pixel[1] = float(p.y);
+		c.center.px = p.x;
+		c.center.py = p.y;
 		c.center.is_valid = true;
 		c.center.cluster_radius_px = p.scala;
 		if(c.is_fixed) {

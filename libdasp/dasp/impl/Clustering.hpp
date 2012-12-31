@@ -54,8 +54,8 @@ namespace dasp
 		// for each cluster check possible points
 		for(unsigned int j=0; j<clusters.size(); j++) {
 			const Cluster& c = clusters[j];
-			int cx = c.center.spatial_x();
-			int cy = c.center.spatial_y();
+			int cx = c.center.px;
+			int cy = c.center.py;
 			const int R = int(c.center.cluster_radius_px * opt.coverage);
 			const unsigned int xmin = std::max(0, cx - R);
 			const unsigned int xmax = std::min(int(points.width()-1), cx + R);

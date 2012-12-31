@@ -192,7 +192,7 @@ void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, c
 	for(auto eid : as_range(boost::edges(graph))) {
 		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
 		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
-		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), slimage::Pixel3ub{{255,255,255}});
+		slimage::PaintLine(vis_img, a.px, a.py, b.px, b.py, slimage::Pixel3ub{{255,255,255}});
 	}
 }
 
@@ -201,7 +201,7 @@ void PlotGraphLines(slimage::Image3ub& vis_img, const Superpixels& clustering, c
 	for(auto eid : as_range(boost::edges(graph))) {
 		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
 		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
-		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), edge_color(eid));
+		slimage::PaintLine(vis_img, a.px, a.py, b.px, b.py, edge_color(eid));
 	}
 }
 
@@ -211,7 +211,7 @@ void PlotWeightedGraphLines(slimage::Image3ub& vis_img, const Superpixels& clust
 		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
 		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
 		float weight = boost::get(boost::edge_weight_t(), graph, eid);
-		slimage::PaintLine(vis_img, a.spatial_x(), a.spatial_y(), b.spatial_x(), b.spatial_y(), weight_to_color(weight));
+		slimage::PaintLine(vis_img, a.px, a.py, b.px, b.py, weight_to_color(weight));
 	}
 }
 

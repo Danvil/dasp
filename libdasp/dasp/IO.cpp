@@ -18,7 +18,7 @@ namespace dasp
 		for(const Cluster& c : superpixels.cluster) {
 			const Point& p = c.center;
 			std::vector<float> v {
-				p.pixel.x(), p.pixel.y(),
+				static_cast<float>(p.px), static_cast<float>(p.py),
 				p.position.x(), p.position.y(), p.position.z(),
 				p.color.x(), p.color.y(), p.color.z(),
 				p.normal.x(), p.normal.y(), p.normal.z()
