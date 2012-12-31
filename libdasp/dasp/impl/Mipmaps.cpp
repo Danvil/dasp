@@ -14,13 +14,13 @@ namespace dasp {
 namespace Mipmaps {
 //----------------------------------------------------------------------------//
 
-slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
+Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big)
 {
-	size_t w_big = img_big.width();
-	size_t h_big = img_big.height();
+	size_t w_big = img_big.rows();
+	size_t h_big = img_big.cols();
 	// the computed mipmap will have 2^i size
 	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-	slimage::Image1f img_small(size / 2, size / 2);
+	Eigen::MatrixXf img_small(size / 2, size / 2);
 	img_small.fill({0.0f});
 	// only the part where at least one of the four pixels lies in the big image is iterated
 	// the rest was set to 0 with the fill op
@@ -36,7 +36,7 @@ slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
 			float sum = 0.0f;
 			// Since we only test the part where at least one pixel is in also in the big image
 			// we do not need to test that (x_big,y_big) is a valid pixel in the big image.
-			const float* p_big = img_big(x_big, y_big).pointer();
+			const float* p_big = &img_big(x_big, y_big);
 			sum += *(p_big);
 			if(x_big + 1 < w_big) {
 				sum += *(p_big + 1);
@@ -53,21 +53,21 @@ slimage::Image1f SumMipMapWithBlackBorder(const slimage::Image1f& img_big)
 	return img_small;
 }
 
-slimage::Image1f SumMipMap(const slimage::Image1f& img_big)
+Eigen::MatrixXf SumMipMap(const Eigen::MatrixXf& img_big)
 {
-	size_t w_big = img_big.width();
-	size_t h_big = img_big.height();
+	size_t w_big = img_big.rows();
+	size_t h_big = img_big.cols();
 	// the computed mipmap will have 2^i size
 	unsigned int size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
 	BOOST_ASSERT(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
 	size /= 2;
-	slimage::Image1f img_small(size, size);
+	Eigen::MatrixXf img_small(size, size);
 	for(size_t y = 0; y < size; y++) {
 		size_t y_big = y * 2;
 		for(size_t x = 0; x < size; x++) {
 			size_t x_big = x * 2;
 			// We sum over all four corresponding pixels in the big image.
-			const float* p_big = img_big(x_big, y_big).pointer();
+			const float* p_big = &img_big(x_big, y_big);
 			float sum = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
 			img_small(x, y) = sum;
 		}
@@ -98,45 +98,45 @@ slimage::Image2f SumMipMapWithAbs(const slimage::Image2f& img_big)
 	return img_small;
 }
 
-std::vector<slimage::Image1f> ComputeMipmaps(const slimage::Image1f& img, unsigned int min_size)
+std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned int min_size)
 {
 	// find number of required mipmap level
-	unsigned int max_size = std::max(img.width(), img.height());
+	unsigned int max_size = std::max(img.rows(), img.cols());
 	int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
 	n_mipmaps -= Danvil::MoreMath::PowerOfTwoExponent(min_size);
 	BOOST_ASSERT(n_mipmaps >= 1);
-	std::vector<slimage::Image1f> mipmaps(n_mipmaps + 1);
+	std::vector<Eigen::MatrixXf> mipmaps(n_mipmaps + 1);
 	mipmaps[0] = img;
 	mipmaps[1] = SumMipMapWithBlackBorder(img);
 	// create remaining mipmaps
 	for(unsigned int i=2; i<=n_mipmaps; i++) {
-		BOOST_ASSERT(mipmaps[i-1].width() == mipmaps[i-1].height());
-		BOOST_ASSERT(mipmaps[i-1].width() >= 1);
+		BOOST_ASSERT(mipmaps[i-1].rows() == mipmaps[i-1].cols());
+		BOOST_ASSERT(mipmaps[i-1].rows() >= 1);
 		mipmaps[i] = SumMipMap(mipmaps[i - 1]);
 //		std::cout << std::accumulate(mipmaps[i].begin(), mipmaps[i].end(), 0.0f, [](float sum, float x) { return sum + x; }) << std::endl;
 	}
 	return mipmaps;
 }
 
-slimage::Image2f CreateWithAbs(const slimage::Image1f& img)
+slimage::Image2f CreateWithAbs(const Eigen::MatrixXf& img)
 {
-	slimage::Image2f img_withabs(img.width(), img.height());
+	slimage::Image2f img_withabs(img.rows(), img.cols());
 	for(unsigned int i=0; i<img.size(); i++) {
-		img_withabs[i] = slimage::Pixel2f{img[i], std::abs(img[i])};
+		img_withabs[i] = slimage::Pixel2f{img.data()[i], std::abs(img.data()[i])};
 	}
 	return img_withabs;
 }
 
-std::vector<slimage::Image2f> ComputeMipmapsWithAbs(const slimage::Image1f& img, unsigned int min_size)
+std::vector<slimage::Image2f> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size)
 {
 	// find number of required mipmap level
-	unsigned int max_size = std::max(img.width(), img.height());
+	unsigned int max_size = std::max(img.rows(), img.cols());
 	int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
 	n_mipmaps -= Danvil::MoreMath::PowerOfTwoExponent(min_size);
 	BOOST_ASSERT(n_mipmaps >= 1);
 	std::vector<slimage::Image2f> mipmaps(n_mipmaps + 1);
 	mipmaps[0] = CreateWithAbs(img);
-	slimage::Image1f last_mm = SumMipMapWithBlackBorder(img);
+	Eigen::MatrixXf last_mm = SumMipMapWithBlackBorder(img);
 	mipmaps[1] = CreateWithAbs(last_mm);
 	BOOST_ASSERT(n_mipmaps >= 4);
 	for(unsigned int i=2; i<=4; i++) {

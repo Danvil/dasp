@@ -294,9 +294,8 @@ label_pixel_invalid_omg:
 
 	if(opt.count > 0) {
 		// sum density image
-		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
-		float p = static_cast<float>(opt.count) / density_sum;
-		std::for_each(density.begin(), density.end(), [p](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v *= p; });
+		const float p = static_cast<float>(opt.count) / density.sum();
+		density *= p;
 		// correct base radius
 		opt.base_radius = opt.base_radius / std::sqrt(p);
 		// correct image_base_radius

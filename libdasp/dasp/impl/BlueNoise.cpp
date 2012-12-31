@@ -32,11 +32,11 @@ float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 	return sum;
 }
 
-float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density)
+float Energy(const std::vector<Point>& pnts, const Eigen::MatrixXf& density)
 {
 	float error = 0.0f;
-	for(unsigned int y=0; y<density.height(); y++) {
-		for(unsigned int x=0; x<density.width(); x++) {
+	for(unsigned int y=0; y<density.cols(); y++) {
+		for(unsigned int x=0; x<density.rows(); x++) {
 			float px = float(x);
 			float py = float(y);
 			float a = EnergyApproximation(pnts, px, py);
@@ -47,7 +47,7 @@ float Energy(const std::vector<Point>& pnts, const slimage::Image1f& density)
 	return error;
 }
 
-float EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& density, unsigned int i, float& result_dE_x, float& result_dE_y)
+float EnergyDerivative(const std::vector<Point>& pnts, const Eigen::MatrixXf& density, unsigned int i, float& result_dE_x, float& result_dE_y)
 {
 //	result_dE_x = 0.0f;
 //	result_dE_y = 0.0f;
@@ -65,9 +65,9 @@ float EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& d
 	constexpr float cMaxRange = 1.482837414f; // eps = 0.001
 	float radius = cMaxRange * ps;
 	float x_min = std::max(0, int(std::floor(px - radius)));
-	float x_max = std::min(int(density.width()) - 1, int(std::ceil(px + radius)));
+	float x_max = std::min(int(density.rows()) - 1, int(std::ceil(px + radius)));
 	float y_min = std::max(0, int(std::floor(py - radius)));
-	float y_max = std::min(int(density.height()) - 1, int(std::ceil(py + radius)));
+	float y_max = std::min(int(density.cols()) - 1, int(std::ceil(py + radius)));
 	// sum over window
 	for(unsigned int y=y_min; y<=y_max; y++) {
 		for(unsigned int x=x_min; x<=x_max; x++) {
@@ -95,7 +95,7 @@ float EnergyDerivative(const std::vector<Point>& pnts, const slimage::Image1f& d
 	return radius;
 }
 
-std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
+std::vector<Point> PlacePoints(const Eigen::MatrixXf& density, unsigned int p)
 {
 	// access original index in a random order
 	std::vector<unsigned int> indices(density.size());
@@ -129,14 +129,14 @@ std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
 //	std::cout << "INITIAL ERROR: " << error_current << std::endl;
 	// try add kernel points
 	for(unsigned int i : indices) {
-		float roh = density[i];
+		float roh = density.data()[i];
 		if(roh == 0) {
 //				std::cout << i << " roh is 0!" << std::endl;
 			continue;
 		}
 		Point u;
-		u.x = float(i % density.width());
-		u.y = float(i / density.width());
+		u.x = float(i % density.rows());
+		u.y = float(i / density.rows());
 		int q = p - (roh < 1 ? 0 : std::ceil(std::log2(roh) / float(D)));
 		u.weight = float(1 << (D*(p-q)));
 		u.scale = KernelScaleFunction(roh, u.weight);
@@ -157,7 +157,7 @@ std::vector<Point> PlacePoints(const slimage::Image1f& density, unsigned int p)
 	return pnts;
 }
 
-void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigned int iterations)
+void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned int iterations)
 {
 	static boost::mt19937 rng;
 	static boost::normal_distribution<float> rnd(0.0f, 1.0f); // standard normal distribution
@@ -192,7 +192,7 @@ void Refine(std::vector<Point>& points, const slimage::Image1f& density, unsigne
 //	std::cout << r_min << " " << r_max << std::endl;
 }
 
-std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1f& density, bool& result_added)
+std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf& density, bool& result_added)
 {
 	std::vector<Point> pnts_new;
 	result_added = false;
@@ -231,10 +231,10 @@ std::vector<Point> Split(const std::vector<Point>& points, const slimage::Image1
 	return pnts_new;
 }
 
-std::vector<Point> Compute(const slimage::Image1f& density, unsigned int max_steps)
+std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_steps)
 {
 	// compute mipmaps
-	std::vector<slimage::Image1f> mipmaps = Mipmaps::ComputeMipmaps(density, 16);
+	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 16);
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
