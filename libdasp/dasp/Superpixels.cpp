@@ -204,22 +204,7 @@ std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	color_raw = image.clone();
-	slimage::Image3f colf(image.width(), image.height());
-	// convert to desired color space
-	slimage::ParallelProcess(image, colf, [this](const slimage::It3ub& cub, const slimage::It3f& cf) {
-		Eigen::Vector3f source;
-		source << float(cub[0]) / 255.0f, float(cub[1]) / 255.0f, float(cub[2]) / 255.0f;
-		Eigen::Vector3f target = ColorFromRGB(source);
-		cf[0] = target[0];
-		cf[1] = target[1];
-		cf[2] = target[2];
-	}, slimage::ThreadingOptions::Single());
-	// compute points
-	CreatePoints(colf, depth, normals);
-}
 
-void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
-{
 	assert(normals.isNull());
 
 	const float cTempBaseRadius = 0.025f;
@@ -243,66 +228,66 @@ void Superpixels::CreatePoints(const slimage::Image3f& image, const slimage::Ima
 
 	points = ImagePoints(width, height);
 
-	slimage::It3f p_col = image.begin();
-	slimage::It1ui16 p_depth = depth.begin();
-	//const float* p_normals = normals.isNull() ? 0 : normals.begin();
-
-	bool is_clipping = opt.enable_clipping
+	const bool is_clipping = opt.enable_clipping
 		&& (opt.clip_x_min < opt.clip_x_max)
 		&& (opt.clip_y_min < opt.clip_y_max)
 		&& (opt.clip_z_min < opt.clip_z_max);
 
+	unsigned int i=0;
 	for(unsigned int y=0; y<height; y++) {
-		for(unsigned int x=0; x<width; x++, ++p_col, ++p_depth) {
-			Point& p = points(x, y);
-			p.color[0] = p_col[0];
-			p.color[1] = p_col[1];
-			p.color[2] = p_col[2];
-			uint16_t depth_i16 = *p_depth;
+		const float py = static_cast<float>(y);
+		for(unsigned int x=0; x<width; x++, i++) {
+			Point& p = points[i];
+			// write point pixel coordinate
+			p.pixel = Eigen::Vector2f(static_cast<float>(x), py);
+			p.is_valid = false;
+			// get depth and compute z/f
+			const uint16_t depth_i16 = depth[i];
+			const float z_over_f = opt.camera.convertKinectToMeter(depth_i16) / opt.camera.focal;
+			// if depth is 0 the point is invalid
 			p.is_valid = (depth_i16 != 0);
-			if(!p.is_valid) {
-				p.position = Eigen::Vector3f::Zero();
-				p.image_super_radius = 0.0f;
-				p.normal = Eigen::Vector3f(0,0,-1);
-			}
-			else {
-				float scala = opt.camera.scala(depth_i16);
-				p.image_super_radius = opt.base_radius * scala;
-
-				// TEST TEST
-//				p.image_super_radius = std::max(12.0f, p.image_super_radius);
-
-	//			p.world = opt.camera.unproject(x, y, p.depth_i16);
-	//			p.image_super_radius = opt.computePixelScala(p.depth_i16);
-	//			p.gradient = LocalDepthGradient(depth, x, y, opt.base_radius, opt.camera);
-				p.position = opt.camera.unprojectUsingScala(x, y, scala);
-
-				if(is_clipping) {
-					if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
-						|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
-						|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()
-					) {
-						// point is clipped
-						p.is_valid = false;
-						p.position = Eigen::Vector3f::Zero();
-						p.image_super_radius = 0.0f;
-						p.normal = Eigen::Vector3f(0,0,-1);
-						continue;
-					}
+			if(!p.is_valid) goto label_pixel_invalid_omg;
+			// compute position
+			p.position = opt.camera.unprojectImpl(p.pixel.x(), p.pixel.y(), z_over_f); // will give 0 if depth==0
+			// clip points which are outside of bounding box
+			if(is_clipping) {
+				if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
+					|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
+					|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()
+				) {
+					// point is clipped
+					p.is_valid = false;
+					goto label_pixel_invalid_omg;
 				}
-
+			}
+			// convert color
+			{
+				const auto& cub = image[i];
+				Eigen::Vector3f cf(
+					float(cub[0]) / 255.0f,
+					float(cub[1]) / 255.0f,
+					float(cub[2]) / 255.0f);
+				p.color = ColorFromRGB(cf);
+			}
+			// compute cluster radius [px]
+			p.image_super_radius = opt.base_radius / z_over_f;
+			// compute normal
+			{
 				// FIXME in count mode the gradient is computed using a default radius of 0.02
 				// FIXME regardless of the radius chosen later
-				Eigen::Vector2f gradient = LocalDepthGradientUsingScala(depth, x, y, scala, p.image_super_radius, opt.camera);
+				Eigen::Vector2f gradient = LocalDepthGradient(depth, x, y, z_over_f, p.image_super_radius, opt.camera);
 				p.setNormalFromGradient(gradient);
 				// limit minimal circularity such that the maximum angle is 80 deg
 				// FIXME limit normal angle
 			}
+			continue;
+label_pixel_invalid_omg:
+			p.image_super_radius = 0.0f; // FIXME why do we have to set this?
+			p.normal = Eigen::Vector3f(0,0,-1);
 		}
 	}
 
 	DANVIL_BENCHMARK_START(density)
-
 	// compute desired density
 	density = ComputeDepthDensity(points, opt);
 	DANVIL_BENCHMARK_STOP(density)
@@ -846,39 +831,33 @@ Eigen::Vector3f Superpixels::ColorToRGB(const Eigen::Vector3f& source) const
 
 Eigen::Vector3f Superpixels::ColorFromRGB(const Eigen::Vector3f& source) const
 {
-	Eigen::Vector3f target;
 	switch(opt.color_space) {
 	case ColorSpaces::HSV: {
+		Eigen::Vector3f target;
 		Danvil::convert_rgb_2_hsv(source[0], source[1], source[2], target[0], target[1], target[2]);
-	} break;
+		return target;
+	}
 	case ColorSpaces::LAB: {
+		Eigen::Vector3f target;
 		Danvil::color_rgb_to_lab(source[0], source[1], source[2], target[0], target[1], target[2]);
-		target /= 100.0f;
-	} break;
+		return 0.01f * target;
+	}
 	case ColorSpaces::HN: {
 		float r = source[0];
 		float g = source[1];
 		float b = source[2];
 		float a = r + g + b;
 		if(a > 0.05f) {
-			target[0] = r / a;
-			target[1] = g / a;
-			target[2] = a * 0.1f;
+			return Eigen::Vector3f(r / a, g / a, a * 0.1f);
 		}
 		else {
-			// fixme
-			target[0] = 0;
-			target[1] = 0;
-			target[2] = 0;
+			// FIXME
+			return Eigen::Vector3f::Zero();
 		}
-	} break;
-	default: case ColorSpaces::RGB: {
-		target[0] = source[0];
-		target[1] = source[1];
-		target[2] = source[2];
-	} break;
 	}
-	return target;
+	default: case ColorSpaces::RGB:
+		return source;
+	}
 }
 
 Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Image1ui16& depth, const Parameters& opt)
