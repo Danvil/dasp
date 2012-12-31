@@ -82,7 +82,7 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 	int cy = cluster.center.spatial_y();
 
 	Eigen::Vector2f g0 = cluster.center.computeGradientDirection();
-	float sp_0 = cluster.center.image_super_radius;
+	float sp_0 = cluster.center.cluster_radius_px;
 	float sp_small = sp_0 * cluster.center.computeCircularity();
 	int p1x = static_cast<int>(sp_small * g0[0]);
 	int p1y = static_cast<int>(sp_small * g0[1]);

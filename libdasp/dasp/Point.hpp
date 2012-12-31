@@ -32,7 +32,7 @@ namespace dasp
 		Eigen::Vector3f normal;
 
 		/** estimated radius [px] on the image screen of a super pixel at point depth */
-		float image_super_radius;
+		float cluster_radius_px;
 
 		/** Invalid points are ignored during point to cluster assignment */
 		bool is_valid;
