@@ -177,7 +177,7 @@ void FindSeedsDepthMipmap_Walk(
 
 	const Eigen::MatrixXf& mm = mipmaps[level];
 
-	float v = 1.03f * mm(x, y); // TODO nice magic constant
+	float v = mm(x, y); // TODO nice magic constant
 
 	if(v > 1.0f && level > 1) { // do not access mipmap 0!
 		// go down
@@ -194,14 +194,14 @@ void FindSeedsDepthMipmap_Walk(
 			int sx = static_cast<int>((x << level) + half);
 			int sy = static_cast<int>((y << level) + half);
 			// add random offset to add noise
-			if(FindValidSeedPoint(points, sx, sy, half/2)) { // place near center
+			if(FindValidSeedPoint(points, sx, sy, (3*half)/4)) { // place near center
 				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius));
 			}
 		}
 	}
 }
 
-std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
 	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
@@ -211,18 +211,30 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::M
 	return seeds;
 }
 
+void WriteMipmap(std::vector<Eigen::MatrixXf>& mipmaps, int level, int x, int y, float d)
+{
+	// mipmaps[level](x,y) += d;
+	for(int k=level,s=1; k>=1; k--,s*=2) {
+		Eigen::MatrixXf& mm = mipmaps[k];
+		const float ds = d / static_cast<float>(s*s);
+		for(int i=0; i<s; i++) {
+			for(int j=0; j<s; j++) {
+				mm(x+j,y+i) += ds;
+			}
+		}
+	}
+}
+
 void FindSeedsDepthMipmapFS_Walk(
 		const ImagePoints& points,
 		std::vector<Seed>& seeds,
-		const std::vector<Eigen::MatrixXf>& mipmaps,
-		std::vector<Eigen::MatrixXf>& carry_mipmaps,
+		std::vector<Eigen::MatrixXf>& mipmaps,
 		int level, unsigned int x, unsigned int y)
 {
-	const Eigen::MatrixXf& mm = mipmaps[level];
-	Eigen::MatrixXf& carry_mm = carry_mipmaps[level];
+	Eigen::MatrixXf& mm = mipmaps[level];
 
 	// compute density by multiplying percentage with parent total
-	float v = mm(x, y) + carry_mm(x, y);
+	float v = mm(x, y);
 
 	if(level <= 1 || v <= 1.5f) {
 		if(v >= 0.5f) {
@@ -230,7 +242,7 @@ void FindSeedsDepthMipmapFS_Walk(
 			unsigned int half = (1 << (level - 1));
 			int sx = static_cast<int>((x << level) + half);
 			int sy = static_cast<int>((y << level) + half);
-			if(FindValidSeedPoint(points, sx, sy, half/4)) { // place near center
+			if(FindValidSeedPoint(points, sx, sy, (3*half)/4)) { // place near center
 				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius));
 				// reduce density by 1
 				v -= 1.0f;
@@ -252,40 +264,36 @@ void FindSeedsDepthMipmapFS_Walk(
 							q += 5.0f;
 			if(xp1ok) 		q += 1.0f;
 		}
-		if(q > 0) {
+//		if(q > 0) {
 			float scl = v / q;
-			if(xp1ok) 		carry_mm(x+1,y  ) += 7.0f * scl;
+			if(xp1ok) 		WriteMipmap(mipmaps, level, x+1, y  , 7.0f*scl);
 			if(yp1ok) {
-				if(xm1ok) 	carry_mm(x-1,y+1) += 3.0f * scl;			
-							carry_mm(x  ,y+1) += 5.0f * scl;
-				if(xp1ok) 	carry_mm(x+1,y+1) += 1.0f * scl;
+				if(xm1ok) 	WriteMipmap(mipmaps, level, x-1, y+1, 3.0f*scl);
+							WriteMipmap(mipmaps, level, x  , y+1, 5.0f*scl);
+				if(xp1ok) 	WriteMipmap(mipmaps, level, x+1, y+1, 1.0f*scl);
 			}
-		}
+//		}
 	}
 	else {
 		// go down
-		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, carry_mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, carry_mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, carry_mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, carry_mipmaps, level - 1, 2*x + 1, 2*y + 1);
+		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
+		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
+		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
+		FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
 	}
 }
 
-std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
 	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
-	std::vector<Eigen::MatrixXf> carry_mipmaps(mipmaps.size());
-	for(unsigned int i=1; i<mipmaps.size(); i++) { // HACK: skip first as we never use it
-		carry_mipmaps[i] = Eigen::MatrixXf::Zero(mipmaps[i].rows(), mipmaps[i].cols());
-	}
 	// now create pixel seeds
 	std::vector<Seed> seeds;
-	FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, carry_mipmaps, mipmaps.size() - 1, 0, 0);
+	FindSeedsDepthMipmapFS_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute blue noise points
 	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(density);
@@ -302,7 +310,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::Mat
 	return seeds;
 }
 
-std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::MatrixXf& density_inp, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::MatrixXf& density_inp)
 {
 	Eigen::MatrixXf density = density_inp;
 	std::vector<Seed> seeds;
@@ -326,7 +334,7 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::Ma
 }
 
 // Variante von Floyd-Steinberg. Vorteil: Keine Schlangenlinien in dünn besetzten Bereichen.
-std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt)
+std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// Fehler der nächsten 8 Zeilen in Ringpuffer speichern
 	Eigen::MatrixXf ringbuffer( 16 + density.rows(), 8 );
@@ -527,7 +535,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	}
 }
 
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Eigen::MatrixXf& density_new, const Parameters& opt)
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Eigen::MatrixXf& density_new)
 {
 #ifdef CREATE_DEBUG_IMAGES
 	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
