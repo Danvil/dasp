@@ -142,6 +142,7 @@ RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image
 	for(int y=0, i=0; y<NY; y++) {
 		for(int x=0; x<NX; x++, i++) {
 			Point& point = rgbd(x,y);
+			point.pixel = Eigen::Vector2f(static_cast<float>(x), static_cast<float>(y));
 			const uint16_t depth = img_depth[i];
 			// valid
 			point.is_valid = depth != 0 && DEPTH_MIN <= depth && depth <= DEPTH_MAX;
