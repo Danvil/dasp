@@ -9,6 +9,7 @@
 #define DASP_POINT_HPP_
 
 #include "Parameters.hpp"
+#include "Array.hpp"
 #include <Danvil/Tools/MoreMath.h>
 #include <Eigen/Dense>
 #include <vector>
@@ -106,49 +107,7 @@ namespace dasp
 
 	};
 
-	struct ImagePoints
-	{
-		ImagePoints()
-		: width_(0), height_(0) {}
-		ImagePoints(unsigned int width, unsigned int height)
-		: width_(width), height_(height), points_(width*height) {
-		}
-		unsigned int width() const {
-			return width_;
-		}
-		unsigned int height() const {
-			return height_;
-		}
-		unsigned int size() const {
-			return points_.size();
-		}
-		size_t index(unsigned int x, unsigned int y) const {
-			return x + y*width_;
-		}
-		size_t index(const Point& p) const {
-			return index(p.spatial_x(), p.spatial_y());
-		}
-		const Point& operator()(const Eigen::Vector2f& p) const {
-			int x = static_cast<int>(p[0] + 0.5f);
-			int y = static_cast<int>(p[1] + 0.5f);
-			return (*this)(x,y);
-		}
-		const Point& operator()(unsigned int x, unsigned int y) const {
-			return points_[index(x,y)];
-		}
-		Point& operator()(unsigned int x, unsigned int y) {
-			return points_[index(x,y)];
-		}
-		const Point& operator[](unsigned int i) const {
-			return points_[i];
-		}
-		Point& operator[](unsigned int i) {
-			return points_[i];
-		}
-	private:
-		unsigned int width_, height_;
-		std::vector<Point> points_;
-	};
+	typedef Array<Point,unsigned int> ImagePoints;
 
 	struct Cluster
 	{
