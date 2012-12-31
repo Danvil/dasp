@@ -598,15 +598,15 @@ std::vector<Seed> Superpixels::FindSeeds()
 	case SeedModes::Grid:
 		return FindSeedsGrid(points, opt);
 	case SeedModes::DepthMipmap:
-		return FindSeedsDepthMipmap(points, density, opt);
+		return FindSeedsDepthMipmap(points, density);
 	case SeedModes::DepthMipmapFS:
-		return FindSeedsDepthMipmapFS(points, density, opt);
+		return FindSeedsDepthMipmapFS(points, density);
 	case SeedModes::DepthBlueNoise:
-		return FindSeedsDepthBlue(points, density, opt);
+		return FindSeedsDepthBlue(points, density);
 	case SeedModes::DepthFloyd:
-		return FindSeedsDepthFloyd(points, density, opt);
+		return FindSeedsDepthFloyd(points, density);
 	case SeedModes::DepthFloydExpo:
-		return FindSeedsDepthFloydExpo(points, density, opt);
+		return FindSeedsDepthFloydExpo(points, density);
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};
@@ -616,7 +616,7 @@ std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
 {
 	if(opt.seed_mode == SeedModes::Delta) {
 		seeds_previous = getClusterCentersAsSeeds();
-		return dasp::FindSeedsDelta(points, seeds_previous, old_points, density, opt);
+		return dasp::FindSeedsDelta(points, seeds_previous, old_points, density);
 	}
 	else {
 		return FindSeeds();

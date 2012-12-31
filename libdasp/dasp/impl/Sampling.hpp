@@ -24,19 +24,19 @@ namespace dasp
 
 	std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt);
 
-	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt);
+	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density);
 
-	std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt);
+	std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density);
 
-	std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt);
+	std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density);
 
-	std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt);
+	std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::MatrixXf& density);
 
-	std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen::MatrixXf& density, const Parameters& opt);
+	std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen::MatrixXf& density);
 
 	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const Eigen::MatrixXf& density_delta, bool delete_small_scala_seeds);
 
-	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Eigen::MatrixXf& density_new, const Parameters& opt);
+	std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const ImagePoints& old_points, const Eigen::MatrixXf& density_new);
 
 }
 
