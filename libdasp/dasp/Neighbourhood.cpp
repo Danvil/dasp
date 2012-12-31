@@ -169,7 +169,7 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 				// pixel distance on camera image plane
 				float d = (c_i.pixel - c_j.pixel).norm();
 				// only test if pixel distance is smaller then C * pixel_radius
-				float r = std::max(c_i.image_super_radius, c_j.image_super_radius);
+				float r = std::max(c_i.cluster_radius_px, c_j.cluster_radius_px);
 				if(d > pixel_distance_mult_threshold * r) {
 					continue;
 				}

@@ -26,7 +26,7 @@ Eigen::MatrixXf ComputeDepthDensity(const ImagePoints& points, const Parameters&
 		 * point location is R*R*pi and the superpixel density is 1/A.
 		 * If the depth information is invalid, the density is 0.
 		 */
-		float cnt = !p.is_valid ? 0.0f : 1.0f / (M_PI * p.image_super_radius * p.image_super_radius);
+		float cnt = !p.is_valid ? 0.0f : 1.0f / (M_PI * p.cluster_radius_px * p.cluster_radius_px);
 		// Additionally the local gradient has to be considered.
 		if(opt.gradient_adaptive_density) {
 			cnt /= p.computeCircularity();
@@ -195,7 +195,7 @@ void FindSeedsDepthMipmap_Walk(
 			int sy = static_cast<int>((y << level) + half);
 			// add random offset to add noise
 			if(FindValidSeedPoint(points, sx, sy, (3*half)/4)) { // place near center
-				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius));
+				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).cluster_radius_px));
 			}
 		}
 	}
@@ -243,7 +243,7 @@ void FindSeedsDepthMipmapFS_Walk(
 			int sx = static_cast<int>((x << level) + half);
 			int sy = static_cast<int>((y << level) + half);
 			if(FindValidSeedPoint(points, sx, sy, (3*half)/4)) { // place near center
-				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).image_super_radius));
+				seeds.push_back(Seed::Dynamic(sx, sy, points(sx, sy).cluster_radius_px));
 				// reduce density by 1
 				v -= 1.0f;
 			}
@@ -304,7 +304,7 @@ std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::Mat
 		int x = std::round(pnts[i].x);
 		int y = std::round(pnts[i].y);
 		if(0 <= x && x < int(points.width()) && 0 <= y && y < int(points.height())) {
-			seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
+			seeds.push_back(Seed::Dynamic(x, y, points(x, y).cluster_radius_px));
 		}
 	}
 	return seeds;
@@ -320,7 +320,7 @@ std::vector<Seed> FindSeedsDepthFloyd(const ImagePoints& points, const Eigen::Ma
 			float v = density(x,y);
 			if(v >= 0.5f) {
 				v -= 1.0f;
-				seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
+				seeds.push_back(Seed::Dynamic(x, y, points(x, y).cluster_radius_px));
 			}
 			density(x+1,y  ) += 7.0f / 16.0f * v;
 			density(x-1,y+1) += 3.0f / 16.0f * v;
@@ -358,7 +358,7 @@ std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen
 			float err = v + pRingBuf[ x ];
 			if( err >= 0.5f) {
 				err-= 1.0f;
-				seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
+				seeds.push_back(Seed::Dynamic(x, y, points(x, y).cluster_radius_px));
 			}
 
 			// Diffundierten Fehler aus dem Ringpuffer löschen,
@@ -391,7 +391,7 @@ std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen
 				{
 					// Fehler der übersprungenen Pixel mitnehmen.
 					err += density( x, y ) + pRingBuf[ x ] - 1.0f;
-					seeds.push_back(Seed::Dynamic(x, y, points(x, y).image_super_radius));
+					seeds.push_back(Seed::Dynamic(x, y, points(x, y).cluster_radius_px));
 					pRingBuf[ x ] = 0;
 					++x;
 				}
@@ -464,7 +464,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 			if(v_sum > 0.0f) {
 				// create seed in the middle
 				if(sx < int(points.width()) && sy < int(points.height())) {
-					float scala = points(sx, sy).image_super_radius;
+					float scala = points(sx, sy).cluster_radius_px;
 					Seed s = Seed::Dynamic(sx, sy, scala);
 //					std::cout << s.x << " " << s.y << " " << scala << std::endl;
 					seeds.push_back(s);
@@ -517,7 +517,7 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 //	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
 	// give all seed points the correct scala
 	for(Seed& s : seeds) {
-		s.scala = points(s.x, s.y).image_super_radius;
+		s.scala = points(s.x, s.y).cluster_radius_px;
 	}
 	// delete seeds with low scala
 	if(delete_small_scala_seeds) {

@@ -56,7 +56,7 @@ namespace dasp
 			const Cluster& c = clusters[j];
 			int cx = c.center.spatial_x();
 			int cy = c.center.spatial_y();
-			const int R = int(c.center.image_super_radius * opt.coverage);
+			const int R = int(c.center.cluster_radius_px * opt.coverage);
 			const unsigned int xmin = std::max(0, cx - R);
 			const unsigned int xmax = std::min(int(points.width()-1), cx + R);
 			const unsigned int ymin = std::max(0, cy - R);
