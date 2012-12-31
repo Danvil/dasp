@@ -422,20 +422,20 @@ struct ClusterCenterAccumulator
 	int num;
 	Eigen::Vector3f mean_color;
 	Eigen::Vector3f mean_position;
-	Eigen::Matrix3f mean_normal;
+//	Eigen::Matrix3f mean_normal;
 
 	ClusterCenterAccumulator()
-	: num(0),
-	  mean_color(Eigen::Vector3f::Zero()),
-	  mean_position(Eigen::Vector3f::Zero()),
-	  mean_normal(Eigen::Matrix3f::Zero())
+	: num(0)
+	  ,mean_color(Eigen::Vector3f::Zero())
+	  ,mean_position(Eigen::Vector3f::Zero())
+//	  ,mean_normal(Eigen::Matrix3f::Zero())
 	{}
 
 	void add(const Point& p) {
 		num ++;
 		mean_color += p.color;
 		mean_position += p.position;
-		mean_normal += p.normal * p.normal.transpose();
+//		mean_normal += p.normal * p.normal.transpose();
 	}
 
 	Eigen::Vector3f computeNormal() const {
@@ -446,20 +446,32 @@ struct ClusterCenterAccumulator
 
 void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 {
-	// init cluster center accumulators
+	// prepare cluster accumulators
 	std::vector<std::vector<ClusterCenterAccumulator>> ccas(frames.size());
-	for(int t=0; t<ccas.size(); ++t) {
+	for(int t=0; t<ccas.size(); t++) {
 		ccas[t].resize(frames[t]->clusters.size());
 	}
 	int t0 = frames.front()->time;
-	// do cluster box
-	ClusterBox(frames,
-		[&ccas,t0](const ClusterPtr& c, int p_time, const Point& p, Assignment& a) {
-			if(a.cluster == c) {
-				ccas[c->time - t0][c->id].add(p);
-			}
-		});
-	// update
+	// fill cluster accumulators
+	for(int t=0; t<frames.size(); t++) {
+		const auto& f = frames[t];
+		const auto& fp = f->rgbd;
+		const auto& fa = f->assignment;
+		const int n = fa.size();
+		for(int i=0; i<n; i++) {
+			const auto& a = fa[i];
+			// only consider pixels with a valid assignment
+			if(!a.cluster)
+				continue;
+			// only consider active clusters
+			int k = a.cluster->time - t0;
+			if(k < 0 || ccas.size() <= k)
+				continue;
+			// add pixel to cluster accumulator
+			ccas[k][a.cluster->id].add(fp[i]);
+		}
+	}
+	// update cluster centers
 	for(int t=0; t<ccas.size(); ++t) {
 		const auto& v = ccas[t];
 		for(int k=0; k<v.size(); k++) {
