@@ -251,16 +251,16 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 	const int cols = series.cols();
 	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
 	for(int i=0; i<frames.size(); i++) {
-		for(const ClusterPtr& c : frames[i]->clusters) {
-			const float r = ClusterPixelRadius(time, *c);
-			const float sx2 = PI*r*r*std::abs(c->normal.z());
+		for(const Cluster& c : frames[i]->clusters) {
+			const float r = ClusterPixelRadius(time, c);
+			const float sx2 = PI*r*r*std::abs(c.normal.z());
 			const float sx2_inv = 1.0f / sx2;
 			const float st = static_cast<float>(2*CLUSTER_TIME_RADIUS);
 			const float dt_over_st = static_cast<float>(time - frames[i]->time) / st;
 			const float dt2_st2 = dt_over_st*dt_over_st;
 			const float A = 1.0f / (sx2 * st);
-			const float sxf = c->pixel.x();
-			const float syf = c->pixel.y();
+			const float sxf = c.pixel.x();
+			const float syf = c.pixel.y();
 			const float kernel_r = KERNEL_R_MULT * std::sqrt(sx2);
 			Box(rows, cols, sxf, syf, kernel_r,
 				[&density, sxf, syf, A, sx2_inv, dt2_st2](int xi, int yi) {
@@ -345,21 +345,20 @@ std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen
 	return clusters;
 }
 
+std::shared_ptr<ClusterContainer> ClusterList::s_storage_ = std::make_shared<ClusterContainer>();
+
 FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>& clusters)
 {
 	constexpr float VERY_LARGE_DISTANCE = 1000000.0f;
 	FramePtr p = std::make_shared<Frame>();
 	p->time = time;
 	p->rgbd = rgbd;
-	p->clusters.resize(clusters.size());
 	for(int i=0; i<clusters.size(); ++i) {
-		p->clusters[i] = std::make_shared<Cluster>(clusters[i]);
-		Cluster& c = *p->clusters[i];
+		Cluster& c = p->clusters.addCluster(clusters[i]);
 		c.time = time;
-		c.id = i;
 	}
 	p->assignment = FrameAssignment(rgbd.rows(), rgbd.cols());
-	std::fill(p->assignment.begin(), p->assignment.end(), Assignment{0,VERY_LARGE_DISTANCE});
+	std::fill(p->assignment.begin(), p->assignment.end(), Assignment::Empty());
 	return p;
 }
 
@@ -372,12 +371,10 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 	const int NX = frames.front()->rgbd.rows();
 	// iterate over all frames
 	for(int k=0; k<frames.size(); k++) {
-		const std::vector<ClusterPtr>& frame_clusters = frames[k]->clusters;
 		// iterate over clusters
-		for(int i=0; i<frame_clusters.size(); i++) {
-			const ClusterPtr& c = frame_clusters[i];
+		for(const Cluster& c : frames[k]->clusters) {
 			// skip invalid clusters
-			if(!c->valid) {
+			if(!c.valid) {
 				continue;
 			}
 			// iterate over all pixels in box and compute distance
@@ -387,10 +384,10 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 				int frame_time = frames[t]->time;
 				// compute cluster radius
 				float rpx = CLUSTER_RADIUS_MULT
-					* c->cluster_radius_px
-					* (1.0f + SPATIAL_TIME_INCREASE*static_cast<float>(std::abs(frame_time - c->time)) / CLUSTER_RADIUS);
+					* c.cluster_radius_px
+					* (1.0f + SPATIAL_TIME_INCREASE*static_cast<float>(std::abs(frame_time - c.time)) / CLUSTER_RADIUS);
 				// iterate over cluster box
-				Box(NX, NY, c->pixel.x(), c->pixel.y(), rpx,
+				Box(NX, NY, c.pixel.x(), c.pixel.y(), rpx,
 					[&f, &rgbd, &c, &frame_time, &assignment](int x, int y) {
 						const Point& p = rgbd(x,y);
 						// skip invalid points
@@ -408,11 +405,11 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 void UpdateClusterAssignment(const std::vector<FramePtr>& frames)
 {
 	ClusterBox(frames,
-		[](const ClusterPtr& c, int p_time, const Point& p, Assignment& a) {
-			const float d = PointClusterDistance(p_time, p, *c);
+		[](const Cluster& c, int p_time, const Point& p, Assignment& a) {
+			const float d = PointClusterDistance(p_time, p, c);
 			if(d < a.distance) {
 				a.distance = d;
-				a.cluster = c;
+				a.cluster_id = c.cluster_id;
 			}
 		});
 }
@@ -447,11 +444,7 @@ struct ClusterCenterAccumulator
 void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 {
 	// prepare cluster accumulators
-	std::vector<std::vector<ClusterCenterAccumulator>> ccas(frames.size());
-	for(int t=0; t<ccas.size(); t++) {
-		ccas[t].resize(frames[t]->clusters.size());
-	}
-	int t0 = frames.front()->time;
+	std::map<cluster_id_type,ClusterCenterAccumulator> ccas;
 	// fill cluster accumulators
 	for(int t=0; t<frames.size(); t++) {
 		const auto& f = frames[t];
@@ -461,36 +454,38 @@ void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 		for(int i=0; i<n; i++) {
 			const auto& a = fa[i];
 			// only consider pixels with a valid assignment
-			if(!a.cluster)
-				continue;
-			// only consider active clusters
-			int k = a.cluster->time - t0;
-			if(k < 0 || ccas.size() <= k)
-				continue;
-			// add pixel to cluster accumulator
-			ccas[k][a.cluster->id].add(fp[i]);
+			if(a.hasValidCluster()) {
+				// add pixel to cluster accumulator
+				ccas[a.cluster_id].add(fp[i]);
+			}
+		}
+	}
+	// mark all clusters as invalid
+	for(int t=0; t<frames.size(); t++) {
+		for(Cluster& c : frames[t]->clusters) {
+			c.valid = false;
 		}
 	}
 	// update cluster centers
-	for(int t=0; t<ccas.size(); ++t) {
-		const auto& v = ccas[t];
-		for(int k=0; k<v.size(); k++) {
-			Cluster& c = *frames[t]->clusters[k];
-			const ClusterCenterAccumulator& cca = v[k];
-			if(cca.num == 0) {
-				c.valid = false;
-			}
-			if(!c.valid) {
-				continue;
-			}
-			float scl = 1.0f / static_cast<float>(cca.num);
-			// recompute
-			c.color = scl * cca.mean_color;
-			c.position = scl * cca.mean_position;
-			c.normal = cca.computeNormal();
-			c.pixel = CameraProject(c.position);
-			c.cluster_radius_px = CLUSTER_RADIUS * PX_FOCAL / c.position.z();
-		}
+	int t0 = frames.front()->time;
+	for(const auto& p : ccas) {
+		cluster_id_type cid = p.first;
+		Cluster& c = ClusterList::s_storage_->at(cid);
+		// only update if cluster is in time range
+		int k = c.time - t0;
+		if(k < 0 || frames.size() <= k)
+			continue;
+		// compute cluster mean and update
+		const ClusterCenterAccumulator& cca = p.second;
+		c.valid = true;
+		assert(cca.num > 0);
+		float scl = 1.0f / static_cast<float>(cca.num);
+		// recompute
+		c.color = scl * cca.mean_color;
+		c.position = scl * cca.mean_position;
+		c.normal = cca.computeNormal();
+		c.pixel = CameraProject(c.position);
+		c.cluster_radius_px = CLUSTER_RADIUS * PX_FOCAL / c.position.z();
 	}
 }
 
@@ -503,16 +498,16 @@ std::vector<Edge> ComputeClusterEdges(const FramePtr& frame)
 //	edges.reserve(6*frame->clusters.size()); // guess number of edges
 	for(int y=1; y<cols-1; y++) {
 		for(int x=1; x<rows-1; x++) {
-			const ClusterPtr& c = assignment(x,y).cluster;
-			if(!c) continue;
-			ClusterPtr cy0 = assignment(x,y-1).cluster;
-			ClusterPtr cy1 = assignment(x,y+1).cluster;
-			ClusterPtr cx0 = assignment(x-1,y).cluster;
-			ClusterPtr cx1 = assignment(x+1,y).cluster;
-			if(cy0 && c != cy0) edges.insert({c,cy0});
-			if(cy1 && c != cy1) edges.insert({c,cy1});
-			if(cx0 && c != cx0) edges.insert({c,cx0});
-			if(cx1 && c != cx1) edges.insert({c,cx1});
+			cluster_id_type c = assignment(x,y).cluster_id;
+			if(c == INVALID_CLUSTER_ID) continue;
+			cluster_id_type cy0 = assignment(x,y-1).cluster_id;
+			cluster_id_type cy1 = assignment(x,y+1).cluster_id;
+			cluster_id_type cx0 = assignment(x-1,y).cluster_id;
+			cluster_id_type cx1 = assignment(x+1,y).cluster_id;
+			if(cy0 != INVALID_CLUSTER_ID && c != cy0) edges.insert({c,cy0});
+			if(cy1 != INVALID_CLUSTER_ID && c != cy1) edges.insert({c,cy1});
+			if(cx0 != INVALID_CLUSTER_ID && c != cx0) edges.insert({c,cx0});
+			if(cx1 != INVALID_CLUSTER_ID && c != cx1) edges.insert({c,cx1});
 		}
 	}
 	// return as vector
@@ -553,17 +548,17 @@ ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
 	std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
 	int i = 0;
 	for(const FramePtr& f : frames) {
-		for(const ClusterPtr& c : f->clusters) {
-			G[i] = *c;
-			cid_to_vid[c->unique_id()] = i;
+		for(const Cluster& c : f->clusters) {
+			G[i] = c;
+			cid_to_vid[c.cluster_id] = i;
 			i++;
 		}
 	}
 	// create edges
 	for(const FramePtr& f : frames) {
 		for(const Edge& e : f->edges) {
-			auto ea_it = cid_to_vid.find(e.a->unique_id());
-			auto eb_it = cid_to_vid.find(e.b->unique_id());
+			auto ea_it = cid_to_vid.find(e.a);
+			auto eb_it = cid_to_vid.find(e.b);
 			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
 				continue;
 			}
@@ -577,12 +572,11 @@ ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
 	return G;
 }
 
-void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters)
+void IOWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters)
 {
 	std::ofstream ofs(fn);
-	for(const ClusterPtr& cp : clusters) {
-		if(!cp) continue;
-		ofs << *cp << std::endl;
+	for(const Cluster& cp : clusters) {
+		ofs << cp << std::endl;
 	}
 }
 
@@ -593,7 +587,7 @@ std::vector<Cluster> IOReadClusters(const std::string& fn)
 	while(ifs) {
 		Cluster c;
 		ifs
-			>> c.time >> c.id >> c.valid >> c.cluster_radius_px
+			>> c.time >> c.cluster_id >> c.valid >> c.cluster_radius_px
 			>> c.pixel.x() >> c.pixel.y()
 			>> c.color.x() >> c.color.y() >> c.color.z()
 			>> c.position.x() >> c.position.y() >> c.position.z()
@@ -607,8 +601,7 @@ void IOWriteEdges(const std::string& fn, const std::vector<Edge>& edges)
 {
 	std::ofstream ofs(fn);
 	for(const Edge& e : edges) {
-		ofs << e.a->time << " " << e.a->id << " "
-			<< e.b->time << " " << e.b->id << std::endl;
+		ofs << e.a << "\t" << e.b << std::endl;
 	}
 }
 
@@ -638,7 +631,6 @@ void ContinuousSupervoxels::start(int rows, int cols)
 {
 	is_first_ = true;
 	series_.frames.clear();
-	inactive_clusters_.clear();
 }
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
@@ -704,33 +696,19 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 	// purge old frames to limit time interval
 	std::vector<FramePtr> purged_frames = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
-	// save purged clusters
-	for(const FramePtr& f : purged_frames) {
-		inactive_clusters_.insert(inactive_clusters_.end(), f->clusters.begin(), f->clusters.end());
-	}
 	// store purged frames in graph
 	{
 		// count number of clusters
-		int num_clusters = inactive_clusters_.size();
+		int num_clusters = ClusterList::s_storage_->data().size();
 		// create vertices
 		ClusterGraph G(num_clusters);
 		std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
 		int i = 0;
-		for(auto vid : as_range(boost::vertices(graph_))) {
-			const Cluster& c = graph_[vid];
+		for(const Cluster& c : ClusterList::s_storage_->data()) {
+//			std::cout << "VN " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
 			G[i] = c;
-//			std::cout << "VO " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
-			cid_to_vid[c.unique_id()] = i;
+			cid_to_vid[c.cluster_id] = i;
 			i++;
-		}
-		for(const FramePtr& f : purged_frames) {
-			for(const ClusterPtr& cp : f->clusters) {
-				const Cluster& c = *cp;
-//				std::cout << "VN " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
-				G[i] = c;
-				cid_to_vid[c.unique_id()] = i;
-				i++;
-			}
 		}
 		// create edges
 		for(auto eid : as_range(boost::edges(graph_))) {
@@ -749,8 +727,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		}
 		std::vector<Edge> still_delayed_edges;
 		for(const Edge& e : delayed_edges_) {
-			auto ea_it = cid_to_vid.find(e.a->unique_id());
-			auto eb_it = cid_to_vid.find(e.b->unique_id());
+			auto ea_it = cid_to_vid.find(e.a);
+			auto eb_it = cid_to_vid.find(e.b);
 			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
 				still_delayed_edges.push_back(e);
 //				std::cout << "ED " << e.a->unique_id() << " " << e.b->unique_id() << std::endl;
@@ -845,7 +823,7 @@ int ContinuousSupervoxels::numActiveClusters() const
 
 int ContinuousSupervoxels::numInactiveClusters() const
 {
-	return inactive_clusters_.size();
+	return ClusterList::s_storage_->data().size() - numActiveClusters();
 }
 
 int ContinuousSupervoxels::numClusters() const
@@ -855,17 +833,7 @@ int ContinuousSupervoxels::numClusters() const
 
 std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 {
-	std::vector<Cluster> result;
-	result.reserve(numActiveClusters() + numInactiveClusters());
-	for(const ClusterPtr& c : inactive_clusters_) {
-		result.push_back(*c);
-	}
-	for(const FramePtr& f : series_.frames) {
-		for(const ClusterPtr& c : f->clusters) {
-			result.push_back(*c);
-		}
-	}
-	return result;
+	return ClusterList::s_storage_->data();
 }
 
 slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors)
@@ -877,12 +845,13 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 	int ct_min = 1000000, ct_max = -1000000;
 	for(int y=0; y<cols; y++) {
 		for(int x=0; x<rows; x++) {
-			const ClusterPtr& c = assignment(x,y).cluster;
-			if(c && c->valid) {
-				ct_min = std::min(ct_min, c->time);
-				ct_max = std::max(ct_max, c->time);
+			const auto& a = assignment(x,y);
+			if(a.hasValidCluster()) {
+				const Cluster& c = a.getCluster();
+				ct_min = std::min(ct_min, c.time);
+				ct_max = std::max(ct_max, c.time);
 				// cluster color for pixel
-				const auto pc = ColorToImage(c->color);
+				const auto pc = ColorToImage(c.color);
 				img(x,y) = {{pc[0],pc[1],pc[2]}};
 
 				// // mark new clusters
@@ -892,7 +861,7 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 
 				// age to color
 				if(age_colors) {
-					const int dt = frame->time - c->time;
+					const int dt = frame->time - c.time;
 					const int q = (dt*255)/CLUSTER_TIME_RADIUS;
 					if(q < -255) {
 						img(x,y) = {{ 0,96,0 }};
@@ -921,12 +890,11 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 	if(borders) {
 		for(int y=1; y<cols-1; y++) {
 			for(int x=1; x<rows-1; x++) {
-				const ClusterPtr& c = assignment(x,y).cluster;
-				if(!c) continue;
-				if(    c != assignment(x,y-1).cluster
-					|| c != assignment(x-1,y).cluster
-					|| c != assignment(x,y+1).cluster
-					|| c != assignment(x+1,y).cluster
+				cluster_id_type cid = assignment(x,y).cluster_id;
+				if(    cid != assignment(x,y-1).cluster_id
+					|| cid != assignment(x-1,y).cluster_id
+					|| cid != assignment(x,y+1).cluster_id
+					|| cid != assignment(x+1,y).cluster_id
 				) {
 					const slimage::Pixel3ub& v = img(x,y);
 					unsigned char cr = 255 - v[0];
@@ -965,11 +933,15 @@ Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
 	float pixel_error_color = 0.0f;
 	float pixel_error_position = 0.0f;
 	for(int i=0; i<n; i++) {
-		const ClusterPtr& c = assignment[i].cluster;
+		const Assignment& a = assignment[i];
+		if(!a.hasValidCluster())
+			continue;
 		const Point& p = rgbd[i];
-		if(!c || !p.is_valid) continue;
-		cluster_error_color += (c->color - pixel_mean_color).squaredNorm();
-		cluster_error_position += (c->position - pixel_mean_position).squaredNorm();
+		if(!p.is_valid)
+			continue;
+		const Cluster& c = a.getCluster();
+		cluster_error_color += (c.color - pixel_mean_color).squaredNorm();
+		cluster_error_position += (c.position - pixel_mean_position).squaredNorm();
 		pixel_error_color += (p.color - pixel_mean_color).squaredNorm();
 		pixel_error_position += (p.position - pixel_mean_position).squaredNorm();
 	}

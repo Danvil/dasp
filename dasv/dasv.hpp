@@ -6,6 +6,7 @@
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 #include <vector>
 #include <ostream>
 #include <string>
@@ -28,6 +29,10 @@ namespace dasv
 //	typedef dasp::Array<Point> RgbdData;
 	typedef dasp::ImagePoints RgbdData;
 
+	typedef int cluster_id_type;
+
+	constexpr cluster_id_type INVALID_CLUSTER_ID = -1;
+
 	/** A voxel cluster (supervoxel) */
 	struct Cluster
 	{
@@ -37,17 +42,13 @@ namespace dasv
 		Eigen::Vector3f normal;
 		float cluster_radius_px;
 		int time;
-		int id;
+		cluster_id_type cluster_id;
 		bool valid;
-
-		int unique_id() const {
-			return time * (1<<16) + id;
-		}
 
 		friend std::ostream& operator<<(std::ostream& os, const Cluster& c)
 		{
 			os << c.time
-				<< "\t" << c.id
+				<< "\t" << c.cluster_id
 				<< "\t" << (c.valid ? 1 : 0)
 				<< "\t" << c.cluster_radius_px
 				<< "\t" << c.pixel.x() << "\t" << c.pixel.y()
@@ -59,13 +60,74 @@ namespace dasv
 
 	};
 
-	typedef std::shared_ptr<Cluster> ClusterPtr;
+	struct ClusterContainer
+	{
+		const std::vector<Cluster>& data() const { return data_; }
+		std::size_t size() const { return data_.size(); }
+		const Cluster& at(cluster_id_type i) const { return data_[i]; }
+		Cluster& at(cluster_id_type i) { return data_[i]; }
+		cluster_id_type add(const Cluster& c) {
+			data_.push_back(c);
+			cluster_id_type& id = data_.back().cluster_id;
+			id = data_.size() - 1;
+			return id;
+		}
+		cluster_id_type add() { return add(Cluster()); }
+	private:
+		std::vector<Cluster> data_;
+	};
+
+	struct ClusterList
+	{
+	public:
+		static std::shared_ptr<ClusterContainer> s_storage_;
+		typedef std::vector<cluster_id_type> index_container_t;
+		struct Access {
+			typedef Cluster& result_type;
+			Cluster& operator()(cluster_id_type i) const { return s_storage_->at(i); }
+		};
+		typedef boost::transform_iterator<Access,index_container_t::const_iterator> cit_t;
+		typedef boost::transform_iterator<Access,index_container_t::iterator> it_t;
+		const index_container_t&  indices() const { return indices_; }
+		index_container_t&  indices() { return indices_; }
+		cit_t begin() const { return cit_t(indices_.cbegin(), Access()); }
+		it_t begin() { return it_t(indices_.begin(), Access()); }
+		cit_t end() const { return cit_t(indices_.cend(), Access()); }
+		it_t end() { return it_t(indices_.end(), Access()); }
+		std::size_t size() const { return indices_.size(); }
+		Cluster& addCluster(const Cluster& c) {
+			auto cid = s_storage_->add(c);
+			indices_.push_back(cid);
+			return s_storage_->at(cid);
+		}
+		Cluster& addCluster() { return addCluster(Cluster()); }
+		Cluster& operator[](int i) { return s_storage_->at(indices_[i]); }
+		const Cluster& operator[](int i) const { return s_storage_->at(indices_[i]); }
+	private:
+		index_container_t indices_;
+	};
 
 	/** Pixel to cluster assignment */
 	struct Assignment
 	{
-		ClusterPtr cluster;
+		cluster_id_type cluster_id;
 		float distance;
+
+		bool hasValidCluster() const {
+			return cluster_id != INVALID_CLUSTER_ID;
+		}
+
+		const Cluster& getCluster() const {
+			return ClusterList::s_storage_->at(cluster_id);
+		}
+
+		Cluster& getCluster() {
+			return ClusterList::s_storage_->at(cluster_id);
+		}
+
+		static Assignment Empty() {
+			return { INVALID_CLUSTER_ID, 10000000.0f };
+		}
 	};
 
 	/** Frame pixel to cluster assignment */
@@ -74,10 +136,10 @@ namespace dasv
 	/** An edge connecting to clusters */
 	struct Edge
 	{
-		ClusterPtr a, b;
+		cluster_id_type a, b;
 
 		int id() const {
-			return a->unique_id() | b->unique_id();
+			return a | b;
 		}
 		
 		friend bool operator==(const Edge& x, const Edge& y) {
@@ -94,9 +156,10 @@ namespace dasv
 	{
 		int time;
 		RgbdData rgbd;
-		std::vector<ClusterPtr> clusters;
+		ClusterList clusters;
 		FrameAssignment assignment;
 		std::vector<Edge> edges;
+
 	};
 
 	typedef std::shared_ptr<Frame> FramePtr;
@@ -117,6 +180,8 @@ namespace dasv
 	struct Timeseries
 	{
 		std::vector<FramePtr> frames;
+
+		ClusterContainer clusters;
 
 		int slices() const {
 			return frames.size();
@@ -202,7 +267,7 @@ namespace dasv
 	ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames);
 
 	/** Writes clusters to a file */
-	void IOWriteClusters(const std::string& fn, const std::vector<ClusterPtr>& clusters);
+	void IOWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters);
 
 	/** Reads clusters from a file */
 	std::vector<Cluster> IOReadClusters(const std::string& fn);
@@ -246,7 +311,6 @@ namespace dasv
 		bool is_first_;
 		Eigen::MatrixXf last_density_;
 		Timeseries series_;
-		std::vector<ClusterPtr> inactive_clusters_;
 		ClusterGraph graph_;
 		std::vector<Edge> delayed_edges_;
 	};
