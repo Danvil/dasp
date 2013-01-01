@@ -312,7 +312,6 @@ namespace dasv
 		Eigen::MatrixXf last_density_;
 		Timeseries series_;
 		ClusterGraph graph_;
-		std::vector<Edge> delayed_edges_;
 	};
 
 	/** Opens a window to display matrix data */

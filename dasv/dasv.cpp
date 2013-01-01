@@ -694,6 +694,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	series_.add(new_frame);
 	DANVIL_BENCHMARK_STOP(dasv_create_frame)
 
+	DANVIL_BENCHMARK_START(dasv_graph)
 	// purge old frames to limit time interval
 	std::vector<FramePtr> purged_frames = series_.purge(series_.getEndTime() - 2*CLUSTER_TIME_RADIUS - 1);
 	// store purged frames in graph
@@ -702,12 +703,14 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		int num_clusters = ClusterList::s_storage_->data().size();
 		// create vertices
 		ClusterGraph G(num_clusters);
-		std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
+//		std::map<int,ClusterGraph::vertex_descriptor> cid_to_vid;
 		int i = 0;
 		for(const Cluster& c : ClusterList::s_storage_->data()) {
-//			std::cout << "VN " << c.time << " " << c.id << " " << c.unique_id() << std::endl;
 			G[i] = c;
-			cid_to_vid[c.cluster_id] = i;
+			if(c.cluster_id != i) {
+				std::cerr << "ERROR: Cluster ID does not match array position!" << std::endl;
+			}
+//			cid_to_vid[c.cluster_id] = i;
 			i++;
 		}
 		// create edges
@@ -718,37 +721,34 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 				boost::source(eid,graph_),
 				boost::target(eid,graph_),
 				G);
-//			std::cout << "EO " << boost::source(eid,graph_) << " " << boost::target(eid,graph_) << std::endl;
 			boost::put(boost::edge_weight, G, neid,
 				boost::get(boost::edge_weight, graph_, eid));
 		}
+		std::vector<Edge> edges;
 		for(const FramePtr& f : purged_frames) {
-			delayed_edges_.insert(delayed_edges_.end(), f->edges.begin(), f->edges.end());
+			edges.insert(edges.end(), f->edges.begin(), f->edges.end());
 		}
-		std::vector<Edge> still_delayed_edges;
-		for(const Edge& e : delayed_edges_) {
-			auto ea_it = cid_to_vid.find(e.a);
-			auto eb_it = cid_to_vid.find(e.b);
-			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
-				still_delayed_edges.push_back(e);
-//				std::cout << "ED " << e.a->unique_id() << " " << e.b->unique_id() << std::endl;
-			}
-			else {
-				ClusterGraph::edge_descriptor eid;
-				bool ok;
-				boost::tie(eid,ok) = boost::add_edge(ea_it->second, eb_it->second, G);
+		for(const Edge& e : edges) {
+//			auto ea_it = cid_to_vid.find(e.a);
+//			auto eb_it = cid_to_vid.find(e.b);
+//			if(ea_it == cid_to_vid.end() || eb_it == cid_to_vid.end()) {
+//				std::cerr << "ERROR: Invalid edge!" << std::endl;
+//			}
+			ClusterGraph::edge_descriptor eid;
+			bool ok;
+//			boost::tie(eid,ok) = boost::add_edge(ea_it->second, eb_it->second, G);
+			boost::tie(eid,ok) = boost::add_edge(e.a, e.b, G);
+			if(ok) {
 				boost::put(boost::edge_weight, G, eid, 1.0f);
-//				std::cout << "EN " << ea_it->second << " " << eb_it->second << std::endl;
 			}
 		}
 		// ready
 		graph_ = G;
-		delayed_edges_ = still_delayed_edges;
 		std::cout << "Graph: num_vertices=" << boost::num_vertices(graph_)
 				<< ", num_edges=" << boost::num_edges(graph_)
-				<< ", num_delayed_edges=" << delayed_edges_.size()
 				<< std::endl;
 	}
+	DANVIL_BENCHMARK_STOP(dasv_graph)
 
 	// get current active time
 	int t = std::max(series_.getBeginTime(), series_.getEndTime() - CLUSTER_TIME_RADIUS - 1);
@@ -788,7 +788,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		// superpixel image
 		boost::format fmt_col("/tmp/dasv/%05d_color.png");
 		boost::format fmt_age("/tmp/dasv/%05d_age.png");
-		DANVIL_BENCHMARK_START(dasv_eval)
+		DANVIL_BENCHMARK_START(dasv_debug)
 		FramePtr frame = series_.getFrame(t);
 		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
 		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
@@ -803,7 +803,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 			(fmt_clusters % frame->time).str(),
 			(fmt_edges % frame->time).str(),
 			graph_);
-		DANVIL_BENCHMARK_STOP(dasv_eval)
+		DANVIL_BENCHMARK_STOP(dasv_debug)
 	}
 #endif
 
@@ -845,6 +845,7 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 	int ct_min = 1000000, ct_max = -1000000;
 	for(int y=0; y<cols; y++) {
 		for(int x=0; x<rows; x++) {
+			slimage::Pixel3ub color;
 			const auto& a = assignment(x,y);
 			if(a.hasValidCluster()) {
 				const Cluster& c = a.getCluster();
@@ -852,7 +853,7 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 				ct_max = std::max(ct_max, c.time);
 				// cluster color for pixel
 				const auto pc = ColorToImage(c.color);
-				img(x,y) = {{pc[0],pc[1],pc[2]}};
+				color = {{pc[0],pc[1],pc[2]}};
 
 				// // mark new clusters
 				// if(c->time == frame->time) {
@@ -864,29 +865,28 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 					const int dt = frame->time - c.time;
 					const int q = (dt*255)/CLUSTER_TIME_RADIUS;
 					if(q < -255) {
-						img(x,y) = {{ 0,96,0 }};
+						color = {{ 0,96,0 }};
 					}
 					else if(q > +255) {
-						img(x,y) = {{ (unsigned char)((510-q)/2), 0, 0 }};
+						color = {{ (unsigned char)((510-q)/2), 0, 0 }};
 					}
 					else if(q < 0) {
-						img(x,y) = {{ (unsigned char)(255+q), 255, 0 }};
+						color = {{ (unsigned char)(255+q), 255, 0 }};
 					}
 					else {
-						img(x,y) = {{ 255, (unsigned char)(255-q), 0 }};
+						color = {{ 255, (unsigned char)(255-q), 0 }};
 					}
 				}
 
 			}
 			else {
-				if(x%2==y%2)
-					img(x,y) = {{96,0,96}};
-				else
-					img(x,y) = {{0,0,0}};
+				color = (x%2==y%2)
+					? slimage::Pixel3ub{{96,0,96}}
+					: slimage::Pixel3ub{{0,0,0}};
 			}
+			img(x,y) = color;
 		}
 	}
-	std::cout << "cluster time range [" << ct_min << "," << ct_max << "]" << std::endl;
 	if(borders) {
 		for(int y=1; y<cols-1; y++) {
 			for(int x=1; x<rows-1; x++) {
