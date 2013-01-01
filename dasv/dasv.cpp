@@ -54,7 +54,6 @@ constexpr float CLUSTER_RADIUS = 0.025f;
 constexpr int CLUSTER_TIME_RADIUS = 5; // TR=15 -> 0.5 s
 constexpr int CLUSTER_ITERATIONS = 1;
 constexpr float CLUSTER_RADIUS_MULT = 1.7f;
-constexpr float SPATIAL_TIME_INCREASE = 0.0f; // 0.005 -> 0.15 m/s
 constexpr uint16_t DEPTH_MIN = 0;
 constexpr uint16_t DEPTH_MAX = 2000;
 
@@ -81,29 +80,13 @@ Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
 	return last;
 }
 
-inline float ClusterWorldRadius(int time, const Cluster& c)
-{
-	const int dti = std::abs(time-c.time);
-	const float r = CLUSTER_RADIUS + SPATIAL_TIME_INCREASE*static_cast<float>(dti);
-	return r;	
-}
-
-inline float ClusterPixelRadius(int time, const Cluster& c)
-{
-	const float r = ClusterWorldRadius(time, c);
-	const float p = r / CLUSTER_RADIUS;
-	return p*c.cluster_radius_px;
-}
-
+/** Computes point to cluster distance */
 inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 {
 	const float mc = (p.color - c.color).squaredNorm();
-	const int dti = std::abs(p_time-c.time);
-	//const float dt = static_cast<float>(std::max(0, dti - CLUSTER_TIME_RADIUS));
-	const float dt = static_cast<float>(dti);
+	const float dt = static_cast<float>(std::abs(p_time-c.time));
 	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
-	const float r = ClusterWorldRadius(p_time, c);
-	const float mx = (p.position - c.position).squaredNorm() / (r*r);
+	const float mx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
 	return 0.67f*mc + 0.33f*(mt + mx);
 }
 
@@ -252,8 +235,7 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(rows, cols);
 	for(int i=0; i<frames.size(); i++) {
 		for(const Cluster& c : frames[i]->clusters) {
-			const float r = ClusterPixelRadius(time, c);
-			const float sx2 = PI*r*r*std::abs(c.normal.z());
+			const float sx2 = PI*c.cluster_radius_px*c.cluster_radius_px*std::abs(c.normal.z());
 			const float sx2_inv = 1.0f / sx2;
 			const float st = static_cast<float>(2*CLUSTER_TIME_RADIUS);
 			const float dt_over_st = static_cast<float>(time - frames[i]->time) / st;
@@ -318,10 +300,10 @@ FramePtr CreateFrame(int time, const RgbdData& rgbd, const std::vector<Cluster>&
 	return p;
 }
 
+/** Iterates over space/time box of pixels which are in range of a cluster */
 template<typename F>
 void ClusterBox(const std::vector<FramePtr>& frames, F f)
 {
-	assert(frames.size() > 0);
 	const int T = frames.size();
 	const int NY = frames.front()->rgbd.cols();
 	const int NX = frames.front()->rgbd.rows();
@@ -333,15 +315,13 @@ void ClusterBox(const std::vector<FramePtr>& frames, F f)
 			if(!c.valid) {
 				continue;
 			}
-			// iterate over all pixels in box and compute distance
+			// compute cluster radius
+			const float rpx = CLUSTER_RADIUS_MULT * c.cluster_radius_px;
+			// iterate over all pixels in box
 			for(int t=0; t<T; t++) {
 				const RgbdData& rgbd = frames[t]->rgbd;
 				FrameAssignment& assignment = frames[t]->assignment;
-				int frame_time = frames[t]->time;
-				// compute cluster radius
-				float rpx = CLUSTER_RADIUS_MULT
-					* c.cluster_radius_px
-					* (1.0f + SPATIAL_TIME_INCREASE*static_cast<float>(std::abs(frame_time - c.time)) / CLUSTER_RADIUS);
+				const int frame_time = frames[t]->time;
 				// iterate over cluster box
 				Box(NX, NY, c.pixel.x(), c.pixel.y(), rpx,
 					[&f, &rgbd, &c, &frame_time, &assignment](int x, int y) {
