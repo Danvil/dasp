@@ -275,50 +275,6 @@ Eigen::MatrixXf ComputeSeriesDensity(int time, const Timeseries& series)
 	return density;
 }
 
-// void DrawBox(const slimage::Image3ub& img, int x, int y, int w, int h, const slimage::Pixel3ub& color)
-// {
-// 	const int x0 = std::max<int>(0, x);
-// 	const int x1 = std::min<int>(img.width(), x+w+1);
-// 	const int y0 = std::max<int>(0, y);
-// 	const int y1 = std::min<int>(img.height(), y+h+1);
-// 	for(int i=x0; i<x1; i++) {
-// 		if(y >= 0 && y < img.height())
-// 			img(i,y) = color;
-// 		if(y+h >= 0 && y+h < img.height())
-// 			img(i,y+h) = color;
-// 	}
-// 	for(int i=y0; i<y1; i++) {
-// 		if(x >= 0 && x < img.width())
-// 			img(x,i) = color;
-// 		if(x+w >= 0 && x+w < img.width())
-// 			img(x+w,i) = color;
-// 	}
-// }
-
-// #ifdef ENABLE_SAMPLING_DEBUG
-// 	float density_max = density.maxCoeff();
-// 	float density_min = density.minCoeff();
-// 	float density_rng = std::max(std::abs(density_max), std::abs(density_min));
-// 	sampling_debug = slimage::Image3ub(rgbd.rows(), rgbd.cols());
-// 	for(int i=0; i<rgbd.cols(); i++) {
-// 		for(int j=0; j<rgbd.rows(); j++) {
-// 			const float q = 255.0f * density(j,i) / density_rng;
-// 			if(q > 0) {
-// 				sampling_debug(j,i) = {{ (unsigned char)(q), 0, 0 }};
-// 			}
-// 			else {
-// 				sampling_debug(j,i) = {{ 0, 0, (unsigned char)(-q) }};	
-// 			}
-// 		}
-// 	}
-// #endif
-
-// #ifdef ENABLE_SAMPLING_DEBUG
-// 				const int s = (1 << level) - 1;
-// 				DrawBox(sampling_debug, x<<level, y<<level, s, s, slimage::Pixel3ub{{0,255,0}});
-// 				sampling_debug(sx, sy) = slimage::Pixel3ub{{255,255,0}};
-// #endif
-
 std::vector<Cluster> SampleClustersFromDensity(const RgbdData& rgbd, const Eigen::MatrixXf& density)
 {
 	std::vector<dasp::Seed> seeds = dasp::FindSeedsDepthMipmapFS(rgbd, density);
