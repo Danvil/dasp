@@ -489,35 +489,37 @@ void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 	}
 }
 
-std::vector<Edge> ComputeClusterEdges(const FramePtr& frame)
-{
-	const int rows = frame->rgbd.rows();
-	const int cols = frame->rgbd.cols();
-	const FrameAssignment& assignment = frame->assignment;
-	std::set<Edge> edges;
-//	edges.reserve(6*frame->clusters.size()); // guess number of edges
-	for(int y=1; y<cols-1; y++) {
-		for(int x=1; x<rows-1; x++) {
-			cluster_id_type c = assignment(x,y).cluster_id;
-			if(c == INVALID_CLUSTER_ID) continue;
-			cluster_id_type cy0 = assignment(x,y-1).cluster_id;
-			cluster_id_type cy1 = assignment(x,y+1).cluster_id;
-			cluster_id_type cx0 = assignment(x-1,y).cluster_id;
-			cluster_id_type cx1 = assignment(x+1,y).cluster_id;
-			if(cy0 != INVALID_CLUSTER_ID && c != cy0) edges.insert({c,cy0});
-			if(cy1 != INVALID_CLUSTER_ID && c != cy1) edges.insert({c,cy1});
-			if(cx0 != INVALID_CLUSTER_ID && c != cx0) edges.insert({c,cx0});
-			if(cx1 != INVALID_CLUSTER_ID && c != cx1) edges.insert({c,cx1});
-		}
-	}
-	// return as vector
-	return std::vector<Edge>(edges.begin(), edges.end());
-}
-
 void UpdateClusterEdges(const std::vector<FramePtr>& frames)
 {
-	for(const FramePtr& frame : frames) {
-		frame->edges = ComputeClusterEdges(frame);
+	for(int i=0; i<frames.size(); i++) {
+		const FramePtr& frame = frames[i];
+		const int rows = frame->rgbd.rows();
+		const int cols = frame->rgbd.cols();
+		const FrameAssignment& assignment = frame->assignment;
+		const FrameAssignment& at0 = (i==0) ? assignment : frames[i-1]->assignment;
+		const FrameAssignment& at1 = (i+1==frames.size()) ? assignment : frames[i+1]->assignment;
+		std::set<Edge> edges;
+	//	edges.reserve(6*frame->clusters.size()); // guess number of edges
+		for(int y=1; y<cols-1; y++) {
+			for(int x=1; x<rows-1; x++) {
+				cluster_id_type c = assignment(x,y).cluster_id;
+				if(c == INVALID_CLUSTER_ID) continue;
+				cluster_id_type cy0 = assignment(x,y-1).cluster_id;
+				cluster_id_type cy1 = assignment(x,y+1).cluster_id;
+				cluster_id_type cx0 = assignment(x-1,y).cluster_id;
+				cluster_id_type cx1 = assignment(x+1,y).cluster_id;
+				cluster_id_type ct0 = at0(x,y).cluster_id;
+				cluster_id_type ct1 = at1(x,y).cluster_id;
+				if(cy0 != INVALID_CLUSTER_ID && c != cy0) edges.insert({c,cy0});
+				if(cy1 != INVALID_CLUSTER_ID && c != cy1) edges.insert({c,cy1});
+				if(cx0 != INVALID_CLUSTER_ID && c != cx0) edges.insert({c,cx0});
+				if(cx1 != INVALID_CLUSTER_ID && c != cx1) edges.insert({c,cx1});
+				if(ct0 != INVALID_CLUSTER_ID && c != ct0) edges.insert({c,ct0});
+				if(ct1 != INVALID_CLUSTER_ID && c != ct1) edges.insert({c,ct1});
+			}
+		}
+		// return as vector
+		frame->edges = std::vector<Edge>(edges.begin(), edges.end());
 	}
 }
 
@@ -531,9 +533,9 @@ void UpdateClusters(int time, Timeseries& timeseries)
 		UpdateClusterAssignment(frames);
 		// update cluster centers
 		UpdateClusterCenters(frames);
-		// compute edges
-		UpdateClusterEdges(frames);
 	}
+	// compute edges
+	UpdateClusterEdges(frames);
 }
 
 ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
