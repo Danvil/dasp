@@ -324,6 +324,14 @@ public:
 		return p;
 	}
 
+	static ContinuousIntervalColorMapping Factor_MinusPlus() {
+		ContinuousIntervalColorMapping p;
+		p.add(Color::Cyan);
+		p.add(Color::LightGrey);
+		p.add(Color::Red);
+		return p;
+	}
+
 	static ContinuousIntervalColorMapping Factor_Blue_Red_Yellow_White() {
 		ContinuousIntervalColorMapping p;
 		p.add(Color::Blue);
