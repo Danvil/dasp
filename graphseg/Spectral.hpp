@@ -24,8 +24,11 @@ namespace graphseg
 			boost::property<boost::edge_weight_t, float>
 	> SpectralGraph;
 
-	/** Applies graphseg graph theory fu to a weighted undirected graph */
+	/** Applies spectral graph theory fu to a weighted, undirected graph */
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver=false);
+
+	/** Applies MCL graph segmentation to a weighted, undirected graph */
+	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations);
 
 }
 

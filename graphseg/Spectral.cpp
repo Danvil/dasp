@@ -6,6 +6,7 @@
  */
 
 #include "Spectral.hpp"
+#include "Common.hpp"
 #include "spectral/SpectralGraphAnalysis.hpp"
 
 namespace graphseg
@@ -14,4 +15,51 @@ namespace graphseg
 	{
 		return SpectralGraphAnalysis(graph, num_ev, use_dense_solver);
 	}
+
+	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations)
+	{
+		std::cout << "input graph has " << boost::num_edges(graph) << " edges" << std::endl;
+		using namespace detail;
+		unsigned int dim = boost::num_vertices(graph);
+		// get adjacency matrix
+		std::cout << "adjacency matrix (size=" << dim << ")" << std::endl;
+		Mat W = Mat::Zero(dim, dim);
+		for(auto eid : as_range(boost::edges(graph))) {
+			unsigned int ea = boost::source(eid, graph);
+			unsigned int eb = boost::target(eid, graph);
+			float ew = boost::get(boost::edge_weight, graph, eid);
+			W(ea, eb) = ew;
+			W(eb, ea) = ew;
+		}
+		// perform MCL
+		for(int i=0; i<iterations; i++) {
+			std::cout << "MCL " << i << std::endl;
+			Mat M = (W*W).array().pow(p).matrix();
+			// column normalization
+			for(int i=0; i<dim; i++) {
+				const float total = M.col(i).sum();
+				if(total > 0.0f) {
+					const float scl = 1.0f / total;
+					M.col(i) *= scl;
+				}
+			}
+			W = M;
+		}
+		// create new graph with new edges
+		SpectralGraph result(dim);
+		for(int y=0; y<dim; y++) {
+			for(int x=0; x<dim; x++) {
+				float w = W(x,y);
+				if(w > 0.001f) {
+					bool ok;
+					SpectralGraph::edge_descriptor eid;
+					boost::tie(eid,ok) = boost::add_edge(x, y, result);
+					boost::put(boost::edge_weight, result, eid, w);
+				}
+			}
+		}
+		std::cout << "result graph has " << boost::num_edges(result) << " edges" << std::endl;
+		return result;
+	}
+
 }
