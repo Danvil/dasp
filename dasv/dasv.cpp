@@ -425,9 +425,10 @@ void UpdateClusterCenters(const std::vector<FramePtr>& frames)
 	}
 }
 
-void UpdateClusterEdges(const std::vector<FramePtr>& frames)
+void UpdateClusterEdges(const std::vector<FramePtr>& frames, int i_begin, int i_end)
 {
-	for(int i=0; i<frames.size(); i++) {
+	assert(0 <= i_begin && i_begin < i_end && i_end <= frame.size);
+	for(int i=i_begin; i<i_end; i++) {
 		const FramePtr& frame = frames[i];
 		const int rows = frame->rgbd.rows();
 		const int cols = frame->rgbd.cols();
@@ -471,7 +472,7 @@ void UpdateClusters(int time, Timeseries& timeseries)
 		UpdateClusterCenters(frames);
 	}
 	// compute edges
-	UpdateClusterEdges(frames);
+	UpdateClusterEdges(frames, 0, frames.size());
 }
 
 ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
