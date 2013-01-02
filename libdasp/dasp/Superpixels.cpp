@@ -297,6 +297,13 @@ label_pixel_invalid_omg:
 		}
 	}
 
+	if(opt.weight_depth >= 1.0f) {
+		DANVIL_BENCHMARK_START(saliency)
+		Eigen::MatrixXf saliency = ComputeSaliency(points, opt);
+		AdaptClusterRadiusBySaliency(points, saliency, opt);
+		DANVIL_BENCHMARK_STOP(saliency)
+	}
+
 	DANVIL_BENCHMARK_START(density)
 	// compute desired density
 	density = ComputeDepthDensity(points, opt);

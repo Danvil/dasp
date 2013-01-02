@@ -91,6 +91,81 @@ Eigen::MatrixXf ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>&
 			[](const Eigen::Vector2f& s) { return s[1]; });
 }
 
+Eigen::MatrixXf ComputeSaliency(const ImagePoints& points, const Parameters& opt)
+{
+	const int rows = points.rows();
+	const int cols = points.cols();
+	const float BR2_INV = 1.0f / (opt.base_radius * opt.base_radius);
+	Eigen::MatrixXf saliency_col(rows, cols);
+//	Eigen::MatrixXf saliency_norm(rows, cols);
+	float* p_saliency_col = saliency_col.data();
+//	float* p_saliency_norm = saliency_norm.data();
+	for(int y=0; y<cols; ++y) {
+		for(int x=0; x<rows; ++x, ++p_saliency_col/*,++p_saliency_norm*/) {
+			const Point& p = points(x,y);
+			if(!p.is_valid) {
+				*p_saliency_col = 0.0f;
+//				*p_saliency_norm = 0.0f;
+				continue;
+			}
+			const int r = static_cast<int>(p.cluster_radius_px + 0.5f);
+			const int x0 = std::max(x - r, 0);
+			const int x1 = std::min(x + r, rows - 1);
+			const int y0 = std::max(y - r, 0);
+			const int y1 = std::min(y + r, cols - 1);
+			// compute mean
+			const Eigen::Vector3f mean_col = p.color;
+			const Eigen::Vector3f mean_pos = p.position;
+//			const Eigen::Vector3f mean_normal = p.normal;
+			// compute compression error
+			float err_col = 0.0f;
+			float err_norm = 0.0f;
+			float w_total = 0.0f;
+			for(int i=y0; i<=y1; i++) {
+				for(int j=x0; j<=x1; j++) {
+					const Point& q = points(j,i);
+					if(!q.is_valid)
+						continue;
+					float w = 1.0f / (1.0f + (q.position - mean_pos).squaredNorm() * BR2_INV);
+					w_total += w;
+					err_col += w * (q.color - mean_col).squaredNorm();
+//					err_norm += w * (1.0f - q.normal.dot(mean_normal));
+				}
+			}
+			// write
+			*p_saliency_col = std::sqrt(err_col / w_total);
+//			*p_saliency_norm = err_norm / w_total;
+		}
+	}
+	// normalize
+	{
+		const float mean = saliency_col.mean();
+		const float min = saliency_col.minCoeff();
+		const float max = saliency_col.maxCoeff();
+//		std::cout << "color: mean=" << mean << ", min=" << min << ", max=" << max << std::endl;
+		saliency_col = (saliency_col.array() - mean)/std::max(mean-min, max-mean);
+	}
+	// {
+	// 	const float mean = saliency_norm.mean();
+	// 	const float min = saliency_norm.minCoeff();
+	// 	const float max = saliency_norm.maxCoeff();
+//	// 	std::cout << "normal: mean=" << mean << ", min=" << min << ", max=" << max << std::endl;
+	// 	saliency_norm = (saliency_norm.array() - mean)/std::max(mean-min, max-mean);
+	// }
+	return saliency_col;// + 0.25f * saliency_norm;
+}
+
+void AdaptClusterRadiusBySaliency(ImagePoints& points, const Eigen::MatrixXf& saliency, const Parameters& opt)
+{
+	const float base = std::max(1.0f, opt.weight_depth);
+	auto it_p = points.begin();
+	auto it_p_end = points.end();
+	auto it_s = saliency.data();
+	for(; it_p!=it_p_end; ++it_p, ++it_s) {
+		it_p->cluster_radius_px *= std::pow(base, -*it_s);
+	}
+}
+
 //------------------------------------------------------------------------------
 
 boost::mt19937 cGlobalRndRng;
