@@ -113,7 +113,8 @@ EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap wei
 				}
 	));
 	// do spectral graph foo
-	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, cNEV);
+//	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, cNEV);
+	graphseg::SpectralGraph solved = graphseg::SolveMCL(spectral, 1.41f, 50);
 	// create superpixel neighbourhood graph with edge strength
 	EdgeWeightGraph result;
 	boost::copy_graph(solved, result,
