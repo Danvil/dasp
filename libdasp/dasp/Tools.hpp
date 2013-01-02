@@ -87,17 +87,9 @@ struct Camera
 	}
 	
 	/** Computes a 3D point from pixel position and depth */
-	Eigen::Vector3f unproject(unsigned int x, unsigned int y, uint16_t depth) const {
+	Eigen::Vector3f unproject(int x, int y, uint16_t depth) const {
 		return unprojectImpl(
 			static_cast<float>(x), static_cast<float>(y),
-			convertKinectToMeter(depth) / focal
-		);
-	}
-
-	/** Computes a 3D point from pixel position and depth */
-	Eigen::Vector3f unproject(const Eigen::Vector2f& uv, uint16_t depth) const {
-		return unprojectImpl(
-			uv[0], uv[1],
 			convertKinectToMeter(depth) / focal
 		);
 	}
