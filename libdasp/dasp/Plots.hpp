@@ -110,6 +110,8 @@ enum ColorMode {
 	Color,
 	Depth,
 	Gradient,
+	ClusterRadius,
+	Density,
 	Thickness,
 	Circularity,
 	Eccentricity,

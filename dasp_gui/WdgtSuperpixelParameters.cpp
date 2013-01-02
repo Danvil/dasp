@@ -33,6 +33,8 @@ WdgtSuperpixelParameters::WdgtSuperpixelParameters(const boost::shared_ptr<DaspP
 	ui.comboBoxPlotPointsColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotPointsColor->addItem("Valid", dasp::plots::Valid);
 	ui.comboBoxPlotPointsColor->addItem("Gradient", dasp::plots::Gradient);
+	ui.comboBoxPlotPointsColor->addItem("ClusterRadius", dasp::plots::ClusterRadius);
+	ui.comboBoxPlotPointsColor->addItem("Density", dasp::plots::Density);
 	ui.comboBoxPlotPointsColor->setCurrentIndex(0);
 
 	ui.comboBoxPlotClusterColor->addItem("UniBlack", dasp::plots::UniBlack);

@@ -219,6 +219,20 @@ namespace detail
 			: slimage::Pixel3ub{{0,0,0}};
 	}
 
+	template<>
+	slimage::Pixel3ub ComputePointColor<ClusterRadius>(const Point& p) {
+		return p.is_valid
+			? IntensityColor(p.cluster_radius_px, 4.0f, 20.0f)
+			: slimage::Pixel3ub{{128,128,128}};
+	}
+
+	template<>
+	slimage::Pixel3ub ComputePointColor<Density>(const Point& p) {
+		return p.is_valid
+			? IntensityColor(p.computeDensity(), 0.0f, 0.025f)
+			: slimage::Pixel3ub{{128,128,128}};
+	}
+
 	template<int M>
 	slimage::Pixel3ub ComputeClusterColor(const Cluster& c) {
 		return ComputePointColor<M>(c.center);
@@ -358,6 +372,8 @@ slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode cm)
 	PlotPoints_HELPER(Color)
 	PlotPoints_HELPER(Depth)
 	PlotPoints_HELPER(Gradient)
+	PlotPoints_HELPER(ClusterRadius)
+	PlotPoints_HELPER(Density)
 	default: detail::PlotPointsImpl<-1>(img, c); break;
 	}
 	return img;

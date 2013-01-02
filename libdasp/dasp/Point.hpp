@@ -108,6 +108,12 @@ namespace dasp
 			return std::abs(normal.z());
 		}
 
+		/** Computes cluster density */
+		float computeDensity() const {
+			const float A = 3.1415f * cluster_radius_px * cluster_radius_px * computeCircularity();
+			return 1.0f / A;
+		}
+
 //	public:
 //		 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
