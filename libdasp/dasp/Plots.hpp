@@ -77,7 +77,7 @@ inline slimage::Pixel3ub IntensityColor(float x, float min=0.0f, float max=1.0f)
 /** Color visualization of intensity */
 inline slimage::Pixel3ub PlusMinusColor(float x, float range=1.0f)
 {
-	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_LightBlue_Black_Red();
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_MinusPlus();
 	cm.setRange(-range, +range);
 	Danvil::Colorub color = cm(x);
 	return slimage::Pixel3ub{{color.r,color.g,color.b}};
