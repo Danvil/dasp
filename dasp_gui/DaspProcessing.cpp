@@ -220,6 +220,7 @@ void DaspProcessing::performSegmentationStep()
 
 		// visualize density, seed density and density error
 		slimage::Image3ub vis_density;
+		slimage::Image3ub vis_saliency;
 		slimage::Image3ub vis_seed_density;
 		slimage::Image3ub vis_density_delta;
 		if(plot_density_) {
@@ -229,6 +230,15 @@ void DaspProcessing::performSegmentationStep()
 				float d = density.data()[i];
 				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
 			}
+
+			Eigen::MatrixXf saliency = ComputeSaliency(clustering_.points, clustering_.opt);
+			vis_saliency = slimage::Image3ub(saliency.rows(), saliency.cols());
+			for(unsigned int i=0; i<vis_saliency.size(); i++) {
+				float d = saliency.data()[i];
+				vis_saliency[i] = plots::PlusMinusColor(d, +1.0f);
+			}
+
+			// FIXME plot combined density
 
 			if(clustering_.opt.seed_mode == SeedModes::Delta) {
 				Eigen::MatrixXf seed_density = ComputeDepthDensityFromSeeds(clustering_.seeds_previous, density);
@@ -254,6 +264,7 @@ void DaspProcessing::performSegmentationStep()
 
 			if(vis_img) images_["2D"] = slimage::Ptr(vis_img);
 			if(vis_density) images_["density"] = slimage::Ptr(vis_density);
+			if(vis_saliency) images_["saliency"] = slimage::Ptr(vis_saliency);
 			if(vis_seed_density) images_["density (seeds)"] = slimage::Ptr(vis_seed_density);
 			if(vis_density_delta) images_["density (delta)"] = slimage::Ptr(vis_density_delta);
 //			images_["seeds"] = slimage::Ptr(seeds_img);

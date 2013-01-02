@@ -22,6 +22,10 @@ namespace dasp
 
 	Eigen::MatrixXf ComputeDepthDensityFromSeeds(const std::vector<Eigen::Vector2f>& seeds, const Eigen::MatrixXf& target);
 
+	Eigen::MatrixXf ComputeSaliency(const ImagePoints& points, const Parameters& opt);
+
+	void AdaptClusterRadiusBySaliency(ImagePoints& points, const Eigen::MatrixXf& saliency, const Parameters& opt);
+
 	std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt);
 
 	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density);
