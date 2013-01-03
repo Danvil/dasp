@@ -8,6 +8,7 @@
 #ifndef DASP_GRAPH_HPP_
 #define DASP_GRAPH_HPP_
 
+#include "Point.hpp"
 #include "graphseg/as_range.hpp"
 #include "graphseg/Spectral.hpp"
 #include <boost/graph/adjacency_list.hpp>
@@ -15,22 +16,15 @@
 
 namespace dasp
 {
+	/** Undirected graph */
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> UndirectedGraph;
 
+	/** Undirected, weighted (type=float) graph */
 	typedef graphseg::SpectralGraph UndirectedWeightedGraph;
-
-	/** Core superpoint information */
-	struct DaspPoint
-	{
-		Eigen::Vector2f px;
-		Eigen::Vector3f position;
-		Eigen::Vector3f color;
-		Eigen::Vector3f normal;
-	};
 
 	/** Weighted graph of superpoints */
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,
-		DaspPoint,
+		Point,
 		boost::property<boost::edge_weight_t, float>
 	> DaspGraph;
 

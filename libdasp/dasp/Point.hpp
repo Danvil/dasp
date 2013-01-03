@@ -13,7 +13,6 @@
 #include <Danvil/Tools/MoreMath.h>
 #include <Eigen/Dense>
 #include <vector>
-#include <ctype.h>
 
 namespace dasp
 {

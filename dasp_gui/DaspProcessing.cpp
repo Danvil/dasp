@@ -127,7 +127,7 @@ void DaspProcessing::performSegmentationStep()
 	DANVIL_BENCHMARK_START(segmentation)
 	UndirectedWeightedGraph similarity_graph;
 	UndirectedWeightedGraph dasp_segment_graph;
-	ClusterLabeling dasp_segment_labeling;
+	graphseg::GraphLabeling dasp_segment_labeling;
 	if(plot_segments_ || show_graph_weights_ == 3 || show_graph_weights_ == 4) {
 		// create segmentation graph
 		//segments = MinCutSegmentation(clustering_);
@@ -137,7 +137,7 @@ void DaspProcessing::performSegmentationStep()
 					1.0f, 1.0f, 3.0f));
 //					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal));
 		dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
-		dasp_segment_labeling = ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
+		dasp_segment_labeling = graphseg::ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
 	}
 	DANVIL_BENCHMARK_STOP(segmentation)
 

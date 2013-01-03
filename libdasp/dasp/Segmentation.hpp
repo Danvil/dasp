@@ -10,78 +10,52 @@
 
 #include "Superpixels.hpp"
 #include "Graph.hpp"
+#include <graphseg/Labeling.hpp>
+#include <graphseg/Spectral.hpp>
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/copy.hpp>
 #include <vector>
 
 namespace dasp
 {
 
-/** Node labeling using unique consecutive unsigned integers */
-struct ClusterLabeling
-{
-	// label for each node
-	std::vector<unsigned int> labels;
-
-	// number of unique labels
-	unsigned int num_labels;
-
-	/** Computes consecutive labels starting with 0 */
-	void relabel();
-
-	/** Computes labeling from non-consecutive labels */
-	static ClusterLabeling CreateClean(const std::vector<unsigned int>& labels);
-
-};
-
-namespace impl
-{
-	/** Using connected components to compute graph segments */
-	template<typename Graph>
-	ClusterLabeling ComputeSegmentLabels_ConnectedComponents(const Graph& graph, float threshold);
-
-	/** Using UCM algorithm to compute graph segments */
-	template<typename Graph>
-	ClusterLabeling ComputeSegmentLabels_UCM(const Graph& graph, float threshold);
-}
-
-namespace ComputeSegmentLabelsStrategies
-{
-	enum type {
-		ConnectedComponents,
-		UCM
-	};
-}
-typedef ComputeSegmentLabelsStrategies::type ComputeSegmentLabelsStrategy;
-
-/** Computes graph segments separated by edges with big weight
- * Connects all vertices which are connected by edges with a weight smaller than the threshold.
- * Graph requires edge_weight_t.
- */
-template<typename Graph>
-ClusterLabeling ComputeSegmentLabels(const Graph& graph, float threshold, ComputeSegmentLabelsStrategy strategy=ComputeSegmentLabelsStrategies::ConnectedComponents) {
-	switch(strategy) {
-	default: case ComputeSegmentLabelsStrategies::ConnectedComponents: return impl::ComputeSegmentLabels_ConnectedComponents(graph, threshold);
-	case ComputeSegmentLabelsStrategies::UCM: return impl::ComputeSegmentLabels_UCM(graph, threshold);
-	}
-}
-
 /** Computes 0/1 segment boundaries from superpixel segment labels using edge detection */
-slimage::Image1ub CreateBoundaryImageFromLabels(const Superpixels& clusters, const ClusterLabeling& cluster_labels);
+slimage::Image1ub CreateBoundaryImageFromLabels(const Superpixels& clusters, const graphseg::GraphLabeling& cluster_labels);
 
 /** Creates colors for labeling */
-std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters, const ClusterLabeling& labeling);
+std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters, const graphseg::GraphLabeling& labeling);
 
 /** Creates an image where each superpixel is colored with the corresponding label color */
-slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors);
+slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const graphseg::GraphLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors);
 
 /** Performs spectral graph segmentation */
 template<typename SuperpixelGraph, typename WeightMap>
-UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int num_eigenvectors=24);
-
+UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights)
+{
+	// create graph for spectral solving
+	graphseg::SpectralGraph spectral;
+	boost::copy_graph(graph, spectral,
+			boost::edge_copy(
+				[&spectral,&weights](typename SuperpixelGraph::edge_descriptor src, typename graphseg::SpectralGraph::edge_descriptor dst) {
+					boost::put(boost::edge_weight, spectral, dst, boost::get(weights, src));
+				}
+	));
+	// do spectral graph foo
+//	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, 24);
+	graphseg::SpectralGraph solved = graphseg::SolveMCL(spectral, 1.41f, 50);
+	// create superpixel neighbourhood graph with edge strength
+	UndirectedWeightedGraph result;
+	boost::copy_graph(solved, result,
+			boost::edge_copy(
+				[&solved,&result](typename graphseg::SpectralGraph::edge_descriptor src, typename UndirectedWeightedGraph::edge_descriptor dst) {
+					boost::put(boost::edge_weight, result, dst, boost::get(boost::edge_weight, solved, src));
+				}
+	));
+	return result;
 }
 
-#include "SegmentationImpl.hpp"
+}
 
 #endif

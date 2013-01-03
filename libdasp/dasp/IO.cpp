@@ -146,8 +146,9 @@ namespace dasp
 					[](const std::string& str) { return boost::lexical_cast<float>(str); });
 				// add vertex to graph
 				auto vid = boost::add_vertex(g);
-				DaspPoint& p = g[vid];
-				p.px = Eigen::Vector2f(values[0], values[1]);
+				Point& p = g[vid];
+				p.px = values[0];
+				p.py = values[1];
 				p.position	= Eigen::Vector3f(values[2], values[3], values[4]);
 				p.color		= Eigen::Vector3f(values[5], values[6], values[7]);
 				p.normal	= Eigen::Vector3f(values[8], values[9], values[10]);
