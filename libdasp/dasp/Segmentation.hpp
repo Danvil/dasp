@@ -18,8 +18,6 @@
 namespace dasp
 {
 
-extern std::vector<slimage::Image3ub> cSegmentationDebug;
-
 /** Node labeling using unique consecutive unsigned integers */
 struct ClusterLabeling
 {
