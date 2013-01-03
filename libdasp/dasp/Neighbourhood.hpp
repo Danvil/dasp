@@ -13,6 +13,7 @@
 #include <Slimage/Slimage.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/copy.hpp>
+#include <vector>
 
 namespace dasp
 {
@@ -41,27 +42,28 @@ namespace dasp
 	/** Computes the superpixel neighborhood graph
 	 * Superpixels are neighbors if they share border pixels.
 	 */
-	BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings=NeighborGraphSettings::SpatialCut());
+	UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings=NeighborGraphSettings::SpatialCut(), std::vector<std::vector<unsigned int>>* edge_border_pixels=0);
 
 	/** Computes edge weights for a superpixel graph using the given metric
 	 * Metric : Point x Point -> float (should be lightweight)
 	 */
 	template<typename Graph, typename Metric>
-	EdgeWeightGraph ComputeEdgeWeights(const Superpixels& superpixels, const Graph& graph, const Metric& metric)
+	UndirectedWeightedGraph ComputeEdgeWeights(const Superpixels& superpixels, const Graph& graph, const Metric& metric)
 	{
-		EdgeWeightGraph result;
-		boost::copy_graph(graph, result, boost::edge_copy([&superpixels, &graph, &result, &metric](typename Graph::edge_descriptor src, EdgeWeightGraph::edge_descriptor dst) {
-			const unsigned int ea = boost::source(src, graph);
-			const unsigned int eb = boost::target(src, graph);
-			const float w = metric(superpixels.cluster[ea].center, superpixels.cluster[eb].center);
-			boost::put(boost::edge_weight, result, dst, w);
-		}));
+		UndirectedWeightedGraph result;
+		boost::copy_graph(graph, result,
+			boost::edge_copy([&superpixels, &graph, &result, &metric](typename Graph::edge_descriptor src, UndirectedWeightedGraph::edge_descriptor dst) {
+				const unsigned int ea = boost::source(src, graph);
+				const unsigned int eb = boost::target(src, graph);
+				const float w = metric(superpixels.cluster[ea].center, superpixels.cluster[eb].center);
+				boost::put(boost::edge_weight, result, dst, w);
+			}));
 		return result;
 	}
 
 	/** Computes a weighted superpixel graph with superpixel values as vertex properties
 	 */
-	DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph& weighted_graph);
+	DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeightedGraph& weighted_graph);
 
 	/** Copies graph and changes edge weights to exp(-w/sigma) */
 	DaspGraph ConvertToSimilarityGraph(const DaspGraph& source, const float sigma);

@@ -9,30 +9,15 @@
 #define DASP_GRAPH_HPP_
 
 #include "graphseg/as_range.hpp"
+#include "graphseg/Spectral.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <Eigen/Dense>
 
 namespace dasp
 {
-	struct borderpixels_t {
-		typedef boost::edge_property_tag kind;
-	};
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> UndirectedGraph;
 
-	typedef boost::property<boost::edge_weight_t, float> EdgeWeightProperty;
-
-	typedef boost::property<borderpixels_t, std::vector<unsigned int>> EdgeBorderPixelsProperty;
-
-	/** An undirected graph with a list of image border pixels per edge */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-		boost::no_property,
-		EdgeBorderPixelsProperty
-	> BorderPixelGraph;
-
-	/** An undirected weighted graph */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-		boost::no_property,
-		EdgeWeightProperty
-	> EdgeWeightGraph;
+	typedef graphseg::SpectralGraph UndirectedWeightedGraph;
 
 	/** Core superpoint information */
 	struct DaspPoint
@@ -46,7 +31,7 @@ namespace dasp
 	/** Weighted graph of superpoints */
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,
 		DaspPoint,
-		EdgeWeightProperty
+		boost::property<boost::edge_weight_t, float>
 	> DaspGraph;
 
 }

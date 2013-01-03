@@ -12,12 +12,12 @@
 namespace dasp
 {
 
-DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph& weighted_graph)
+DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeightedGraph& weighted_graph)
 {
 	DaspGraph result;
 	boost::copy_graph(weighted_graph, result,
 		boost::vertex_copy(
-			[&superpixels,&weighted_graph,&result](EdgeWeightGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
+			[&superpixels,&weighted_graph,&result](UndirectedWeightedGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
 				const unsigned int i = src;
 				const auto& center = superpixels.cluster[i].center;
 				DaspPoint& p = result[dst];
@@ -28,7 +28,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const EdgeWeightGraph&
 			}
 		)
 		.edge_copy(
-			[&weighted_graph,&result](EdgeWeightGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
+			[&weighted_graph,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
 				const float d = boost::get(boost::edge_weight, weighted_graph, src);
 				boost::put(boost::edge_weight, result, dst, d);
 			}
@@ -143,10 +143,10 @@ std::vector<unsigned int> FindCommonBorder(const std::vector<std::vector<BorderP
 	return common;
 }
 
-BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings)
+UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings, std::vector<std::vector<unsigned int>>* edge_border_pixels)
 {
 	// create one node for each superpixel
-	BorderPixelGraph neighbourhood_graph(superpixels.clusterCount());
+	UndirectedGraph neighbourhood_graph(superpixels.clusterCount());
 	// compute superpixel borders
 	std::vector<std::vector<BorderPixel> > border = ComputeBorderLabels(superpixels);
 	// connect superpixels
@@ -186,11 +186,15 @@ BorderPixelGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbo
 				continue;
 			}
 			// add edge
-			BorderPixelGraph::edge_descriptor eid;
+			UndirectedGraph::edge_descriptor eid;
 			bool ok;
 			boost::tie(eid,ok) = boost::add_edge(i, j, neighbourhood_graph); // FIXME correctly convert superpixel_id to vertex descriptor
 			assert(ok);
-			boost::put(borderpixels_t(), neighbourhood_graph, eid, common_border);
+			if(edge_border_pixels) {
+				//boost::put(borderpixels_t(), neighbourhood_graph, eid, common_border);
+				assert(edge_border_pixels->size() == eid);
+				edge_border_pixels->push_back(common_border);
+			}
 		}
 	}
 	return neighbourhood_graph;

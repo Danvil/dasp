@@ -70,8 +70,8 @@ private:
 public:
 	dasp::Superpixels clustering_;
 
-	dasp::BorderPixelGraph Gnb;
-	dasp::EdgeWeightGraph Gnb_weighted;
+	dasp::UndirectedGraph Gnb;
+	dasp::UndirectedWeightedGraph Gnb_weighted;
 
 private:
 	dasp:: plots::ClusterSelection selection_;
