@@ -102,7 +102,7 @@ ClusterLabeling impl::ComputeSegmentLabels_UCM(const Graph& graph, float thresho
 }
 
 template<typename SuperpixelGraph, typename WeightMap>
-EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int cNEV)
+UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap weights, unsigned int cNEV)
 {
 	// create graph for spectral solving
 	graphseg::SpectralGraph spectral;
@@ -116,10 +116,10 @@ EdgeWeightGraph SpectralSegmentation(const SuperpixelGraph& graph, WeightMap wei
 //	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, cNEV);
 	graphseg::SpectralGraph solved = graphseg::SolveMCL(spectral, 1.41f, 50);
 	// create superpixel neighbourhood graph with edge strength
-	EdgeWeightGraph result;
+	UndirectedWeightedGraph result;
 	boost::copy_graph(solved, result,
 			boost::edge_copy(
-				[&solved,&result](typename graphseg::SpectralGraph::edge_descriptor src, typename EdgeWeightGraph::edge_descriptor dst) {
+				[&solved,&result](typename graphseg::SpectralGraph::edge_descriptor src, typename UndirectedWeightedGraph::edge_descriptor dst) {
 					boost::put(boost::edge_weight, result, dst, boost::get(boost::edge_weight, solved, src));
 				}
 	));

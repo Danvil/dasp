@@ -23,10 +23,6 @@ namespace dasp
 
 	std::vector<std::vector<float>> LoadData(const std::string& filename, const bool binary=false);
 
-	void SaveGraph(const EdgeWeightGraph& graph, const std::string& filename);
-	
-	void SaveGraph(const BorderPixelGraph& graph, const std::string& filename);
-
 	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph);
 
 

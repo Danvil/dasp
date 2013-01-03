@@ -125,8 +125,8 @@ void DaspProcessing::performSegmentationStep()
 	DANVIL_BENCHMARK_STOP(graph)
 
 	DANVIL_BENCHMARK_START(segmentation)
-	EdgeWeightGraph similarity_graph;
-	EdgeWeightGraph dasp_segment_graph;
+	UndirectedWeightedGraph similarity_graph;
+	UndirectedWeightedGraph dasp_segment_graph;
 	ClusterLabeling dasp_segment_labeling;
 	if(plot_segments_ || show_graph_weights_ == 3 || show_graph_weights_ == 4) {
 		// create segmentation graph

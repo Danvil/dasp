@@ -112,27 +112,6 @@ namespace dasp
 		return data;
 	}
 
-	void SaveGraph(const EdgeWeightGraph& graph, const std::string& filename)
-	{
-		std::ofstream ofs;
-		ofs.open(filename, std::fstream::out);
-		for(auto eid : as_range(boost::edges(graph))) {
-			ofs << static_cast<unsigned int>(boost::source(eid, graph)) << "\t"
-				<< static_cast<unsigned int>(boost::target(eid, graph)) << "\t"
-				<< boost::get(boost::edge_weight_t(), graph, eid) << "\n";
-		}
-	}
-
-	void SaveGraph(const BorderPixelGraph& graph, const std::string& filename)
-	{
-		std::ofstream ofs;
-		ofs.open(filename, std::fstream::out);
-		for(auto eid : as_range(boost::edges(graph))) {
-			ofs << static_cast<unsigned int>(boost::source(eid, graph)) << "\t"
-				<< static_cast<unsigned int>(boost::target(eid, graph)) << "\n";
-		}
-	}
-
 	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph)
 	{
 		const std::string separator = "\t";
