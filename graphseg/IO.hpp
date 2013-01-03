@@ -3,6 +3,7 @@
 
 #include "as_range.hpp"
 #include <fstream>
+#include <stdexcept>
 
 namespace graphseg
 {
@@ -11,6 +12,9 @@ namespace graphseg
 	void WriteEdges(const std::string& filename, const Graph& graph)
 	{
 		std::ofstream ofs(filename);
+		if(!ofs.is_open()) {
+			throw std::runtime_error("Could not open file '" + filename + "' for writing!");
+		}
 		for(auto eid : as_range(boost::edges(graph))) {
 			ofs << static_cast<unsigned int>(boost::source(eid, graph)) << "\t"
 				<< static_cast<unsigned int>(boost::target(eid, graph)) << "\n";
@@ -22,6 +26,9 @@ namespace graphseg
 	void WriteEdges(const std::string& filename, const Graph& graph, WeightMap weights)
 	{
 		std::ofstream ofs(filename);
+		if(!ofs.is_open()) {
+			throw std::runtime_error("Could not open file '" + filename + " for writing'!");
+		}
 		for(auto eid : as_range(boost::edges(graph))) {
 			ofs << static_cast<unsigned int>(boost::source(eid, graph)) << "\t"
 				<< static_cast<unsigned int>(boost::target(eid, graph)) << "\t"
@@ -29,15 +36,18 @@ namespace graphseg
 		}
 	}
 
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-		boost::no_property,
-		boost::property<boost::edge_weight_t, float>
-	> WeightedGraph;
-
+	/** Reads a file with undirected graph edges
+	 * Expected file format:
+	 *   One line per edge
+	 *   Two integers per line giving vertex indices
+	 */
 	template<typename Graph>
 	void ReadEdges(const std::string& filename, Graph& graph)
 	{
 		std::ifstream ifs(filename);
+		if(!ifs.is_open()) {
+			throw std::runtime_error("Could not open file '" + filename + " for reading'!");
+		}
 		unsigned int ea, eb;
 		while(ifs) {
 			ifs >> ea >> eb;
@@ -45,10 +55,18 @@ namespace graphseg
 		}
 	}
 
+	/** Reads a file with undirected graph edges
+	 * Expected file format:
+	 *   One line per edge
+	 *   Two integers per line giving vertex indices and one float for the edge weight
+	 */
 	template<typename Graph, typename WeightMap>
 	void ReadEdges(const std::string& filename, Graph& graph, WeightMap weights)
 	{
 		std::ifstream ifs(filename);
+		if(!ifs.is_open()) {
+			throw std::runtime_error("Could not open file '" + filename + " for reading'!");
+		}
 		unsigned int ea, eb;
 		typename WeightMap::value_type weight;
 		typename Graph::edge_descriptor eid;
