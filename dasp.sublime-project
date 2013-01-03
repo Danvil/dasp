@@ -1,22 +1,37 @@
 {
+	"build_systems":
+	[
+		{
+			"cmd":
+			[
+				"make",
+				"-j4"
+			],
+			"name": "DASP make",
+			"working_dir": "/home/david/Projects/dasp/release/"
+		},
+		{
+			"cmd":
+			[
+				"dasp_gui/dasp_gui",
+				"--rgbd",
+				"/home/david/Documents/DataSets/dasp_rgbd_dataset/images/001"
+			],
+			"name": "DASP run dasp_gui",
+			"working_dir": "/home/david/Projects/dasp/release/"
+		}
+	],
 	"folders":
 	[
 		{
-			"path": "/home/david/git/dasp",
-			"file_exclude_patterns": ["*.sublime*"]
-		}
-	],
-    "build_systems":
-	[
-		{
-		"name": "DASP make",
-		"cmd": ["make","-j4"],
-		"working_dir": "/home/david/Projects/dasp/release/" 
+			"file_exclude_patterns":
+			[
+				"*.sublime*"
+			],
+			"path": "/home/david/git/dasp"
 		},
 		{
-		"name": "DASP run dasp_gui",
-		"cmd": ["dasp_gui/dasp_gui","--rgbd","/home/david/Documents/DataSets/dasp_rgbd_dataset/images/001"],
-		"working_dir": "/home/david/Projects/dasp/release/" 
+			"path": "/home/david/git/candy/libcandy/src"
 		}
 	]
 }
