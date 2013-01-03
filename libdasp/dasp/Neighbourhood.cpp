@@ -18,19 +18,13 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeight
 	boost::copy_graph(weighted_graph, result,
 		boost::vertex_copy(
 			[&superpixels,&weighted_graph,&result](UndirectedWeightedGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
-				const unsigned int i = src;
-				const auto& center = superpixels.cluster[i].center;
-				DaspPoint& p = result[dst];
-				p.px = Eigen::Vector2f(center.px, center.py);
-				p.position = center.position;
-				p.color = center.color;
-				p.normal = center.normal;
+				result[dst] = superpixels.cluster[src].center;
 			}
 		)
 		.edge_copy(
 			[&weighted_graph,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
-				const float d = boost::get(boost::edge_weight, weighted_graph, src);
-				boost::put(boost::edge_weight, result, dst, d);
+				boost::put(boost::edge_weight, result, dst,
+					boost::get(boost::edge_weight, weighted_graph, src));
 			}
 		)
 	);

@@ -1,5 +1,6 @@
 add_library(graphseg SHARED
 	Spectral.cpp
+	Labeling.cpp
 	spectral/SolveSparseTemplate.cpp
 )
 

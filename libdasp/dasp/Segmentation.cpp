@@ -1,33 +1,13 @@
 #include "Segmentation.hpp"
 #include "Neighbourhood.hpp"
+#include "Plots.hpp"
 #include <Slimage/Convert.hpp>
 #include <boost/graph/property_iter_range.hpp>
 
 namespace dasp
 {
 
-void ClusterLabeling::relabel()
-{
-	// find set of unique labels
-	std::set<unsigned int> unique_labels_set(labels.begin(), labels.end());
-	std::vector<unsigned int> unique_labels(unique_labels_set.begin(), unique_labels_set.end());
-	num_labels = unique_labels.size();
-	// create new labeling
-	for(unsigned int& x : labels) {
-		auto it = std::find(unique_labels.begin(), unique_labels.end(), x);
-		x = it - unique_labels.begin();
-	}
-}
-
-ClusterLabeling ClusterLabeling::CreateClean(const std::vector<unsigned int>& labels)
-{
-	ClusterLabeling x;
-	x.labels = labels;
-	x.relabel();
-	return x;
-}
-
-slimage::Image1ub CreateBoundaryImageFromLabels(const Superpixels& clustering, const ClusterLabeling& labeling)
+slimage::Image1ub CreateBoundaryImageFromLabels(const Superpixels& clustering, const graphseg::GraphLabeling& labeling)
 {
 	// create segment labeling
 	slimage::Image1i labels(clustering.width(), clustering.height(), slimage::Pixel1i{-1});
@@ -40,7 +20,7 @@ slimage::Image1ub CreateBoundaryImageFromLabels(const Superpixels& clustering, c
 	return boundaries_wt;
 }
 
-std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters, const ClusterLabeling& labeling)
+std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters, const graphseg::GraphLabeling& labeling)
 {
 //	return plots::CreateRandomColors(segment_count);
 	struct Pair { Eigen::Vector3f val; unsigned int cnt; };
@@ -59,7 +39,7 @@ std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters,
 	return colors;
 }
 
-slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const ClusterLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors)
+slimage::Image3ub CreateLabelImage(const Superpixels& clusters, const graphseg::GraphLabeling& labeling, const std::vector<slimage::Pixel3ub>& colors)
 {
 	slimage::Image3ub vis_img(clusters.width(), clusters.height(), slimage::Pixel3ub{{0,0,0}});
 	clusters.ForPixelClusters([&labeling,&vis_img,&colors](unsigned int cid, const dasp::Cluster& c, unsigned int pid, const dasp::Point& p) {
