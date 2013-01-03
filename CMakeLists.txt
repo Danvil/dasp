@@ -31,6 +31,7 @@ add_subdirectory(dasp_gui)
 
 add_subdirectory(dasv)
 add_subdirectory(dasv_cmd)
+add_subdirectory(dasv_vis)
 
 add_subdirectory(vis_graph)
 
