@@ -285,7 +285,7 @@ namespace dasv
 	struct ContinuousSupervoxels
 	{
 		/** Starts temporal superpoint generation */
-		void start(int rows, int cols);
+		void start();
 
 		/** Processes on timestamp and updates/generates temporal superpoint */
 		void step(const slimage::Image3ub& color, const slimage::Image1ui16& depth);

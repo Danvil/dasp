@@ -566,7 +566,7 @@ ClusterGraph IOReadGraph(const std::string& fn_vertices, const std::string& fn_e
 	return graph;
 }
 
-void ContinuousSupervoxels::start(int rows, int cols)
+void ContinuousSupervoxels::start()
 {
 	is_first_ = true;
 	series_.frames.clear();
