@@ -5,6 +5,7 @@ include_directories(
 	${CANDY_DIR}/libcandy/src
 	${dasp_SOURCE_DIR}/libdasp
 	${dasp_SOURCE_DIR}/dasv
+	${dasp_SOURCE_DIR}/rgbd
 )
 
 add_executable(vis_graph main.cpp)

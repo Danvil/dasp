@@ -1,6 +1,7 @@
 #ifndef DASV_DASV_HPP
 #define DASV_DASV_HPP
 
+#include <rgbd.hpp>
 #include <dasp/Array.hpp>
 #include <dasp/Point.hpp>
 #include <Slimage/Slimage.hpp>
@@ -166,7 +167,7 @@ namespace dasv
 	typedef std::shared_ptr<Frame> FramePtr;
 
 	/** Creates a frame from color and depht data */
-	RgbdData CreateRgbdData(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+	RgbdData CreateRgbdData(const Rgbd& data);
 
 	/** Computes cluster density */
 	Eigen::MatrixXf ComputeClusterDensity(const RgbdData& rgbd);
@@ -289,7 +290,7 @@ namespace dasv
 		void start();
 
 		/** Processes on timestamp and updates/generates temporal superpoint */
-		void step(const slimage::Image3ub& color, const slimage::Image1ui16& depth);
+		void step(const Rgbd& rgbd);
 
 		/** Gets number of active clusters */
 		int numActiveClusters() const;

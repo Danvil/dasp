@@ -66,8 +66,7 @@ void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 			this->dasv_ = std::make_shared<dasv::ContinuousSupervoxels>();
 			this->dasv_->start();
 			while(!worker_interupt_ && this->rgbd_stream_->grab()) {
-				Rgbd data = this->rgbd_stream_->get();
-				this->dasv_->step(data.color, data.depth);
+				this->dasv_->step(this->rgbd_stream_->get());
 			}
 		});
 

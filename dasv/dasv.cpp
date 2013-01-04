@@ -159,23 +159,23 @@ boost::array<unsigned char,3> ColorToImage(const Eigen::Vector3f& c) {
 	}};
 }
 
-RgbdData CreateRgbdData(const slimage::Image3ub& img_color, const slimage::Image1ui16& img_depth)
+RgbdData CreateRgbdData(const Rgbd& data)
 {
-	const int NX = img_color.width();
-	const int NY = img_color.height();
+	const int NX = data.color.width();
+	const int NY = data.color.height();
 	RgbdData rgbd(NX, NY);
 	for(int y=0, i=0; y<NY; y++) {
 		for(int x=0; x<NX; x++, i++) {
 			Point& point = rgbd(x,y);
 			point.px = x;
 			point.py = y;
-			const uint16_t depth = img_depth[i];
+			const uint16_t depth = data.depth[i];
 			// valid
 			point.is_valid = depth != 0 && DEPTH_MIN <= depth && depth <= DEPTH_MAX;
 			if(point.is_valid) {
 				const float z_over_f = DEPTH_TO_Z * static_cast<float>(depth) / PX_FOCAL;
 				// RGB color
-				const slimage::Pixel3ub& color = img_color[i];
+				const slimage::Pixel3ub& color = data.color[i];
 				point.color = (1.0f/255.0f) * Eigen::Vector3f(
 						static_cast<float>(color[0]),
 						static_cast<float>(color[1]),
@@ -614,18 +614,18 @@ void ContinuousSupervoxels::start()
 	series_.frames.clear();
 }
 
-void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
+void ContinuousSupervoxels::step(const Rgbd& data)
 {
 	constexpr float DEBUG_DENSITY_MAX = 1.0f/800.0f;
 
 	DANVIL_BENCHMARK_START(dasv_debug)
-	DebugDisplayImage("color", color);
-	DebugDisplayImage("depth", depth, 500, 3000);
+	DebugDisplayImage("color", data.color);
+	DebugDisplayImage("depth", data.depth, 500, 3000);
 	DANVIL_BENCHMARK_STOP(dasv_debug)
 
 	// create rgbd data
 	DANVIL_BENCHMARK_START(dasv_rgbd)
-	RgbdData rgbd = CreateRgbdData(color, depth);
+	RgbdData rgbd = CreateRgbdData(data);
 	DANVIL_BENCHMARK_STOP(dasv_rgbd)
 
 	// computes frame target density

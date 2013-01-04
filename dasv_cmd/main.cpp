@@ -1,5 +1,5 @@
 #include <dasv.hpp>
-#include <rgbd/rgbd.hpp>
+#include <rgbd.hpp>
 #include <Slimage/Gui.hpp>
 #include <boost/program_options.hpp>
 #include <string>
@@ -41,13 +41,7 @@ int main(int argc, char** argv)
 	dasv::ContinuousSupervoxels sv;
 	sv.start();
 	while(rgbd_stream->grab()) {
-		Rgbd data = rgbd_stream->get();
-		if(!data.color || !data.depth) {
-			break;
-		}
-		slimage::gui::Show("color", data.color, 0);
-		slimage::gui::Show("depth", data.depth, 500, 3000, 0);
-		sv.step(data.color, data.depth);
+		sv.step(rgbd_stream->get());
 	}
 
 	std::cout << "Final supervoxel count = " << sv.numClusters() << std::endl;

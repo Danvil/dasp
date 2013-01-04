@@ -14,4 +14,5 @@ target_link_libraries(dasv
 include_directories(
 	${DT_DIR}/CT/src
 	${dasp_SOURCE_DIR}/libdasp
+	${dasp_SOURCE_DIR}/rgbd
 )
