@@ -31,7 +31,13 @@
 			"path": "/home/david/git/dasp"
 		},
 		{
-			"path": "/home/david/git/candy/libcandy/src"
+			"path": "/home/david/git/DanvilTools/CT/src/Danvil"
+		},
+		{
+			"path": "/home/david/git/candy/libcandy/src/Candy"
+		},
+		{
+			"path": "/home/david/git/slimage/src/Slimage"
 		}
 	]
 }
