@@ -8,8 +8,6 @@
 
 int main(int argc, char** argv)
 {
-	const std::string ds_path = "/home/david/Documents/DataSets";
-
 	std::string p_rgbd_mode = "test";
 	std::string p_rgbd_arg = "uniform";
 	unsigned int p_rgbd_seek = 0;
@@ -26,6 +24,7 @@ int main(int argc, char** argv)
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
 	po::notify(vm);
+	
 	if(vm.count("help")) {
 		std::cerr << desc << std::endl;
 		return 1;
