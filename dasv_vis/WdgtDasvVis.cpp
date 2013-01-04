@@ -1,4 +1,5 @@
 #include "WdgtDasvVis.h"
+#include <graphseg/Rendering.hpp>
 #include <Slimage/IO.hpp>
 #include <QtGui/QMdiSubWindow>
 #include <boost/bind.hpp>
@@ -40,8 +41,26 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 	engine_frame_ = widget_candy_frame_->getEngine();
 	PrepareEngine(engine_frame_);
 
+	{
+		boost::shared_ptr<Candy::IRenderable> renderling(new Candy::ObjectRenderling(
+			[this]() {
+				this->renderGraphGlobal();
+			}
+		));
+		engine_global_->getScene()->addItem(renderling);
+	}
+
+	{
+		boost::shared_ptr<Candy::IRenderable> renderling(new Candy::ObjectRenderling(
+			[this]() {
+				this->renderGraphFrame();
+			}
+		));
+		engine_frame_->getScene()->addItem(renderling);
+	}
+
 	QObject::connect(&timer_tick_, SIGNAL(timeout()), this, SLOT(tick()));
-	timer_tick_.setInterval(10);
+	timer_tick_.setInterval(50);
 	timer_tick_.start();
 
 	dasv::DebugSetDisplayImageCallback(boost::bind(&WdgtDasvVis::showImageThreadsafe, this, _1, _2));
@@ -75,9 +94,12 @@ void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 void WdgtDasvVis::tick()
 {
 	std::lock_guard<std::mutex> lock(show_images_cache_mutex_);
+	if(show_images_cache_.size() == 0)
+		return;
 	for(auto p : show_images_cache_) {
 		showImage(p.first, p.second);
 	}
+	std::cout << "Updated " << show_images_cache_.size() << " images" << std::endl;
 	show_images_cache_.clear();
 }
 
@@ -120,4 +142,44 @@ void WdgtDasvVis::showImage(const std::string& tag, const slimage::Image3ub& img
 	sw->adjustSize();
 	// cleanup
 	delete qimg;
+}
+
+void WdgtDasvVis::renderGraphGlobal()
+{
+	if(!dasv_) {
+		return;
+	}
+	dasv::ClusterGraph graph = dasv_->getGraph();
+	graphseg::RenderEdges3DVcol(graph,
+		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+			// returns vertex coordinate
+			const dasv::Cluster& c = graph[vid];
+			return Eigen::Vector3f{ 0.01f*c.pixel.x(), 0.01f*c.pixel.y(), 0.03f*static_cast<float>(c.time) };
+			// return c.position;
+		},
+		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+			// returns vertex color
+			return graph[vid].color;
+		}
+	);
+
+}
+
+void WdgtDasvVis::renderGraphFrame()
+{
+	if(!dasv_) {
+		return;
+	}
+	dasv::ClusterGraph graph = dasv_->getGraph();
+	graphseg::RenderEdges3DVcol(graph,
+		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+			// returns vertex coordinate
+			return graph[vid].position;
+		},
+		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+			// returns vertex color
+			return graph[vid].color;
+		}
+	);
+
 }

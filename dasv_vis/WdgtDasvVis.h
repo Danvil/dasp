@@ -29,6 +29,8 @@ public Q_SLOTS:
 private:
 	void showImageThreadsafe(const std::string& tag, const slimage::Image3ub& img);
 	void showImage(const std::string& tag, const slimage::Image3ub& img);
+	void renderGraphGlobal();
+	void renderGraphFrame();
 
 private:
 	Candy::GLSystemQtWindow* widget_candy_global_;
