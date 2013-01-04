@@ -86,6 +86,10 @@ void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 			this->dasv_->start();
 			while(!worker_interupt_ && this->rgbd_stream_->grab()) {
 				this->dasv_->step(this->rgbd_stream_->get());
+				{
+					std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
+					dasv_graph_ = dasv_->getGraph();
+				}
 			}
 		});
 
@@ -149,7 +153,11 @@ void WdgtDasvVis::renderGraphGlobal()
 	if(!dasv_) {
 		return;
 	}
-	dasv::ClusterGraph graph = dasv_->getGraph();
+	dasv::ClusterGraph graph;
+	{
+		std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
+		graph = dasv_graph_;
+	}
 	graphseg::RenderEdges3DVcol(graph,
 		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
 			// returns vertex coordinate
@@ -170,7 +178,11 @@ void WdgtDasvVis::renderGraphFrame()
 	if(!dasv_) {
 		return;
 	}
-	dasv::ClusterGraph graph = dasv_->getGraph();
+	dasv::ClusterGraph graph;
+	{
+		std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
+		graph = dasv_graph_;
+	}
 	graphseg::RenderEdges3DVcol(graph,
 		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
 			// returns vertex coordinate

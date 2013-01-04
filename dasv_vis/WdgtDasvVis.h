@@ -49,6 +49,9 @@ private:
 	std::map<std::string, slimage::Image3ub> show_images_cache_;
 	std::mutex show_images_cache_mutex_;
 
+	dasv::ClusterGraph dasv_graph_;
+	std::mutex dasv_graph_mutex_;
+
 private:
     Ui::WdgtDasvVisClass ui;
 };
