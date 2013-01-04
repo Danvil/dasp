@@ -95,6 +95,19 @@ void DebugDisplayImage(const std::string& tag, const Eigen::MatrixXf& mat, float
 		DebugMatrixToImage(mat, min, max));
 }
 
+void DebugDisplayImage(const std::string& tag, const slimage::Image1ui16& img16, uint16_t min, uint16_t max)
+{
+	slimage::Image3ub img(img16.width(), img16.height());
+	const int n = img16.size();
+	for(int i=0; i<n; i++) {
+		uint16_t v = img16[i];
+		float p = std::min(1.0f, std::max(0.0f, static_cast<float>(v-min)/static_cast<float>(max-min)));
+		unsigned char c = static_cast<unsigned char>(255.0f*p);
+		img[i] = {{c,c,c}};
+	}
+	DebugDisplayImage(tag, img);
+}
+
 // Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
 // {
 // 	Eigen::MatrixXf last = mat;
@@ -605,6 +618,11 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 {
 	constexpr float DEBUG_DENSITY_MAX = 1.0f/800.0f;
 
+	DANVIL_BENCHMARK_START(dasv_debug)
+	DebugDisplayImage("color", color);
+	DebugDisplayImage("depth", depth, 500, 3000);
+	DANVIL_BENCHMARK_STOP(dasv_debug)
+
 	// create rgbd data
 	DANVIL_BENCHMARK_START(dasv_rgbd)
 	RgbdData rgbd = CreateRgbdData(color, depth);
@@ -624,6 +642,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		last_density_ = ComputeSeriesDensity(series_.getEndTime(), series_);
 	}
 	DANVIL_BENCHMARK_STOP(dasv_series_density)
+
 	// compute sample density
 	DANVIL_BENCHMARK_START(dasv_sampling)
 	// -> avoid sampling at same positions as last frame!
@@ -754,9 +773,9 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 #ifdef GUI_DEBUG_NORMAL
 	{
 		// superpixel image
+		DANVIL_BENCHMARK_START(dasv_debug)
 		boost::format fmt_col("/tmp/dasv/%05d_color.png");
 		boost::format fmt_age("/tmp/dasv/%05d_age.png");
-		DANVIL_BENCHMARK_START(dasv_debug)
 		FramePtr frame = series_.getFrame(t);
 		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
 		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
@@ -771,7 +790,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		// 	(fmt_clusters % frame->time).str(),
 		// 	(fmt_edges % frame->time).str(),
 		// 	graph_);
-		// DANVIL_BENCHMARK_STOP(dasv_debug)
+		DANVIL_BENCHMARK_STOP(dasv_debug)
 	}
 #endif
 

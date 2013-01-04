@@ -67,8 +67,6 @@ void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 			this->dasv_->start();
 			while(!worker_interupt_ && this->rgbd_stream_->grab()) {
 				Rgbd data = this->rgbd_stream_->get();
-				showImageThreadsafe("color", data.color);
-				// slimage::gui::Show("depth", data.depth, 500, 3000, 0);
 				this->dasv_->step(data.color, data.depth);
 			}
 		});
