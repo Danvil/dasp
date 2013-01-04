@@ -71,10 +71,9 @@ void DebugSetDisplayImageCallback(boost::function<void(const std::string& tag, c
 
 void DebugDisplayImage(const std::string& tag, const slimage::Image3ub& img)
 {
-	if(!s_debug_image_display_callback) {
-		return;
+	if(s_debug_image_display_callback) {
+		s_debug_image_display_callback(tag, img);
 	}
-	s_debug_image_display_callback(tag, img);
 }
 
 slimage::Image3ub DebugMatrixToImage(const Eigen::MatrixXf& mat, float min, float max)
@@ -763,16 +762,16 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
 		DebugDisplayImage("superpixel color", img_col);
 		DebugDisplayImage("superpixel age", img_age);
-		slimage::Save(img_col, (fmt_col % frame->time).str());
-		slimage::Save(img_age, (fmt_age % frame->time).str());
+		// slimage::Save(img_col, (fmt_col % frame->time).str());
+		// slimage::Save(img_age, (fmt_age % frame->time).str());
 		// cluster graph
 		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
 		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
-		IOWriteGraph(
-			(fmt_clusters % frame->time).str(),
-			(fmt_edges % frame->time).str(),
-			graph_);
-		DANVIL_BENCHMARK_STOP(dasv_debug)
+		// IOWriteGraph(
+		// 	(fmt_clusters % frame->time).str(),
+		// 	(fmt_edges % frame->time).str(),
+		// 	graph_);
+		// DANVIL_BENCHMARK_STOP(dasv_debug)
 	}
 #endif
 
