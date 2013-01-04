@@ -1,5 +1,6 @@
 #include "WdgtDasvVis.h"
 #include <Slimage/IO.hpp>
+#include <boost/bind.hpp>
 
 void PrepareEngine(const boost::shared_ptr<Candy::Engine>& engine)
 {
@@ -37,6 +38,8 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 	QObject::connect(&timer_tick_, SIGNAL(timeout()), this, SLOT(tick()));
 	timer_tick_.setInterval(1);
 	timer_tick_.start();
+
+	dasv::DebugSetDisplayImageCallback(boost::bind(&WdgtDasvVis::showImage, this, _1, _2));
 }
 
 WdgtDasvVis::~WdgtDasvVis()

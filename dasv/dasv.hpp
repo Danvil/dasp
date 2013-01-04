@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/function.hpp>
 #include <vector>
 #include <ostream>
 #include <string>
@@ -14,19 +15,19 @@
 
 namespace dasv
 {
+	/** Sets a callback functions for displaying images */
+	void DebugSetDisplayImageCallback(boost::function<void(const std::string& tag, const slimage::Image3ub& img)> f);
+
+	/** Displays an image */
+	void DebugDisplayImage(const std::string& tag, const slimage::Image3ub& img);
+
+	/** Displays a matrix */
+	void DebugDisplayImage(const std::string& tag, const Eigen::MatrixXf& mat, float min, float max);
+
 	// /** Voxel data */
-	// struct Point
-	// {
-	// 	Eigen::Vector3f color;
-	// 	Eigen::Vector3f position;
-	// 	Eigen::Vector3f normal;
-	// 	float cluster_radius_px;
-	// 	bool valid;
-	// };
 	typedef dasp::Point Point;
 
 	/** A frame of voxels at a given timestamp */
-//	typedef dasp::Array<Point> RgbdData;
 	typedef dasp::ImagePoints RgbdData;
 
 	typedef int cluster_id_type;
@@ -313,9 +314,6 @@ namespace dasv
 		Timeseries series_;
 		ClusterGraph graph_;
 	};
-
-	/** Opens a window to display matrix data */
-	void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl);
 
 	/** Computes superpixel image from clusters and assignment */
 	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors);

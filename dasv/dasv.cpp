@@ -59,26 +59,56 @@ constexpr uint16_t DEPTH_MAX = 2000;
 
 constexpr float PI = 3.1415f;
 
-void DebugShowMatrix(const std::string& filename, const Eigen::MatrixXf& mat, float scl)
+boost::function<void(const std::string& tag, const slimage::Image3ub& img)> s_debug_image_display_callback
+= [](const std::string& tag, const slimage::Image3ub& img) {
+	slimage::gui::Show(tag, img, 1);
+};
+
+void DebugSetDisplayImageCallback(boost::function<void(const std::string& tag, const slimage::Image3ub& img)> f)
 {
-	slimage::Image1f img(mat.rows(), mat.cols());
-	img.buffer().copyFrom(&mat(0,0));
-	slimage::gui::Show(filename, img, scl, 0);
+	s_debug_image_display_callback = f;
 }
 
-Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
+void DebugDisplayImage(const std::string& tag, const slimage::Image3ub& img)
 {
-	Eigen::MatrixXf last = mat;
-	Eigen::MatrixXf result;
-	for(int k=0; k<n; k++) {
-		result = Eigen::MatrixXf(last.rows()*2, last.cols()*2);
-		for(int i=0; i<result.cols(); i++)
-			for(int j=0; j<result.rows(); j++)
-				result(j,i) = last(j/2,i/2);
-		last = result;
+	if(!s_debug_image_display_callback) {
+		return;
 	}
-	return last;
+	s_debug_image_display_callback(tag, img);
 }
+
+slimage::Image3ub DebugMatrixToImage(const Eigen::MatrixXf& mat, float min, float max)
+{
+	slimage::Image3ub img(mat.rows(), mat.cols());
+	const int n = mat.size();
+	for(int i=0; i<n; i++) {
+		float v = mat.data()[i];
+		float p = std::min(1.0f, std::max(0.0f, (v-min)/(max-min)));
+		unsigned char c = static_cast<unsigned char>(255.0f*p);
+		img[i] = {{c,c,c}};
+	}
+	return img;
+}
+
+void DebugDisplayImage(const std::string& tag, const Eigen::MatrixXf& mat, float min, float max)
+{
+	DebugDisplayImage(tag,
+		DebugMatrixToImage(mat, min, max));
+}
+
+// Eigen::MatrixXf DebugDoubleMatrixSize(const Eigen::MatrixXf& mat, int n)
+// {
+// 	Eigen::MatrixXf last = mat;
+// 	Eigen::MatrixXf result;
+// 	for(int k=0; k<n; k++) {
+// 		result = Eigen::MatrixXf(last.rows()*2, last.cols()*2);
+// 		for(int i=0; i<result.cols(); i++)
+// 			for(int j=0; j<result.rows(); j++)
+// 				result(j,i) = last(j/2,i/2);
+// 		last = result;
+// 	}
+// 	return last;
+// }
 
 /** Computes point to cluster distance */
 inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
@@ -574,7 +604,7 @@ void ContinuousSupervoxels::start()
 
 void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::Image1ui16& depth)
 {
-	constexpr float DEBUG_DENSITY_SCALE = 800.0f;
+	constexpr float DEBUG_DENSITY_MAX = 1.0f/800.0f;
 
 	// create rgbd data
 	DANVIL_BENCHMARK_START(dasv_rgbd)
@@ -608,7 +638,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	DANVIL_BENCHMARK_STOP(dasv_sampling)
 
 #ifdef ENABLE_SAMPLING_DEBUG
-	slimage::gui::Show("sampling debug", sampling_debug, 0);
+	DebugDisplayImage("sampling debug", sampling_debug);
 	std::cout << "sample_density_sum=" << sample_density.sum() << std::endl;
 #endif
 
@@ -618,12 +648,12 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 	// debug
 #ifdef ENABLE_SAMPLING_DEBUG
 	//if(!is_first_) {
-		DebugShowMatrix("last_density", last_density_, DEBUG_DENSITY_SCALE);
+		DebugDisplayImage("last_density", last_density_, 0.0f, DEBUG_DENSITY_MAX);
 		std::cout << "last_density_sum=" << last_density_.sum() << std::endl;
 	//}
-	DebugShowMatrix("target_density", target_density, DEBUG_DENSITY_SCALE);
+	DebugDisplayImage("target_density", target_density, 0.0f, DEBUG_DENSITY_MAX);
 	std::cout << "target_density_sum=" << target_density.sum() << std::endl;
-	// DebugShowMatrix("current_density", current_density, DEBUG_DENSITY_SCALE);
+	// DebugShowMatrix("current_density", current_density, 0.0f, DEBUG_DENSITY_MAX);
 	// std::cout << "current_density_sum=" << current_density.sum() << std::endl;
 #endif
 
@@ -697,7 +727,7 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		DANVIL_BENCHMARK_START(dasv_series_density)
 		Eigen::MatrixXf density_now = ComputeSeriesDensity(t, series_);
 		DANVIL_BENCHMARK_STOP(dasv_series_density)
-		DebugShowMatrix("density_now", density_now, DEBUG_DENSITY_SCALE);
+		DebugDisplayImage("density_now", density_now, 0.0f, DEBUG_DENSITY_MAX);
 		std::cout << "density_now_sum=" << density_now.sum() << std::endl;
 	}
 #endif
@@ -731,8 +761,8 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 		FramePtr frame = series_.getFrame(t);
 		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
 		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
-		slimage::gui::Show("superpixel color", img_col, 1);
-		slimage::gui::Show("superpixel age", img_age, 1);
+		DebugDisplayImage("superpixel color", img_col);
+		DebugDisplayImage("superpixel age", img_age);
 		slimage::Save(img_col, (fmt_col % frame->time).str());
 		slimage::Save(img_age, (fmt_age % frame->time).str());
 		// cluster graph
@@ -748,7 +778,6 @@ void ContinuousSupervoxels::step(const slimage::Image3ub& color, const slimage::
 
 #ifdef GUI_DEBUG_NORMAL
 	DANVIL_BENCHMARK_PRINTALL_COUT
-//	slimage::gui::WaitForKeypress();
 #endif
 
 	is_first_ = false;
