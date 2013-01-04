@@ -29,30 +29,32 @@ int main(int argc, char** argv)
 
 	using namespace dasv;
 
-	std::shared_ptr<Scenario> scn;
+	std::shared_ptr<RgbdStream> rgbd_stream;
 
 	if(p_mode == "test_uniform") {
-		scn = FactorTest("uniform");
+		rgbd_stream = FactorTest("uniform");
 	}
 	else if(p_mode == "test_paraboloid") {
-		scn = FactorTest("paraboloid");
+		rgbd_stream = FactorTest("paraboloid");
 	}
 	else if(p_mode == "test_sphere") {
-		scn = FactorTest("sphere");
+		rgbd_stream = FactorTest("sphere");
 	}
 	else if(p_mode == "static") {
 		std::string fn = ds_path + "/dasp_rgbd_dataset/images/001";
-		scn = FactorStatic(fn);
+		rgbd_stream = FactorStatic(fn);
 	}
 	else if(p_mode == "oni") {
 		std::string fn = ds_path + "/2012-10-12 cogwatch dasp/SlowVelocity/C15_c01_slow.oni";
-		scn = FactorOni(fn, 100);
+		auto tmp = FactorOni(fn);
+		tmp->seek(100);
+		rgbd_stream = tmp;
 	}
 
 	ContinuousSupervoxels sv;
 	sv.start();
-	while(true) {
-		Rgbd data = scn->pop();
+	while(rgbd_stream->grab()) {
+		Rgbd data = rgbd_stream->get();
 		if(!data.color || !data.depth) {
 			break;
 		}

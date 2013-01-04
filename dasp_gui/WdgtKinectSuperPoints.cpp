@@ -97,17 +97,20 @@ void WdgtKinectSuperPoints::ShowLive()
 	StopProcessingThread();
 
 	// open Kinect in live mode
-	QString config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
-	std::cout << "Opening kinect config file: " << config.toStdString() << std::endl;
-	kinect_grabber_.reset(new dasp::KinectGrabber());
-	kinect_grabber_->OpenConfig(config.toStdString());
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
-
+	std::string config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
+	std::cout << "Opening kinect config file: " << config << std::endl;
+	rgbd_stream_ = FactorKinectLive(config);
 	mode_ = LiveMode;
 
 	// processing thread polls kinect
 	frame_counter_ = 0;
-	processing_thread_ = boost::thread(&dasp::KinectGrabber::Run, kinect_grabber_);
+	processing_thread_ = boost::thread(
+		[this]() {
+		this->interrupt_loaded_thread_ = false;
+		while(!this->interrupt_loaded_thread_ && this->rgbd_stream_->grab()) {
+				this->OnImages(this->rgbd_stream_->get());
+			}
+		});
 }
 
 void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
@@ -116,20 +119,20 @@ void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
 
 	// open Kinect OpenNI ONI file
 	std::cout << "Opening oni file: " << fn << std::endl;
-	kinect_grabber_.reset(new dasp::KinectGrabber());
-	kinect_grabber_->OpenFile(fn);
-	kinect_grabber_->on_depth_and_color_.connect(boost::bind(&WdgtKinectSuperPoints::OnImages, this, _1, _2));
+	auto random_access_rgbd_stream = FactorOni(fn);
+	rgbd_stream_ = random_access_rgbd_stream;
 
 	mode_ = ReplayOniMode;
 	remembered_capture_fn_ = fn;
 	
 	ui.horizontalSliderFrame->setEnabled(true);
-	ui.horizontalSliderFrame->setMaximum(kinect_grabber_->NumFrames());
+	std::cout << "Number of frames: " << random_access_rgbd_stream->numFrames() << std::endl;
+	ui.horizontalSliderFrame->setMaximum(random_access_rgbd_stream->numFrames());
 
 	// processing thread polls kinect
 	frame_counter_ = 0;
 	processing_thread_ = boost::thread(
-		[this]() {
+		[this, random_access_rgbd_stream]() {
 			this->interrupt_loaded_thread_ = false;
 			while(!this->interrupt_loaded_thread_) {
 				unsigned int requested_frame = frame_counter_ + (this->ui.checkBoxPlay->isChecked() ? 1 : 0);
@@ -139,15 +142,14 @@ void WdgtKinectSuperPoints::LoadOni(const std::string& fn)
 				}
 				this->reload = false;
 				// seek to requested frame (playing will start from there)
-				kinect_grabber_->SeekToFrame(requested_frame);
-				frame_counter_ = kinect_grabber_->TellFrame();
+				random_access_rgbd_stream->seek(requested_frame);
+				frame_counter_ = random_access_rgbd_stream->tell();
 				// grab frame from oni
-				bool ok = this->kinect_grabber_->Grab();
-				if(!ok) {
+				if(!this->rgbd_stream_->grab()) {
 					break;
 				}
 				// update images with new data
-				this->OnImages(this->kinect_grabber_->GetLastDepth(), this->kinect_grabber_->GetLastColor());
+				this->OnImages(this->rgbd_stream_->get());
 			}
 		});
 
@@ -160,32 +162,24 @@ void WdgtKinectSuperPoints::LoadRgbd(const std::string& fn)
 	StopProcessingThread();
 
 	// load selected images
-	std::string fn_color = fn + "_color.png";
-	std::string fn_depth = fn + "_depth.pgm";
-	std::cout << "Reading '" << fn_color << "' and '" << fn_depth << "'..." << std::flush;
-	slimage::Image3ub loaded_kinect_color = slimage::Load3ub(fn_color);
-	slimage::Image1ui16 loaded_kinect_depth = slimage::Load1ui16(fn_depth);
-	if(loaded_kinect_color.width() != loaded_kinect_depth.width() || loaded_kinect_color.height() != loaded_kinect_depth.height()) {
-		std::cerr << "Size of color and depth image must match!" << std::endl;
-		return;
-	}
+	std::cout << "Reading '" << fn << "_color.png' and '" << fn << "_depth.pgm'..." << std::flush;
+	rgbd_stream_ = FactorStatic(fn);
 
 	mode_ = SingleFileMode;
 
 	// processing thread repeats loaded image (only updated if requested)
-	processing_thread_ = boost::thread([this,loaded_kinect_color,loaded_kinect_depth]() {
-		this->interrupt_loaded_thread_ = false;
-		while(!this->interrupt_loaded_thread_) {
-			slimage::Image3ub cpy_color = loaded_kinect_color.clone();
-			slimage::Image1ui16 cpy_depth = loaded_kinect_depth.clone();
-			this->OnImages(cpy_depth, cpy_color);
-			frame_counter_ = 1;
-			while(!this->reload && !this->interrupt_loaded_thread_) {
-				usleep(1000);
+	processing_thread_ = boost::thread(
+		[this]() {
+			this->interrupt_loaded_thread_ = false;
+			while(!this->interrupt_loaded_thread_) {
+				this->OnImages(rgbd_stream_->get());
+				frame_counter_ = 1;
+				while(!this->reload && !this->interrupt_loaded_thread_) {
+					usleep(1000);
+				}
+				this->reload = false;
 			}
-			this->reload = false;
-		}
-	});
+		});
 
 }
 
@@ -194,16 +188,8 @@ void WdgtKinectSuperPoints::StopProcessingThread()
 	ui.horizontalSliderFrame->setEnabled(false);
 	ui.horizontalSliderFrame->setMaximum(0);
 	// stops the processing thread and the kinect if it is running
-#if defined DASP_HAS_OPENNI
-	if(kinect_grabber_) {
-		kinect_grabber_->Stop();
-	}
-#endif
 	interrupt_loaded_thread_ = true;
 	processing_thread_.join();
-#if defined DASP_HAS_OPENNI
-	kinect_grabber_.reset();
-#endif
 }
 
 void WdgtKinectSuperPoints::OnChangeFrame(int value)
@@ -217,12 +203,6 @@ void WdgtKinectSuperPoints::OnChangeFrame(int value)
 
 void WdgtKinectSuperPoints::OnCaptureOne()
 {
-	// this is only possible with a running kinect (ONI or live)
-	if(!kinect_grabber_) {
-		QMessageBox::information(this, "Not running!", "Open ONI file or run kinect in live mode!");
-		return;
-	}
-
 	// user shall give rgbd image base name to save captured RGBD image
 	QString fn = QFileDialog::getSaveFileName(this, "Open ONI file", "/home/david");
 	if(fn.isEmpty()) {
@@ -297,17 +277,17 @@ void WdgtKinectSuperPoints::OnSaveDasp()
 	}
 }
 
-void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color)
+void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 {
 	// save RGBD image if requested
 	if(capture_next_) {
-		slimage::Save(kinect_color, capture_filename_ + "_color.png");
-		slimage::Save(kinect_depth, capture_filename_ + "_depth.pgm");
+		slimage::Save(rgbd.color, capture_filename_ + "_color.png");
+		slimage::Save(rgbd.depth, capture_filename_ + "_depth.pgm");
 		capture_next_ = false;
 	}
 	// process image
 	dasp::SetRandomNumberSeed(0);
-	dasp_processing_->step(kinect_depth, kinect_color);
+	dasp_processing_->step(rgbd.depth, rgbd.color);
 	if(mode_ == LiveMode) {
 		frame_counter_ ++;
 	}
@@ -329,7 +309,7 @@ void WdgtKinectSuperPoints::OnImages(const slimage::Image1ui16& kinect_depth, co
 		}
 		{	// save rgb in png
 			std::string fn_rgb = (boost::format(save_dasp_fn_+"%1$05d.png") % frame_counter_).str();
-			slimage::Save(kinect_color, fn_rgb);
+			slimage::Save(rgbd.color, fn_rgb);
 		}
 	}
 }

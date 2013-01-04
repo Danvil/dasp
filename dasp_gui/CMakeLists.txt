@@ -12,6 +12,7 @@ endif (DASP_HAS_OPENNI)
 
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
+	${dasp_SOURCE_DIR}/rgbd
 )
 
 SET(QT_USE_QTOPENGL TRUE)
@@ -62,6 +63,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 TARGET_LINK_LIBRARIES(dasp_gui
 	libdasp
+	rgbd
 	${QT_LIBRARIES}
 	boost_signals
 	boost_thread
@@ -76,9 +78,3 @@ if (DASP_HAS_CANDY)
 	)
 	target_link_libraries(dasp_gui candy)
 endif (DASP_HAS_CANDY)
-
-if (DASP_HAS_OPENNI)
-	add_definitions(-DDASP_HAS_OPENNI)
-	include_directories(${dasp_SOURCE_DIR}/kinect ${OPENNI_INCLUDE_DIR})
-	target_link_libraries(dasp_gui kinect)
-endif (DASP_HAS_OPENNI)

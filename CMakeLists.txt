@@ -36,7 +36,3 @@ add_subdirectory(dasv_cmd)
 add_subdirectory(dasv_vis)
 
 add_subdirectory(vis_graph)
-
-if (DASP_HAS_OPENNI)
-	add_subdirectory(kinect)
-endif (DASP_HAS_OPENNI)
