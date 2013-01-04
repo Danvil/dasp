@@ -4,6 +4,7 @@
 	#include "KinectGrabber.h"
 #endif
 #include <iostream>
+#include <stdexcept>
 
 constexpr int WIDTH = 640;
 constexpr int HEIGHT = 480;
@@ -152,18 +153,19 @@ private:
 
 #endif
 
-std::shared_ptr<RgbdStream> FactorTest(const std::string& tag)
+std::shared_ptr<RgbdStream> FactorTest(const std::string& arg)
 {
-	if(tag == "uniform") {
+	if(arg == "uniform") {
 		return std::make_shared<RgbdStreamTestUniform>();
 	}
-	if(tag == "paraboloid") {
+	if(arg == "paraboloid") {
 		return std::make_shared<RgbdStreamTestParaboloid>();
 	}
-	if(tag == "sphere") {
+	if(arg == "sphere") {
 		return std::make_shared<RgbdStreamTestSphere>();
 	}
-	return std::shared_ptr<RgbdStream>();
+	std::cerr << "ERROR: Invalid rgbd test stream arg='" << arg << "'!" << std::endl;
+	throw 0;
 }
 
 std::shared_ptr<RgbdStream> FactorStatic(const std::string& fn)
@@ -176,7 +178,8 @@ std::shared_ptr<RandomAccessRgbdStream> FactorOni(const std::string& fn)
 #ifdef DASP_HAS_OPENNI
 	return std::make_shared<RgbdStreamOni>(fn);
 #else
-	return std::shared_ptr<RandomAccessRgbdStream>();
+	std::cerr << "ERROR: Library configured without OpenNI! Enabel DASP_HAS_OPENNI in CMake." << std::endl;
+	throw 0;
 #endif
 }
 
@@ -185,7 +188,26 @@ std::shared_ptr<RgbdStream> FactorKinectLive(const std::string& fn_config)
 #ifdef DASP_HAS_OPENNI
 	return std::make_shared<RgbdStreamKinectLive>(fn_config);
 #else
-	return std::shared_ptr<RgbdStream>();
+	std::cerr << "ERROR: Library configured without OpenNI! Enabel DASP_HAS_OPENNI in CMake." << std::endl;
+	throw 0;
 #endif
 }
 
+std::shared_ptr<RgbdStream> FactorStream(const std::string& mode, const std::string& arg)
+{
+	if(mode == "test") {
+		return FactorTest(arg);
+	}
+	if(mode == "static") {
+		return FactorStatic(arg);
+	}
+	if(mode == "oni") {
+		return FactorOni(arg);
+	}
+	if(mode == "live") {
+		return FactorKinectLive(arg);
+	}
+	// default
+	std::cerr << "ERROR: Invalid mode='" << mode << "' and arg='" << arg << "'!" << std::endl;
+	throw 0;
+}
