@@ -4,7 +4,8 @@ add_definitions(-DSLIMAGE_IO_QT)
 
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
-	${dasv_SOURCE_DIR}
+	${dasp_SOURCE_DIR}/dasv
+	${dasp_SOURCE_DIR}/rgbd
 	${DT_DIR}/CT/src
 	${CANDY_DIR}/libcandy/src
 )
@@ -38,6 +39,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 TARGET_LINK_LIBRARIES(dasv_vis
 	dasv
+	rgbd
 	candy
 	${QT_LIBRARIES}
 	boost_program_options

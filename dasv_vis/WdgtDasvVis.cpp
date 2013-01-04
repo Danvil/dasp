@@ -1,4 +1,5 @@
 #include "WdgtDasvVis.h"
+#include <Slimage/IO.hpp>
 
 void PrepareEngine(const boost::shared_ptr<Candy::Engine>& engine)
 {
@@ -32,8 +33,57 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 	ui.tabs->addTab(widget_candy_tab_, "3D");
 	engine_tab_ = widget_candy_tab_->getEngine();
 	PrepareEngine(engine_tab_);
+
+	QObject::connect(&timer_tick_, SIGNAL(timeout()), this, SLOT(tick()));
+	timer_tick_.setInterval(1);
+	timer_tick_.start();
 }
 
 WdgtDasvVis::~WdgtDasvVis()
 {
+}
+
+void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
+{
+	rgbd_stream_ = rgbd_stream;
+	dasv_ = std::make_shared<dasv::ContinuousSupervoxels>();
+	dasv_->start();
+}
+
+void WdgtDasvVis::tick()
+{
+	if(rgbd_stream_->grab()) {
+		Rgbd data = rgbd_stream_->get();
+		showImage("color", data.color);
+		// slimage::gui::Show("depth", data.depth, 500, 3000, 0);
+		dasv_->step(data.color, data.depth);
+	}
+}
+
+void WdgtDasvVis::showImage(const std::string& tag, const slimage::Image3ub& img)
+{
+	std::map<std::string, QWidget*> tabs_labels;
+	// prepare tabs
+	for(int i=0; i<ui.tabs->count(); i++) {
+		std::string text = ui.tabs->tabText(i).toStdString();
+		tabs_labels[text] = ui.tabs->widget(i);
+	}
+	// convert to Qt image
+	QImage* qimg = slimage::qt::ConvertToQt(img);
+	if(qimg == 0) {
+		return;
+	}
+	// find label and create new if none exists
+	QLabel* qlabel;
+	if(tabs_labels.find(tag) != tabs_labels.end()) {
+		qlabel = (QLabel*)tabs_labels[tag];
+	} else {
+		qlabel = new QLabel();
+		tabs_labels[tag] = qlabel;
+		ui.tabs->addTab(qlabel, QString::fromStdString(tag));
+	}
+	// display image in label
+	qlabel->setPixmap(QPixmap::fromImage(*qimg));
+	// cleanup
+	delete qimg;
 }

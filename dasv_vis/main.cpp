@@ -9,13 +9,18 @@ int main(int argc, char *argv[])
 {
 	namespace po = boost::program_options;
 
+	std::string p_rgbd_mode = "test";
+	std::string p_rgbd_arg = "uniform";
+	unsigned int p_rgbd_seek = 0;
+
 	// parse command line options
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "produce help message")
 		("live", "Kinect live mode")
-		("oni", po::value<std::string>(), "view a pre-recorded ONI file")
-		("rgbd", po::value<std::string>(), "open an RGB-D image")
+		("rgbd_mode", po::value(&p_rgbd_mode)->default_value(p_rgbd_mode), "rgbd stream mode (test, static, oni, live)")
+		("rgbd_arg", po::value(&p_rgbd_arg)->default_value(p_rgbd_arg), "rgbd stream argument")
+		("rgbd_seek", po::value(&p_rgbd_seek)->default_value(p_rgbd_seek), "rgbd stream seek (only usable with mode=oni)")
 	;
 
 	po::variables_map vm;
@@ -27,19 +32,18 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-    QApplication a(argc, argv);
-    WdgtDasvVis w;
-    w.show();
+	std::cout << "Creating widget..." << std::endl;
+	QApplication a(argc, argv);
+	WdgtDasvVis w;
+	w.show();
 
-	if(vm.count("live")) {
-		// w.ShowLive();
+	std::cout << "Opening RGBD stream..." << std::endl;
+	std::shared_ptr<RgbdStream> rgbd_stream = FactorStream(p_rgbd_mode, p_rgbd_arg);
+	auto rgbd_stream_ra = std::dynamic_pointer_cast<RandomAccessRgbdStream>(rgbd_stream);
+	if(rgbd_stream_ra) {
+		rgbd_stream_ra->seek(p_rgbd_seek);
 	}
-	else if(vm.count("oni")) {
-		// w.LoadOni(vm["oni"].as<std::string>());
-	}
-	else if(vm.count("rgbd")) {
-		// w.LoadRgbd(vm["rgbd"].as<std::string>());
-	}
+    w.setRgbdStream(rgbd_stream);
 
     return a.exec();
 }
