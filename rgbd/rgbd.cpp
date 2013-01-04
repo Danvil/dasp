@@ -1,14 +1,17 @@
 #include "rgbd.hpp"
 #include <Slimage/IO.hpp>
-#include <kinect/KinectGrabber.h>
+#ifdef DASP_HAS_OPENNI
+	#include "KinectGrabber.h"
+#endif
+#include <iostream>
 
 constexpr int WIDTH = 640;
 constexpr int HEIGHT = 480;
 
-class ScenarioTestUniform : public Scenario
+class RgbdStreamTestUniform : public RgbdStream
 {
 public:
-	ScenarioTestUniform() {
+	RgbdStreamTestUniform() {
 		data_.color = slimage::Image3ub(WIDTH, HEIGHT, {{0,128,128}});
 		data_.depth = slimage::Image1ui16(WIDTH, HEIGHT);
 		for(int i=0; i<HEIGHT; i++) {
@@ -17,15 +20,16 @@ public:
 			}
 		}
 	}
-	Rgbd pop() { return data_; }
+	bool grab() { return true; }
+	Rgbd get() { return data_; }
 private:
 	Rgbd data_;
 };
 
-class ScenarioTestParaboloid : public Scenario
+class RgbdStreamTestParaboloid : public RgbdStream
 {
 public:
-	ScenarioTestParaboloid() {
+	RgbdStreamTestParaboloid() {
 		data_.color = slimage::Image3ub(WIDTH, HEIGHT, {{0,128,128}});
 		data_.depth = slimage::Image1ui16(WIDTH, HEIGHT);
 		for(int i=0; i<HEIGHT; i++) {
@@ -36,16 +40,18 @@ public:
 			}
 		}
 	}
-	Rgbd pop() { return data_; }
+	bool grab() { return true; }
+	Rgbd get() { return data_; }
 private:
 	Rgbd data_;
 };
 
-class ScenarioTestSphere : public Scenario
+class RgbdStreamTestSphere : public RgbdStream
 {
 public:
-	ScenarioTestSphere() : time_(0) {}
-	Rgbd pop() {
+	RgbdStreamTestSphere() : time_(0) {}
+	bool grab() { return true; }
+	Rgbd get() {
 		slimage::Image3ub color(WIDTH, HEIGHT, {{0,128,128}});
 		slimage::Image1ui16 depth(WIDTH, HEIGHT);
 		for(int i=0; i<HEIGHT; i++) {
@@ -71,65 +77,115 @@ private:
 	int time_;
 };
 
-class ScenarioStatic : public Scenario
+class RgbdStreamStatic : public RgbdStream
 {
 public:
-	ScenarioStatic(const std::string& fn) {
+	RgbdStreamStatic(const std::string& fn) {
 		data_.color = slimage::Load3ub(fn + "_color.png");
 		data_.depth = slimage::Load1ui16(fn + "_depth.pgm");
+		if(data_.color.width() != data_.depth.width() || data_.color.height() != data_.depth.height()) {
+			std::cerr << "WARNING: Size of color and depth image do not match!" << std::endl;
+		}
 	}
-	Rgbd pop() { return data_; }
+	bool grab() { return true; }
+	Rgbd get() { return data_; }
 private:
 	Rgbd data_;
 };
 
-class ScenarioOni : public Scenario
+#ifdef DASP_HAS_OPENNI
+
+class RgbdStreamOni : public RandomAccessRgbdStream
 {
 public:
-	ScenarioOni(const std::string& fn, int offset=0) {
+	RgbdStreamOni(const std::string& fn) {
 		grabber_ = std::make_shared<dasp::KinectGrabber>();
 		grabber_->OpenFile(fn);
-		grabber_->SeekToFrame(offset);
 	}
-	Rgbd pop() {
-		Rgbd data;
-		bool ok = grabber_->Grab();
-		if(ok) {
-			data.color = grabber_->GetLastColor().clone();
-			data.depth = grabber_->GetLastDepth().clone();
-		}
-		return data;
+	~RgbdStreamOni() {
+		grabber_->Stop();
+	}
+	unsigned int numFrames() {
+		return grabber_->NumFrames();
+	}
+	unsigned int tell() {
+		return grabber_->TellFrame();
+	}
+	void seek(unsigned int frame) {
+		grabber_->SeekToFrame(frame);
+	}
+	bool grab() {
+		return grabber_->Grab();
+	}
+	Rgbd get() {
+		return {
+			grabber_->GetLastColor().clone(),
+			grabber_->GetLastDepth().clone()
+		};
 	}
 private:
 	std::shared_ptr<dasp::KinectGrabber> grabber_;
 };
 
-std::shared_ptr<Scenario> FactorTest(const std::string& tag)
+class RgbdStreamKinectLive : public RgbdStream
+{
+public:
+	RgbdStreamKinectLive(const std::string& fn_config) {
+		grabber_ = std::make_shared<dasp::KinectGrabber>();
+		grabber_->OpenConfig(fn_config);
+	}
+	~RgbdStreamKinectLive() {
+		grabber_->Stop();
+	}
+	bool grab() {
+		return grabber_->Grab();
+	}
+	Rgbd get() {
+		return {
+			grabber_->GetLastColor().clone(),
+			grabber_->GetLastDepth().clone()
+		};
+	}
+private:
+	std::shared_ptr<dasp::KinectGrabber> grabber_;
+};
+
+#endif
+
+std::shared_ptr<RgbdStream> FactorTest(const std::string& tag)
 {
 	if(tag == "uniform") {
-		return std::make_shared<ScenarioTestUniform>();
+		return std::make_shared<RgbdStreamTestUniform>();
 	}
 	if(tag == "paraboloid") {
-		return std::make_shared<ScenarioTestParaboloid>();
+		return std::make_shared<RgbdStreamTestParaboloid>();
 	}
 	if(tag == "sphere") {
-		return std::make_shared<ScenarioTestSphere>();
+		return std::make_shared<RgbdStreamTestSphere>();
 	}
-	return std::shared_ptr<Scenario>();
+	return std::shared_ptr<RgbdStream>();
 }
 
-std::shared_ptr<Scenario> FactorStatic(const std::string& fn)
+std::shared_ptr<RgbdStream> FactorStatic(const std::string& fn)
 {
-	return std::make_shared<ScenarioStatic>(fn);
+	return std::make_shared<RgbdStreamStatic>(fn);
 }
 
-std::shared_ptr<Scenario> FactorOni(const std::string& fn, unsigned int offset)
+std::shared_ptr<RandomAccessRgbdStream> FactorOni(const std::string& fn)
 {
-	return std::make_shared<ScenarioOni>(fn, offset);
+#ifdef DASP_HAS_OPENNI
+	return std::make_shared<RgbdStreamOni>(fn);
+#else
+	return std::shared_ptr<RandomAccessRgbdStream>();
+#endif
 }
 
-std::shared_ptr<Scenario> FactorLive()
+std::shared_ptr<RgbdStream> FactorKinectLive(const std::string& fn_config)
 {
-	return std::shared_ptr<Scenario>();
+#ifdef DASP_HAS_OPENNI
+	return std::make_shared<RgbdStreamKinectLive>(fn_config);
+#else
+	return std::shared_ptr<RgbdStream>();
+#endif
 }
 

@@ -5,10 +5,8 @@
 #include "WdgtSuperpixelParameters.h"
 #include "WdgtBenchmark.h"
 #include "WdgtAbout.h"
-#if defined DASP_HAS_OPENNI
-#	include "KinectGrabber.h"
-#endif
 #include "DaspProcessing.h"
+#include <rgbd.hpp>
 #if defined DASP_HAS_CANDY
 #	include <Candy/System/GLSystemQtWindow.h>
 #	include <Candy.h>
@@ -17,6 +15,7 @@
 #include <QtCore/QTimer>
 #include <QtCore/QMutex>
 #include <boost/thread.hpp>
+#include <memory>
 
 class WdgtKinectSuperPoints : public QMainWindow
 {
@@ -33,7 +32,7 @@ public:
 	void LoadRgbd(const std::string& fn);
 
 private:
-	void OnImages(const slimage::Image1ui16& kinect_depth, const slimage::Image3ub& kinect_color);
+	void OnImages(const Rgbd& rgbd);
 
 	void StopProcessingThread();
 
@@ -69,9 +68,7 @@ private:
 	boost::shared_ptr<WdgtBenchmark> gui_benchmark_;
 	boost::shared_ptr<WdgtAbout> gui_about_;
 
-#if defined DASP_HAS_OPENNI
-	boost::shared_ptr<dasp::KinectGrabber> kinect_grabber_;
-#endif
+	std::shared_ptr<RgbdStream> rgbd_stream_;
 
 	boost::shared_ptr<DaspProcessing> dasp_processing_;
 

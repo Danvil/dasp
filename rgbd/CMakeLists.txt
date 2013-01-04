@@ -1,13 +1,55 @@
-add_definitions(-DSLIMAGE_IO_OPENCV)
 
-include_directories(
+#
+# Project file for rgbd library which provides RGDB streams
+#
+# parameters:
+#  - DASP_HAS_OPENNI: set if OpenNI is available
+#
+
+# general settings
+
+SET(rgbd_DEFINES
+	-DSLIMAGE_IO_OPENCV
 )
 
-add_library(rgbd SHARED rgbd.cpp)
+SET(rgbd_SOURCES
+	rgbd.cpp
+)
 
-target_link_libraries(rgbd
-	kinect
+SET(rgbd_INCLUDES
+)
+
+SET(rgbd_LIBRARIES
 	opencv_core
 	opencv_highgui
 )
 
+
+# OpenNI specific settings
+
+if (DASP_HAS_OPENNI)
+
+	LIST(APPEND rgbd_DEFINES
+		-DDASP_HAS_OPENNI
+	)
+	
+	LIST(APPEND rgbd_SOURCES
+		KinectGrabber.cpp
+	)
+	
+	LIST(APPEND rgbd_INCLUDES
+		${OPENNI_INCLUDE_DIR}
+	)
+	
+	LIST(APPEND rgbd_LIBRARIES
+		OpenNI
+		boost_signals
+	)
+
+endif (DASP_HAS_OPENNI)
+
+
+ADD_DEFINITIONS(${rgbd_DEFINES})
+INCLUDE_DIRECTORIES(${rgbd_INCLUDES})
+ADD_LIBRARY(rgbd SHARED ${rgbd_SOURCES})
+TARGET_LINK_LIBRARIES(rgbd ${rgbd_LIBRARIES})
