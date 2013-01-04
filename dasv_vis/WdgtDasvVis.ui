@@ -15,54 +15,8 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="0" colspan="2">
+    <item row="0" column="0" colspan="2">
      <widget class="QMdiArea" name="mdiArea"/>
-    </item>
-    <item row="0" column="0" colspan="3">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="labelFrameCounter">
-        <property name="font">
-         <font>
-          <weight>75</weight>
-          <bold>true</bold>
-         </font>
-        </property>
-        <property name="text">
-         <string>Frame: ---</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QSlider" name="horizontalSliderFrame">
-        <property name="maximum">
-         <number>300</number>
-        </property>
-        <property name="pageStep">
-         <number>30</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="tickPosition">
-         <enum>QSlider::TicksBelow</enum>
-        </property>
-        <property name="tickInterval">
-         <number>30</number>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="checkBoxPlay">
-        <property name="text">
-         <string>Play</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </item>
    </layout>
   </widget>
@@ -77,12 +31,10 @@
    </property>
    <widget class="QMenu" name="menuWindows">
     <property name="title">
-     <string>View</string>
+     <string>Windows</string>
     </property>
-    <addaction name="action_Parameters"/>
-    <addaction name="action_Benchmarks"/>
-    <addaction name="separator"/>
-    <addaction name="actionAbout"/>
+    <addaction name="actionTile_Subwindows"/>
+    <addaction name="actionCascade_Subwindows"/>
    </widget>
    <addaction name="menuWindows"/>
   </widget>
@@ -145,6 +97,16 @@
    </property>
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionTile_Subwindows">
+   <property name="text">
+    <string>Tile Subwindows</string>
+   </property>
+  </action>
+  <action name="actionCascade_Subwindows">
+   <property name="text">
+    <string>Cascade Subwindows</string>
    </property>
   </action>
  </widget>

@@ -2,6 +2,7 @@
 #include <graphseg/Rendering.hpp>
 #include <Slimage/IO.hpp>
 #include <QtGui/QMdiSubWindow>
+#include <QtGui/QLabel>
 #include <boost/bind.hpp>
 
 void PrepareEngine(const boost::shared_ptr<Candy::Engine>& engine)
@@ -65,6 +66,8 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 
 	dasv::DebugSetDisplayImageCallback(boost::bind(&WdgtDasvVis::showImageThreadsafe, this, _1, _2));
 
+	QObject::connect(ui.actionTile_Subwindows, SIGNAL(triggered()), ui.mdiArea, SLOT(tileSubWindows()));
+	QObject::connect(ui.actionCascade_Subwindows, SIGNAL(triggered()), ui.mdiArea, SLOT(cascadeSubWindows()));
 }
 
 WdgtDasvVis::~WdgtDasvVis()
