@@ -28,9 +28,10 @@ private:
 	void showImage(const std::string& tag, const slimage::Image3ub& img);
 
 private:
- 	boost::shared_ptr<Candy::Engine> engine_main_;
-	boost::shared_ptr<Candy::Engine> engine_tab_;
-	Candy::GLSystemQtWindow* widget_candy_tab_;
+	Candy::GLSystemQtWindow* widget_candy_global_;
+	boost::shared_ptr<Candy::Engine> engine_global_;
+	Candy::GLSystemQtWindow* widget_candy_frame_;
+	boost::shared_ptr<Candy::Engine> engine_frame_;
 
 	std::shared_ptr<RgbdStream> rgbd_stream_;
 

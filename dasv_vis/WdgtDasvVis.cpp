@@ -1,5 +1,6 @@
 #include "WdgtDasvVis.h"
 #include <Slimage/IO.hpp>
+#include <QtGui/QMdiSubWindow>
 #include <boost/bind.hpp>
 
 void PrepareEngine(const boost::shared_ptr<Candy::Engine>& engine)
@@ -27,13 +28,17 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 
 	std::cout << "Preparing OpenGL widgets ..." << std::endl;
 
-	engine_main_ = ui.widgetCandy->getEngine();
-	PrepareEngine(engine_main_);
+	widget_candy_global_ = new Candy::GLSystemQtWindow(0);
+	auto w1 = ui.mdiArea->addSubWindow(widget_candy_global_);
+	w1->setWindowTitle("3D global");
+	engine_global_ = widget_candy_global_->getEngine();
+	PrepareEngine(engine_global_);
 
-	widget_candy_tab_ = new Candy::GLSystemQtWindow(0);
-	ui.tabs->addTab(widget_candy_tab_, "3D");
-	engine_tab_ = widget_candy_tab_->getEngine();
-	PrepareEngine(engine_tab_);
+	widget_candy_frame_ = new Candy::GLSystemQtWindow(0);
+	auto w2 = ui.mdiArea->addSubWindow(widget_candy_frame_);
+	w2->setWindowTitle("3D frame");
+	engine_frame_ = widget_candy_frame_->getEngine();
+	PrepareEngine(engine_frame_);
 
 	QObject::connect(&timer_tick_, SIGNAL(timeout()), this, SLOT(tick()));
 	timer_tick_.setInterval(1);
@@ -65,28 +70,35 @@ void WdgtDasvVis::tick()
 
 void WdgtDasvVis::showImage(const std::string& tag, const slimage::Image3ub& img)
 {
-	std::map<std::string, QWidget*> tabs_labels;
-	// prepare tabs
-	for(int i=0; i<ui.tabs->count(); i++) {
-		std::string text = ui.tabs->tabText(i).toStdString();
-		tabs_labels[text] = ui.tabs->widget(i);
-	}
 	// convert to Qt image
 	QImage* qimg = slimage::qt::ConvertToQt(img);
 	if(qimg == 0) {
 		return;
 	}
-	// find label and create new if none exists
+	// prepare subwindow list
+	std::map<std::string, QMdiSubWindow*> subwindows_by_tag;
+	for(QMdiSubWindow* w : ui.mdiArea->subWindowList()) {
+		subwindows_by_tag[w->windowTitle().toStdString()] = w;
+	}
+	// find label
+	auto it = subwindows_by_tag.find(tag);
+	// create new if none exists
+	QMdiSubWindow* sw;
 	QLabel* qlabel;
-	if(tabs_labels.find(tag) != tabs_labels.end()) {
-		qlabel = (QLabel*)tabs_labels[tag];
+	if(it != subwindows_by_tag.end()) {
+		sw = it->second;
+		qlabel = (QLabel*)sw->widget();
 	} else {
 		qlabel = new QLabel();
-		tabs_labels[tag] = qlabel;
-		ui.tabs->addTab(qlabel, QString::fromStdString(tag));
+		subwindows_by_tag[tag] = sw;
+		sw = ui.mdiArea->addSubWindow(qlabel);
+		sw->setWindowTitle(QString::fromStdString(tag));
+		sw->show();
 	}
 	// display image in label
 	qlabel->setPixmap(QPixmap::fromImage(*qimg));
+	qlabel->adjustSize();
+	sw->adjustSize();
 	// cleanup
 	delete qimg;
 }

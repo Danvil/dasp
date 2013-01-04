@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1020</width>
-    <height>558</height>
+    <width>1003</width>
+    <height>719</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,22 +15,8 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="1">
-     <widget class="QTabWidget" name="tabs">
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
-      <widget class="QWidget" name="tab">
-       <attribute name="title">
-        <string>Tab 1</string>
-       </attribute>
-      </widget>
-      <widget class="QWidget" name="tab_2">
-       <attribute name="title">
-        <string>Tab 2</string>
-       </attribute>
-      </widget>
-     </widget>
+    <item row="1" column="0" colspan="2">
+     <widget class="QMdiArea" name="mdiArea"/>
     </item>
     <item row="0" column="0" colspan="3">
      <layout class="QHBoxLayout" name="horizontalLayout">
@@ -78,16 +64,6 @@
       </item>
      </layout>
     </item>
-    <item row="1" column="0">
-     <widget class="Candy::GLSystemQtWindow" name="widgetCandy" native="true">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -95,7 +71,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1020</width>
+     <width>1003</width>
      <height>25</height>
     </rect>
    </property>
@@ -172,14 +148,6 @@
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>Candy::GLSystemQtWindow</class>
-   <extends>QWidget</extends>
-   <header location="global">Candy/System/GLSystemQtWindow.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
