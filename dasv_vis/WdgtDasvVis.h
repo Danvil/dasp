@@ -9,6 +9,8 @@
 #include <Slimage/Slimage.hpp>
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
+#include <thread>
+#include <mutex>
 
 class WdgtDasvVis : public QMainWindow
 {
@@ -25,6 +27,7 @@ public Q_SLOTS:
 	void tick();
 
 private:
+	void showImageThreadsafe(const std::string& tag, const slimage::Image3ub& img);
 	void showImage(const std::string& tag, const slimage::Image3ub& img);
 
 private:
@@ -38,6 +41,11 @@ private:
 	std::shared_ptr<dasv::ContinuousSupervoxels> dasv_;
 
 	QTimer timer_tick_;
+
+	std::thread worker_;
+	bool worker_interupt_;
+	std::map<std::string, slimage::Image3ub> show_images_cache_;
+	std::mutex show_images_cache_mutex_;
 
 private:
     Ui::WdgtDasvVisClass ui;

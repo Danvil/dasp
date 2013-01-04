@@ -41,10 +41,11 @@ WdgtDasvVis::WdgtDasvVis(QWidget *parent)
 	PrepareEngine(engine_frame_);
 
 	QObject::connect(&timer_tick_, SIGNAL(timeout()), this, SLOT(tick()));
-	timer_tick_.setInterval(1);
+	timer_tick_.setInterval(10);
 	timer_tick_.start();
 
-	dasv::DebugSetDisplayImageCallback(boost::bind(&WdgtDasvVis::showImage, this, _1, _2));
+	dasv::DebugSetDisplayImageCallback(boost::bind(&WdgtDasvVis::showImageThreadsafe, this, _1, _2));
+
 }
 
 WdgtDasvVis::~WdgtDasvVis()
@@ -54,18 +55,39 @@ WdgtDasvVis::~WdgtDasvVis()
 void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 {
 	rgbd_stream_ = rgbd_stream;
-	dasv_ = std::make_shared<dasv::ContinuousSupervoxels>();
-	dasv_->start();
+
+	worker_interupt_ = true;
+	if(worker_.joinable())
+		worker_.join();
+
+	worker_ = std::thread(
+		[this]() {
+			worker_interupt_ = false;
+			this->dasv_ = std::make_shared<dasv::ContinuousSupervoxels>();
+			this->dasv_->start();
+			while(!worker_interupt_ && this->rgbd_stream_->grab()) {
+				Rgbd data = this->rgbd_stream_->get();
+				showImageThreadsafe("color", data.color);
+				// slimage::gui::Show("depth", data.depth, 500, 3000, 0);
+				this->dasv_->step(data.color, data.depth);
+			}
+		});
+
 }
 
 void WdgtDasvVis::tick()
 {
-	if(rgbd_stream_->grab()) {
-		Rgbd data = rgbd_stream_->get();
-		showImage("color", data.color);
-		// slimage::gui::Show("depth", data.depth, 500, 3000, 0);
-		dasv_->step(data.color, data.depth);
+	std::lock_guard<std::mutex> lock(show_images_cache_mutex_);
+	for(auto p : show_images_cache_) {
+		showImage(p.first, p.second);
 	}
+	show_images_cache_.clear();
+}
+
+void WdgtDasvVis::showImageThreadsafe(const std::string& tag, const slimage::Image3ub& img)
+{
+	std::lock_guard<std::mutex> lock(show_images_cache_mutex_);
+	show_images_cache_[tag] = img;
 }
 
 void WdgtDasvVis::showImage(const std::string& tag, const slimage::Image3ub& img)
