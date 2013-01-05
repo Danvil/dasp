@@ -125,11 +125,16 @@ void DebugDisplayImage(const std::string& tag, const slimage::Image1ui16& img16,
 /** Computes point to cluster distance */
 inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 {
-	const float mc = (p.color - c.color).squaredNorm();
+	constexpr float wc = 1.0f;
+	constexpr float ws = 1.0f;
+	constexpr float wc0 = wc / (wc + ws);
+	constexpr float ws0 = ws / (wc + ws);
+	const float mc = 10.0f*(p.color - c.color).squaredNorm();
+	const float mx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
 	const float dt = static_cast<float>(std::abs(p_time-c.time));
 	const float mt = dt*dt / static_cast<float>(CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
-	const float mx = (p.position - c.position).squaredNorm() / (CLUSTER_RADIUS*CLUSTER_RADIUS);
-	return 0.67f*mc + 0.33f*(mt + mx);
+	const float ms = mx + mt;
+	return wc0*mc + ws0*ms;
 }
 
 void ComputeRgbdDataNormals(RgbdData& rgbd)
@@ -886,9 +891,14 @@ void DebugPlotAssignmentDistance(slimage::Image3ub& img, const FramePtr& frame)
 {
 	DebugPlotSuperpixels(img, frame,
 		[](const Assignment& a) -> slimage::Pixel3ub {
-			const float q = std::min(1.0f, a.distance);
-			const unsigned char c = static_cast<float>(q*255.0f);
-			return {{c,c,c}};
+			const float x = std::min(+1.0f, std::max(-1.0f, a.distance/0.5f - 1.0f));
+			const int q = static_cast<int>(x*255.0f);
+			if(q < 0) {
+				return {{ 0, 0, (unsigned char)(-q) }};
+			}
+			else {
+				return {{ (unsigned char)(q), 0, 0 }};
+			}
 		});
 }
 
