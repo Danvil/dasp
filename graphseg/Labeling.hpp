@@ -9,6 +9,7 @@
 #define GRAPHSEG_LABELING_HPP_
 
 #include "Common.hpp"
+#include "as_range.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
 #include <vector>
@@ -106,7 +107,7 @@ namespace graphseg
 		}
 		// sort edges by weight
 		std::sort(edges.begin(), edges.end(), [](const Edge& x, const Edge& y){ return x.weight < y.weight; });
-		// cut one edge after another
+		// cut one edge after another and merge segments
 		for(unsigned int k=0; k<edges.size(); k++) {
 			if(edges[k].weight >= threshold) {
 				break;
@@ -129,6 +130,84 @@ namespace graphseg
 		return GraphLabeling::CreateClean(cluster_labels);
 	}
 
+	template<typename Graph, typename EdgeWeightMap, typename VertexLabelMap>
+	inline GraphLabeling ComputeSegmentLabels_UCM_Supervised(
+		const Graph& graph,
+		EdgeWeightMap edge_weight_map,
+		VertexLabelMap vertex_label_map,
+		float threshold)
+	{
+		const std::size_t num_vertices = boost::num_vertices(graph);
+		// find maximal used label
+		int label_max = -1;
+		for(auto vid : as_range(boost::vertices(graph))) {
+			const int label = boost::get(vertex_label_map, vid);
+			label_max = std::max(label_max, label);
+		}
+		const int label_supervised_threshold = label_max;
+		// labeled clusters keep label, unlabeled clusters get new label
+		// labels will indicate if clusters are supervised:
+		//   is_supervised(c) := (label(c) <= label_supervised_threshold)
+		std::vector<unsigned int> cluster_labels(num_vertices);
+		for(auto vid : as_range(boost::vertices(graph))) {
+			const int label = graph[vid];
+			if(label != -1) {
+				// supervised cluster
+				cluster_labels[vid] = label;
+			}
+			else {
+				// unsupervised cluster
+				cluster_labels[vid] = ++label_max;
+			}
+		}
+		// get all edges
+		struct Edge
+		{
+			unsigned int a, b;
+			float weight;
+		};
+		std::vector<Edge> edges;
+		edges.reserve(boost::num_edges(graph));
+		for(auto eid : as_range(boost::edges(graph))) {
+			edges.push_back(Edge{
+				static_cast<unsigned int>(boost::source(eid, graph)),
+				static_cast<unsigned int>(boost::target(eid, graph)),
+				boost::get(edge_weight_map, eid)
+			});
+		}
+		// sort edges by weight
+		std::sort(edges.begin(), edges.end(), [](const Edge& x, const Edge& y) { return x.weight < y.weight; });
+		// cut one edge after another and merge clusters into segments
+		for(unsigned int k=0; k<edges.size(); k++) {
+			const Edge& edge = edges[k];
+			// merge only if edge weight is smaller than thresold
+			if(edge.weight >= threshold) {
+				// all consecutive edges will have larger edge weights -> break
+				break;
+			}
+			// get cluster labels
+			const unsigned int label_a = cluster_labels[edge.a];
+			const unsigned int label_b = cluster_labels[edge.b];
+			if(label_a == label_b) {
+				// clusters are already part of the same segment -> nothing to do
+				continue;
+			}
+			// check if cluster segments are supervised
+			const bool is_supervised_a = (label_a <= label_supervised_threshold);
+			const bool is_supervised_b = (label_b <= label_supervised_threshold);
+			if(is_supervised_a && is_supervised_b) {
+				// do not merge if both clusters are supervised
+				continue;
+			}
+			// join segments connected by edge and keep the smaller label
+			// this assures that the label supervision property is guaranteed
+			const unsigned int old_label = std::max(label_a, label_b);
+			const unsigned int new_label = std::min(label_a, label_b);
+			std::replace(cluster_labels.begin(), cluster_labels.end(), old_label, new_label);
+		}
+		// create continuous labels
+		return GraphLabeling::CreateClean(cluster_labels);
+	}
 
 }
 
