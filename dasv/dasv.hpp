@@ -316,8 +316,12 @@ namespace dasv
 		ClusterGraph graph_;
 	};
 
-	/** Computes superpixel image from clusters and assignment */
-	slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors);
+	enum class PlotStyle {
+		Color, Age, AssignmentDistance, ClusterBorder
+	};
+
+	/** Plots superpixel cluster color */
+	slimage::Image3ub DebugPlotClusters(const FramePtr& frame, const std::vector<PlotStyle>& styles);
 
 	/** Computes compression error
 	 *   sum_i (mu_{a(i)} - mu)^2 / sum_i (x_i - mu)^2

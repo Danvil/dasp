@@ -774,18 +774,20 @@ void ContinuousSupervoxels::step(const Rgbd& data)
 	{
 		// superpixel image
 		DANVIL_BENCHMARK_START(dasv_debug)
-		boost::format fmt_col("/tmp/dasv/%05d_color.png");
-		boost::format fmt_age("/tmp/dasv/%05d_age.png");
+		// boost::format fmt_col("/tmp/dasv/%05d_color.png");
+		// boost::format fmt_age("/tmp/dasv/%05d_age.png");
 		FramePtr frame = series_.getFrame(t);
-		slimage::Image3ub img_col = DebugCreateSuperpixelImage(frame, true, false);
-		slimage::Image3ub img_age = DebugCreateSuperpixelImage(frame, true, true);
-		DebugDisplayImage("superpixel color", img_col);
-		DebugDisplayImage("superpixel age", img_age);
+		slimage::Image3ub img_col = DebugPlotClusters(frame, {PlotStyle::Color, PlotStyle::ClusterBorder});
+		DebugDisplayImage("sv color", img_col);
+		slimage::Image3ub img_age = DebugPlotClusters(frame, {PlotStyle::Age, PlotStyle::ClusterBorder});
+		DebugDisplayImage("sv age", img_age);
+		slimage::Image3ub img_adist = DebugPlotClusters(frame, {PlotStyle::AssignmentDistance});
+		DebugDisplayImage("sv assignment dist", img_adist);
 		// slimage::Save(img_col, (fmt_col % frame->time).str());
 		// slimage::Save(img_age, (fmt_age % frame->time).str());
 		// cluster graph
-		boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
-		boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
+		// boost::format fmt_clusters("/tmp/dasv/%05d_clusters.tsv");
+		// boost::format fmt_edges("/tmp/dasv/%05d_edges.tsv");
 		// IOWriteGraph(
 		// 	(fmt_clusters % frame->time).str(),
 		// 	(fmt_edges % frame->time).str(),
@@ -822,48 +824,19 @@ std::vector<Cluster> ContinuousSupervoxels::getAllClusters() const
 	return ClusterList::s_storage_->data();
 }
 
-slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders, bool age_colors)
+template<typename ColorFunc>
+void DebugPlotSuperpixels(slimage::Image3ub& img, const FramePtr& frame, ColorFunc cf)
 {
-	slimage::Image3ub img(frame->rgbd.rows(), frame->rgbd.cols(), {{0,0,0}});
 	const FrameAssignment& assignment = frame->assignment;
 	const int rows = frame->rgbd.rows();
 	const int cols = frame->rgbd.cols();
-	int ct_min = 1000000, ct_max = -1000000;
+	img.resize(rows, cols);
 	for(int y=0; y<cols; y++) {
 		for(int x=0; x<rows; x++) {
 			slimage::Pixel3ub color;
 			const auto& a = assignment(x,y);
 			if(a.hasValidCluster()) {
-				const Cluster& c = a.getCluster();
-				ct_min = std::min(ct_min, c.time);
-				ct_max = std::max(ct_max, c.time);
-				// cluster color for pixel
-				const auto pc = ColorToImage(c.color);
-				color = {{pc[0],pc[1],pc[2]}};
-
-				// // mark new clusters
-				// if(c->time == frame->time) {
-				// 	img(x,y) = {{0,0,255}};
-				// }
-
-				// age to color
-				if(age_colors) {
-					const int dt = frame->time - c.time;
-					const int q = (dt*255)/CLUSTER_TIME_RADIUS;
-					if(q < -255) {
-						color = {{ 0,96,0 }};
-					}
-					else if(q > +255) {
-						color = {{ (unsigned char)((510-q)/2), 0, 0 }};
-					}
-					else if(q < 0) {
-						color = {{ (unsigned char)(255+q), 255, 0 }};
-					}
-					else {
-						color = {{ 255, (unsigned char)(255-q), 0 }};
-					}
-				}
-
+				color = cf(a);
 			}
 			else {
 				color = (x%2==y%2)
@@ -873,26 +846,99 @@ slimage::Image3ub DebugCreateSuperpixelImage(const FramePtr& frame, bool borders
 			img(x,y) = color;
 		}
 	}
-	if(borders) {
-		for(int y=1; y<cols-1; y++) {
-			for(int x=1; x<rows-1; x++) {
-				cluster_id_type cid = assignment(x,y).cluster_id;
-				if(    cid != assignment(x,y-1).cluster_id
-					|| cid != assignment(x-1,y).cluster_id
-					|| cid != assignment(x,y+1).cluster_id
-					|| cid != assignment(x+1,y).cluster_id
-				) {
-					const slimage::Pixel3ub& v = img(x,y);
-					unsigned char cr = 255 - v[0];
-					unsigned char cg = 255 - v[1];
-					unsigned char cb = 255 - v[2];
-					img(x,y) = {{cr, cg, cb}};
-				}
+}
+
+void DebugPlotColor(slimage::Image3ub& img, const FramePtr& frame)
+{
+	DebugPlotSuperpixels(img, frame,
+		[](const Assignment& a) -> slimage::Pixel3ub {
+			const Cluster& c = a.getCluster();
+			// cluster color for pixel
+			const auto pc = ColorToImage(c.color);
+			return {{pc[0],pc[1],pc[2]}};
+		});
+}
+
+void DebugPlotAge(slimage::Image3ub& img, const FramePtr& frame)
+{
+	const auto ftime = frame->time;
+	DebugPlotSuperpixels(img, frame,
+		[ftime](const Assignment& a) -> slimage::Pixel3ub {
+			const Cluster& c = a.getCluster();
+			const int dt = ftime - c.time;
+			const int q = (dt*255)/CLUSTER_TIME_RADIUS;
+			if(q < -255) {
+				return {{ 0,96,0 }};
+			}
+			else if(q > +255) {
+				return {{ (unsigned char)((510-q)/2), 0, 0 }};
+			}
+			else if(q < 0) {
+				return {{ (unsigned char)(255+q), 255, 0 }};
+			}
+			else {
+				return {{ 255, (unsigned char)(255-q), 0 }};
+			}
+		});
+}
+
+void DebugPlotAssignmentDistance(slimage::Image3ub& img, const FramePtr& frame)
+{
+	DebugPlotSuperpixels(img, frame,
+		[](const Assignment& a) -> slimage::Pixel3ub {
+			const float q = std::min(1.0f, a.distance);
+			const unsigned char c = static_cast<float>(q*255.0f);
+			return {{c,c,c}};
+		});
+}
+
+void DebugPlotClusterBorder(slimage::Image3ub& img, const FramePtr& frame)
+{
+	const FrameAssignment& assignment = frame->assignment;
+	const int rows = frame->rgbd.rows();
+	const int cols = frame->rgbd.cols();
+	img.resize(rows, cols);
+	for(int y=1; y<cols-1; y++) {
+		for(int x=1; x<rows-1; x++) {
+			cluster_id_type cid = assignment(x,y).cluster_id;
+			if(    cid != assignment(x,y-1).cluster_id
+				|| cid != assignment(x-1,y).cluster_id
+				|| cid != assignment(x,y+1).cluster_id
+				|| cid != assignment(x+1,y).cluster_id
+			) {
+				const slimage::Pixel3ub& v = img(x,y);
+				unsigned char cr = 255 - v[0];
+				unsigned char cg = 255 - v[1];
+				unsigned char cb = 255 - v[2];
+				img(x,y) = {{cr, cg, cb}};
 			}
 		}
 	}
+}
+
+void DebugPlotClusters(slimage::Image3ub& img, const FramePtr& frame, PlotStyle style)
+{
+	switch(style) {
+		case PlotStyle::Color:
+			return DebugPlotColor(img, frame);
+		case PlotStyle::Age:
+			return DebugPlotAge(img, frame);
+		case PlotStyle::AssignmentDistance:
+			return DebugPlotAssignmentDistance(img, frame);
+		case PlotStyle::ClusterBorder:
+			return DebugPlotClusterBorder(img, frame);
+	}
+}
+
+slimage::Image3ub DebugPlotClusters(const FramePtr& frame, const std::vector<PlotStyle>& styles)
+{
+	slimage::Image3ub img;
+	for(PlotStyle ps : styles) {
+		DebugPlotClusters(img, frame, ps);
+	}
 	return img;
 }
+
 
 Eigen::Vector2f EvaluateComputeCompressionError(const FramePtr& frame)
 {
