@@ -137,6 +137,21 @@ inline float PointClusterDistance(int p_time, const Point& p, const Cluster& c)
 	return wc0*mc + ws0*ms;
 }
 
+/** Computes cluster to cluster similarity */
+inline float ClusterClusterSimilarity(const Cluster& a, const Cluster& b)
+{
+	constexpr float wc = 1.0f;
+	constexpr float ws = 1.0f;
+	constexpr float wc0 = wc / (wc + ws);
+	constexpr float ws0 = ws / (wc + ws);
+	const float mc = 10.0f*(a.color - b.color).squaredNorm();
+	const float mx = (a.position - b.position).squaredNorm() / (4.0f*CLUSTER_RADIUS*CLUSTER_RADIUS);
+	const float dt = static_cast<float>(std::abs(a.time-b.time));
+	const float mt = dt*dt / static_cast<float>(4.0f*CLUSTER_TIME_RADIUS*CLUSTER_TIME_RADIUS);
+	const float ms = mx + mt;
+	return std::exp(-0.5f*(wc0*mc + ws0*ms));
+}
+
 void ComputeRgbdDataNormals(RgbdData& rgbd)
 {
 	const int NY = rgbd.cols();
@@ -558,6 +573,16 @@ ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames)
 	return G;
 }
 
+void ComputeClusterGraphEdgeWeights(ClusterGraph& graph)
+{
+	for(auto eid : as_range(boost::edges(graph))) {
+		const Cluster& ca = graph[boost::source(eid, graph)];
+		const Cluster& cb = graph[boost::target(eid, graph)];
+		const float sim = ClusterClusterSimilarity(ca, cb);
+		boost::put(boost::edge_weight, graph, eid, sim);
+	}
+}
+
 void IOWriteClusters(const std::string& fn, const std::vector<Cluster>& clusters)
 {
 	std::ofstream ofs(fn);
@@ -734,6 +759,7 @@ void ContinuousSupervoxels::step(const Rgbd& data)
 				boost::put(boost::edge_weight, G, eid, 1.0f);
 			}
 		}
+		ComputeClusterGraphEdgeWeights(G);
 		// ready
 		graph_ = G;
 		std::cout << "Graph: num_vertices=" << boost::num_vertices(graph_)

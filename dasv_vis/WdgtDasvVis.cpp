@@ -1,5 +1,6 @@
 #include "WdgtDasvVis.h"
 #include <graphseg/Rendering.hpp>
+#include <common/color.hpp>
 #include <Slimage/IO.hpp>
 #include <QtGui/QMdiSubWindow>
 #include <QtGui/QLabel>
@@ -161,16 +162,28 @@ void WdgtDasvVis::renderGraphGlobal()
 		std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
 		graph = dasv_graph_;
 	}
-	graphseg::RenderEdges3DVcol(graph,
+	// graphseg::RenderEdges3DVcol(graph,
+	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+	// 		// returns vertex coordinate
+	// 		const dasv::Cluster& c = graph[vid];
+	// 		return Eigen::Vector3f{ 0.01f*c.pixel.x(), 0.01f*c.pixel.y(), 0.03f*static_cast<float>(c.time) };
+	// 		// return c.position;
+	// 	},
+	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+	// 		// returns vertex color
+	// 		return graph[vid].color;
+	// 	}
+	// );
+	graphseg::RenderEdges3D(graph,
 		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
 			// returns vertex coordinate
 			const dasv::Cluster& c = graph[vid];
 			return Eigen::Vector3f{ 0.01f*c.pixel.x(), 0.01f*c.pixel.y(), 0.03f*static_cast<float>(c.time) };
 			// return c.position;
 		},
-		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
-			// returns vertex color
-			return graph[vid].color;
+		[&graph](const dasv::ClusterGraph::edge_descriptor& eid) {
+			const float sim = boost::get(boost::edge_weight, graph, eid);
+			return common::SimilarityColor(sim);
 		}
 	);
 
