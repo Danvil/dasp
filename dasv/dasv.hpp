@@ -250,21 +250,6 @@ namespace dasv
 		boost::property<boost::edge_weight_t, float> // edge annotation
 	> ClusterGraph;
 
-	namespace detail
-	{
-		template<class Iter> struct iter_pair_range : std::pair<Iter,Iter>
-		{
-			iter_pair_range(const std::pair<Iter,Iter>& x) : std::pair<Iter,Iter>(x) {}
-			Iter begin() const { return this->first; }
-			Iter end() const { return this->second; }
-		};
-	}
-
-	template<class Iter>
-	inline detail::iter_pair_range<Iter> as_range(const std::pair<Iter,Iter>& x) {
-		return detail::iter_pair_range<Iter>(x);
-	}
-
 	/** Computes cluster graph of frames */
 	ClusterGraph ComputeClusterGraph(const std::vector<FramePtr>& frames);
 
