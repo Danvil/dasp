@@ -46,12 +46,14 @@ namespace dasv
 		int time;
 		cluster_id_type cluster_id;
 		bool valid;
+		int label;
 
 		friend std::ostream& operator<<(std::ostream& os, const Cluster& c)
 		{
 			os << c.time
 				<< "\t" << c.cluster_id
 				<< "\t" << (c.valid ? 1 : 0)
+				<< "\t" << c.label
 				<< "\t" << c.cluster_radius_px
 				<< "\t" << c.pixel.x() << "\t" << c.pixel.y()
 				<< "\t" << c.color.x() << "\t" << c.color.y() << "\t" << c.color.z()
@@ -140,16 +142,8 @@ namespace dasv
 	{
 		cluster_id_type a, b;
 
-		int id() const {
-			return a | b;
-		}
-		
-		friend bool operator==(const Edge& x, const Edge& y) {
-			return (x.a == y.a && x.b == y.b) || (x.a == y.b && x.b == y.a);
-		}
-
 		friend bool operator<(const Edge& x, const Edge& y) {
-			return x.id() < y.id();
+			return x.a < y.a || (x.a == y.a && x.b < y.b);
 		}
 	};
 
@@ -161,7 +155,6 @@ namespace dasv
 		ClusterList clusters;
 		FrameAssignment assignment;
 		std::vector<Edge> edges;
-
 	};
 
 	typedef std::shared_ptr<Frame> FramePtr;
@@ -215,16 +208,15 @@ namespace dasv
 			return frames[t-t0];
 		}
 
-		std::vector<FramePtr> getFrameRange(int t_begin, int t_end) const {
-			assert(t_begin < t_end);
+		/** Get all frames with ta <= frame_time <= tb */
+		std::vector<FramePtr> getFrameRange(int ta, int tb) const {
+			assert(ta <= tb);
 			int i1 = 0;
-			while(i1 < frames.size() && frames[i1]->time < t_begin) i1++;
+			while(i1 < frames.size() && frames[i1]->time < ta) i1++;
 			int i2 = i1;
-			while(i2 < frames.size() && frames[i2]->time < t_end) i2++;
-			std::vector<FramePtr> result;
+			while(i2 < frames.size() && frames[i2]->time <= tb) i2++;
 //			std::cout << t_begin << " " << t_end << " -> " << i1 << " " << i2 << std::endl;
-			result.insert(result.begin(), frames.begin() + i1, frames.begin() + i2);
-			return result;
+			return std::vector<FramePtr>(frames.begin() + i1, frames.begin() + i2);
 		}
 
 		void add(const FramePtr& f) {
@@ -302,7 +294,7 @@ namespace dasv
 	};
 
 	enum class PlotStyle {
-		Color, Age, AssignmentDistance, ClusterBorder
+		Color, Age, AssignmentDistance, Label, ClusterBorder
 	};
 
 	/** Plots superpixel cluster color */
