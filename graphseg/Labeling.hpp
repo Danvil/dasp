@@ -131,7 +131,7 @@ namespace graphseg
 	}
 
 	template<typename Graph, typename EdgeWeightMap, typename VertexLabelMap>
-	inline GraphLabeling ComputeSegmentLabels_UCM_Supervised(
+	inline std::vector<int> ComputeSegmentLabels_UCM_Supervised(
 		const Graph& graph,
 		EdgeWeightMap edge_weight_map,
 		VertexLabelMap vertex_label_map,
@@ -148,9 +148,9 @@ namespace graphseg
 		// labeled clusters keep label, unlabeled clusters get new label
 		// labels will indicate if clusters are supervised:
 		//   is_supervised(c) := (label(c) <= label_supervised_threshold)
-		std::vector<unsigned int> cluster_labels(num_vertices);
+		std::vector<int> cluster_labels(num_vertices);
 		for(auto vid : as_range(boost::vertices(graph))) {
-			const int label = graph[vid];
+			const int label = boost::get(vertex_label_map, vid);
 			if(label != -1) {
 				// supervised cluster
 				cluster_labels[vid] = label;
@@ -205,8 +205,8 @@ namespace graphseg
 			const unsigned int new_label = std::min(label_a, label_b);
 			std::replace(cluster_labels.begin(), cluster_labels.end(), old_label, new_label);
 		}
-		// create continuous labels
-		return GraphLabeling::CreateClean(cluster_labels);
+		// return raw labels
+		return cluster_labels;
 	}
 
 }
