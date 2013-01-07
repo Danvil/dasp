@@ -5,19 +5,48 @@
 #endif
 #include <iostream>
 #include <stdexcept>
+#include <random>
 
 constexpr int WIDTH = 640;
 constexpr int HEIGHT = 480;
 
+std::mt19937 random_engine;
+
+slimage::Pixel3ub color(int r, int g, int b)
+{
+	return {{
+		static_cast<unsigned char>(std::min(255, std::max(0, r))),
+		static_cast<unsigned char>(std::min(255, std::max(0, g))),
+		static_cast<unsigned char>(std::min(255, std::max(0, b)))}};
+}
+
+template<typename Dist>
+slimage::Pixel3ub color_with_noise(int r, int g, int b, Dist d)
+{
+	return color(
+		r + d(random_engine),
+		g + d(random_engine),
+		b + d(random_engine));
+}
+
+template<bool UseNoise=true>
 class RgbdStreamTestUniform : public RgbdStream
 {
 public:
 	RgbdStreamTestUniform() {
-		data_.color = slimage::Image3ub(WIDTH, HEIGHT, {{0,128,128}});
+		data_.color = slimage::Image3ub(WIDTH, HEIGHT);
 		data_.depth = slimage::Image1ui16(WIDTH, HEIGHT);
+		constexpr int NC = UseNoise ? 15 : 0;
+		constexpr int ND = UseNoise ? 50 : 0;
+		std::uniform_int_distribution<int> dc(-NC,+NC);
 		for(int i=0; i<HEIGHT; i++) {
 			for(int j=0; j<WIDTH; j++) {
-				data_.depth(j,i) = 1200;
+				int dd = static_cast<int>(
+					ND*std::sin(30.0f*static_cast<float>(i)/static_cast<float>(HEIGHT))
+					*std::sin(30.0f*static_cast<float>(j)/static_cast<float>(WIDTH))
+				);
+				data_.depth(j,i) = 1200 + dd;
+				data_.color(j,i) = color_with_noise(32,128,128, dc);
 			}
 		}
 	}
@@ -47,27 +76,38 @@ private:
 	Rgbd data_;
 };
 
+template<bool UseNoise=true>
 class RgbdStreamTestSphere : public RgbdStream
 {
 public:
 	RgbdStreamTestSphere() : time_(0) {}
 	bool grab() { return true; }
 	Rgbd get() {
-		slimage::Image3ub color(WIDTH, HEIGHT, {{0,128,128}});
+		slimage::Image3ub color(WIDTH, HEIGHT);
 		slimage::Image1ui16 depth(WIDTH, HEIGHT);
+		constexpr int NC = UseNoise ? 15 : 0;
+		constexpr int ND = UseNoise ? 50 : 0;
+		std::uniform_int_distribution<int> dc(-NC,+NC);
 		for(int i=0; i<HEIGHT; i++) {
 			for(int j=0; j<WIDTH; j++) {
-				depth(j,i) = 1200;
 				float phi = 2.0f*3.1415f*static_cast<float>(time_)/100;
 				const float r_move = 70.0f;
 				int cx = WIDTH/2 + r_move*std::cos(phi);
 				int cy = HEIGHT/2 + r_move*std::sin(phi);
 				int dj = j - cx;
 				int di = i - cy;
-				int d = std::sqrt(di*di + dj*dj);
-				if(d < 80) {
-					depth(j,i) = 800;
-					color(j,i) = {{255,0,0}};
+				int r = std::sqrt(di*di + dj*dj);
+				int dd = static_cast<int>(
+					ND*std::sin(30.0f*static_cast<float>(i)/static_cast<float>(HEIGHT))
+					*std::sin(30.0f*static_cast<float>(j)/static_cast<float>(WIDTH))
+				);
+				if(r < 80) {
+					depth(j,i) = 800 + dd;
+					color(j,i) = color_with_noise(192,32,32, dc);
+				}
+				else {
+					depth(j,i) = 1200 + dd;
+					color(j,i) = color_with_noise(32,128,128, dc);
 				}
 			}
 		}
@@ -156,13 +196,13 @@ private:
 std::shared_ptr<RgbdStream> FactorTest(const std::string& arg)
 {
 	if(arg == "uniform") {
-		return std::make_shared<RgbdStreamTestUniform>();
+		return std::make_shared<RgbdStreamTestUniform<true>>();
 	}
 	if(arg == "paraboloid") {
 		return std::make_shared<RgbdStreamTestParaboloid>();
 	}
 	if(arg == "sphere") {
-		return std::make_shared<RgbdStreamTestSphere>();
+		return std::make_shared<RgbdStreamTestSphere<true>>();
 	}
 	std::cerr << "ERROR: Invalid rgbd test stream arg='" << arg << "'!" << std::endl;
 	throw 0;
