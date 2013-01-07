@@ -15,6 +15,7 @@
 #include <iostream>
 #include <vector>
 #ifdef SEGS_DBG_PRINT
+#include <boost/format.hpp>
 #include <fstream>
 #endif
 
@@ -100,7 +101,7 @@ namespace graphseg
 	template<typename Graph>
 	Graph SpectralGraphAnalysis(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
 		// pick one more because the first one is omitted
-		std::vector<detail::EigenComponent> solution = detail::SolveTemplate(graph, num_ev);
+		std::vector<detail::EigenComponent> solution = detail::SolveTemplate(graph, num_ev, use_dense_solver);
 		detail::Vec weights = AssembleEdgeWeights(graph, solution);
 		// create new graph with resulting edge strength
 		Graph result = graph;
