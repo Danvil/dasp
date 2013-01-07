@@ -13,6 +13,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
 #include <vector>
+#include <iostream>
 
 namespace graphseg
 {
@@ -186,8 +187,8 @@ namespace graphseg
 				break;
 			}
 			// get cluster labels
-			const unsigned int label_a = cluster_labels[edge.a];
-			const unsigned int label_b = cluster_labels[edge.b];
+			const int label_a = cluster_labels[edge.a];
+			const int label_b = cluster_labels[edge.b];
 			if(label_a == label_b) {
 				// clusters are already part of the same segment -> nothing to do
 				continue;
