@@ -12,6 +12,7 @@
 #include "../as_range.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 namespace graphseg { namespace detail {
@@ -73,6 +74,26 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 		A(i,i) += di;
 		D(i,i) = di;
 	}
+
+	{	// DEBUG
+		std::ofstream ofs_D("/tmp/spectral_D.csv");
+		std::ofstream ofs_W("/tmp/spectral_W.csv");
+		for(unsigned int i=0; i<dim; i++) {
+			for(unsigned int j=0; j<dim; j++) {
+				ofs_D << D(i,j);
+				ofs_W << W(i,j);
+				if(j+1 == dim) {
+					ofs_D << std::endl;
+					ofs_W << std::endl;
+				}
+				else {
+					ofs_D << ", ";
+					ofs_W << ", ";
+				}
+			}
+		}
+	}	// DEBUG
+
 	// solve eigensystem
 	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
 	solver.compute(A, D);

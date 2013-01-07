@@ -230,29 +230,6 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 	std::cout << "Sparse Solver: returning" << std::endl;
 #endif
 	return solution;
-
-	//return SpectralDenseEigenSolve(graph, num_ev);
-
-	// FIXME
-
-	//	{	// DEBUG
-	//		std::ofstream ofs_D("/tmp/spectral_D.csv");
-	//		std::ofstream ofs_W("/tmp/spectral_W.csv");
-	//		for(unsigned int i=0; i<n; i++) {
-	//			for(unsigned int j=0; j<n; j++) {
-	//				ofs_D << D(i,j);
-	//				ofs_W << W(i,j);
-	//				if(j+1 == n) {
-	//					ofs_D << std::endl;
-	//					ofs_W << std::endl;
-	//				}
-	//				else {
-	//					ofs_D << ",";
-	//					ofs_W << ",";
-	//				}
-	//			}
-	//		}
-	//	}	// DEBUG
 }
 
 }}

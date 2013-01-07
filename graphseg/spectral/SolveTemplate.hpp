@@ -17,7 +17,7 @@ namespace graphseg
 	{
 		/** Computes n smallest eigenvalues/-vectors for a graph */
 		template<typename Graph>
-		std::vector<EigenComponent> SolveTemplate(const Graph& graph, unsigned int num_ev, bool use_dense_solver=true) {
+		std::vector<EigenComponent> SolveTemplate(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
 			// pick one eigenvalue more because the first one is omitted
 			if(use_dense_solver) {
 				return detail::SolveDenseTemplate(graph, num_ev + 1);

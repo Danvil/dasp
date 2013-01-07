@@ -5,6 +5,7 @@
  *      Author: david
  */
 
+#define SPECTRAL_VERBOSE
 #include "Spectral.hpp"
 #include "Common.hpp"
 #include "spectral/SpectralGraphAnalysis.hpp"
