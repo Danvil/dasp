@@ -50,6 +50,7 @@ private:
 	std::mutex show_images_cache_mutex_;
 
 	dasv::ClusterGraph dasv_graph_;
+	dasv::ClusterGraph dasv_graph_segs_;
 	std::mutex dasv_graph_mutex_;
 
 private:

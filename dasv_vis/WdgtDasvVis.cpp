@@ -93,6 +93,7 @@ void WdgtDasvVis::setRgbdStream(const std::shared_ptr<RgbdStream>& rgbd_stream)
 				{
 					std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
 					dasv_graph_ = dasv_->getGraph();
+					dasv_graph_segs_ = dasv_->getGraphSegmented();
 				}
 			}
 		});
@@ -162,18 +163,6 @@ void WdgtDasvVis::renderGraphGlobal()
 		std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
 		graph = dasv_graph_;
 	}
-	// graphseg::RenderEdges3DVcol(graph,
-	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
-	// 		// returns vertex coordinate
-	// 		const dasv::Cluster& c = graph[vid];
-	// 		return Eigen::Vector3f{ 0.01f*c.pixel.x(), 0.01f*c.pixel.y(), 0.03f*static_cast<float>(c.time) };
-	// 		// return c.position;
-	// 	},
-	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
-	// 		// returns vertex color
-	// 		return graph[vid].color;
-	// 	}
-	// );
 	graphseg::RenderEdges3D(graph,
 		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
 			// returns vertex coordinate
@@ -194,20 +183,39 @@ void WdgtDasvVis::renderGraphFrame()
 	if(!dasv_) {
 		return;
 	}
+
 	dasv::ClusterGraph graph;
 	{
 		std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
-		graph = dasv_graph_;
+		graph = dasv_graph_segs_;
 	}
-	graphseg::RenderEdges3DVcol(graph,
+	graphseg::RenderEdges3D(graph,
 		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
 			// returns vertex coordinate
-			return graph[vid].position;
+			const dasv::Cluster& c = graph[vid];
+			return Eigen::Vector3f{ 0.01f*c.pixel.x(), 0.01f*c.pixel.y(), 0.03f*static_cast<float>(c.time) };
+			// return c.position;
 		},
-		[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
-			// returns vertex color
-			return graph[vid].color;
+		[&graph](const dasv::ClusterGraph::edge_descriptor& eid) {
+			const float sim = boost::get(boost::edge_weight, graph, eid);
+			return common::SimilarityColor(sim);
 		}
 	);
+
+	// dasv::ClusterGraph graph;
+	// {
+	// 	std::lock_guard<std::mutex> lock(dasv_graph_mutex_);
+	// 	graph = dasv_graph_;
+	// }
+	// graphseg::RenderEdges3DVcol(graph,
+	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+	// 		// returns vertex coordinate
+	// 		return graph[vid].position;
+	// 	},
+	// 	[&graph](const dasv::ClusterGraph::vertex_descriptor& vid) {
+	// 		// returns vertex color
+	// 		return graph[vid].color;
+	// 	}
+	// );
 
 }

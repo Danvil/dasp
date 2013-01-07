@@ -286,11 +286,17 @@ namespace dasv
 			return graph_;
 		}
 
+		/** Gets total cluster graph */
+		const ClusterGraph& getGraphSegmented() const {
+			return graph_segmented_;
+		}
+
 	private:
 		bool is_first_;
 		Eigen::MatrixXf last_density_;
 		Timeseries series_;
 		ClusterGraph graph_;
+		ClusterGraph graph_segmented_;
 	};
 
 	enum class PlotStyle {
