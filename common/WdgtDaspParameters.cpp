@@ -14,13 +14,17 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.comboBoxSeedType->addItem("DepthFloyd", dasp::SeedModes::DepthFloyd);
 	ui.comboBoxSeedType->addItem("DepthFloydExpo", dasp::SeedModes::DepthFloydExpo);
 	ui.comboBoxSeedType->addItem("Delta", dasp::SeedModes::Delta);
-	ui.comboBoxSeedType->setCurrentIndex(2);
+	ui.comboBoxSeedType->setCurrentIndex(dasp_opt_->seed_mode);
 
 	ui.comboBoxDaspColorSpace->addItem("RGB", dasp::ColorSpaces::RGB);
 	ui.comboBoxDaspColorSpace->addItem("HSV", dasp::ColorSpaces::HSV);
 	ui.comboBoxDaspColorSpace->addItem("LAB", dasp::ColorSpaces::LAB);
 	ui.comboBoxDaspColorSpace->addItem("HN", dasp::ColorSpaces::HN);
-	ui.comboBoxDaspColorSpace->setCurrentIndex(0);
+	ui.comboBoxDaspColorSpace->setCurrentIndex(dasp_opt_->color_space);
+
+	ui.spinBoxIterations->setValue(dasp_opt_->iterations);
+	ui.spinBoxSuperCount->setValue(dasp_opt_->count);
+	ui.doubleSpinBoxRadius->setValue(1000.0f*dasp_opt_->base_radius);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
@@ -51,9 +55,9 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	dasp_opt_->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(ui.comboBoxSeedType->currentIndex()).toInt());
 	dasp_opt_->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_opt_->ignore_pixels_with_bad_visibility = ui.checkBoxSkipBad->isChecked();
-	dasp_opt_->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
-	dasp_opt_->count = 0; // ui.spinBoxSuperCount->value(); // use radius
-	dasp_opt_->iterations = ui.spinBoxIterations->value();
+	// dasp_opt_->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
+	// dasp_opt_->count = ui.spinBoxSuperCount->value();
+	// dasp_opt_->iterations = ui.spinBoxIterations->value();
 	dasp_opt_->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
 	dasp_opt_->weight_color = ui.doubleSpinBoxWeightColor->value();
 	dasp_opt_->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(ui.comboBoxDaspColorSpace->currentIndex()).toInt());
