@@ -18,6 +18,7 @@ namespace dasp
 	{
 		int x, y;
 		float scala;
+		int label;
 
 		// if is_fixed is enabled the cluster 3d position is always set to fixed_world
 		bool is_fixed;
@@ -27,11 +28,11 @@ namespace dasp
 		Eigen::Vector3f fixed_normal;
 
 		static Seed Dynamic(int x, int y, float scala) {
-			return Seed{x, y, scala, false,
+			return Seed{x, y, scala, -1, false,
 				Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
 		}
 		static Seed Static(int x, int y, float scala, const Eigen::Vector3f& position, const Eigen::Vector3f& color, const Eigen::Vector3f& normal) {
-			return Seed{x, y, scala, true,
+			return Seed{x, y, scala, -1, true,
 				position, color, normal};
 		}
 	};

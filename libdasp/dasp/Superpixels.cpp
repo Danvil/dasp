@@ -198,7 +198,7 @@ std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 	std::vector<Seed> seeds(cluster.size());
 	for(std::size_t i=0; i<cluster.size(); i++) {
 		const Cluster& c = cluster[i];
-		seeds[i] = Seed{c.center.px, c.center.py, c.center.cluster_radius_px, c.is_fixed};
+		seeds[i] = Seed{c.center.px, c.center.py, c.center.cluster_radius_px, c.seed_id, c.is_fixed};
 	}
 	return seeds;
 }
@@ -664,7 +664,7 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 	for(unsigned int k=0; k<seeds.size(); k++) {
 		const Seed& p = seeds[k];
 		Cluster c;
-		c.seed_id = k;
+		c.seed_id = p.label; // k
 		c.is_fixed = p.is_fixed;
 		c.center.px = p.x;
 		c.center.py = p.y;
@@ -921,7 +921,7 @@ void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image
 	DANVIL_BENCHMARK_STOP(dasp_seeds)
 
 	// compute super pixel point edges and improve seeds with it
-	if(clustering.opt.is_repair_depth) {
+	if(clustering.opt.is_improve_seeds) {
 		DANVIL_BENCHMARK_START(dasp_improve)
 		slimage::Image1f edges = clustering.ComputeEdges();
 		clustering.ImproveSeeds(clustering.seeds, edges);
