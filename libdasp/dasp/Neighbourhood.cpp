@@ -139,6 +139,9 @@ std::vector<unsigned int> FindCommonBorder(const std::vector<std::vector<BorderP
 
 UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings, std::vector<std::vector<unsigned int>>* edge_border_pixels)
 {
+	if(edge_border_pixels) {
+		edge_border_pixels->clear();
+	}
 	// create one node for each superpixel
 	UndirectedGraph neighbourhood_graph(superpixels.clusterCount());
 	// compute superpixel borders
@@ -186,7 +189,6 @@ UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbor
 			assert(ok);
 			if(edge_border_pixels) {
 				//boost::put(borderpixels_t(), neighbourhood_graph, eid, common_border);
-				assert(edge_border_pixels->size() == eid);
 				edge_border_pixels->push_back(common_border);
 			}
 		}

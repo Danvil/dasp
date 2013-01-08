@@ -71,7 +71,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		Eigen::Vector3f mean_world = Eigen::Vector3f::Zero();
 		for(unsigned int i : pixel_ids) {
 			const Point& p = points[i];
-			assert(p.isValid());
+			assert(p.is_valid);
 			mean_color += p.color;
 			mean_world += p.position;
 		}
