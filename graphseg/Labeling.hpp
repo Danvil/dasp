@@ -22,7 +22,7 @@ namespace graphseg
 	struct GraphLabeling
 	{
 		// label for each node
-		std::vector<unsigned int> labels;
+		std::vector<int> labels;
 
 		// number of unique labels
 		unsigned int num_labels;
@@ -31,7 +31,7 @@ namespace graphseg
 		void relabel();
 
 		/** Computes labeling from non-consecutive labels */
-		static GraphLabeling CreateClean(const std::vector<unsigned int>& labels);
+		static GraphLabeling CreateClean(const std::vector<int>& labels);
 
 	};
 
@@ -79,7 +79,7 @@ namespace graphseg
 			}
 		}
 		// compute connected components
-		std::vector<unsigned int> cluster_labels(boost::num_vertices(cropped));
+		std::vector<int> cluster_labels(boost::num_vertices(cropped));
 		unsigned int num_labels = boost::connected_components(cropped, &cluster_labels[0]);
 		// return result;
 		return GraphLabeling{ cluster_labels, num_labels };
@@ -89,7 +89,7 @@ namespace graphseg
 	GraphLabeling ComputeSegmentLabels_UCM(const WeightedGraph& graph, float threshold)
 	{
 		// every superpixel is one region
-		std::vector<unsigned int> cluster_labels(boost::num_vertices(graph));
+		std::vector<int> cluster_labels(boost::num_vertices(graph));
 		for(unsigned int i=0; i<cluster_labels.size(); i++) {
 			cluster_labels[i] = i;
 		}
@@ -114,8 +114,8 @@ namespace graphseg
 				break;
 			}
 			// join segments connected by edge
-			unsigned int l_old = cluster_labels[edges[k].a];
-			unsigned int l_new = cluster_labels[edges[k].b];
+			int l_old = cluster_labels[edges[k].a];
+			int l_new = cluster_labels[edges[k].b];
 			std::replace(cluster_labels.begin(), cluster_labels.end(), l_old, l_new);
 	#ifdef SEGS_DBG_SHOWGUI
 			if(k % 10 == 0) {
