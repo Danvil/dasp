@@ -24,15 +24,7 @@ include_directories(
 project(dasp)
 
 add_subdirectory(graphseg)
-
 add_subdirectory(rgbd)
-
 add_subdirectory(libdasp)
 add_subdirectory(dasp_cmd)
 add_subdirectory(dasp_gui)
-
-add_subdirectory(dasv)
-add_subdirectory(dasv_cmd)
-add_subdirectory(dasv_vis)
-
-add_subdirectory(vis_graph)
