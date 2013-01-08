@@ -37,16 +37,22 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	QObject::connect(ui.actionSave_Debug_Images, SIGNAL(triggered()), this, SLOT(OnSaveDebugImages()));
 	QObject::connect(ui.actionBatch_Save, SIGNAL(triggered()), this, SLOT(OnSaveDasp()));
 
-	QObject::connect(ui.action_Parameters, SIGNAL(triggered()), this, SLOT(onViewParameters()));
+	QObject::connect(ui.action_Settings, SIGNAL(triggered()), this, SLOT(onViewSettings()));
+	QObject::connect(ui.action_DaspParameters, SIGNAL(triggered()), this, SLOT(onViewDaspParameters()));
 	QObject::connect(ui.action_Benchmarks, SIGNAL(triggered()), this, SLOT(onViewBenchmark()));
 	QObject::connect(ui.actionAbout, SIGNAL(triggered()), this, SLOT(onViewAbout()));
 
 	dasp_processing_.reset(new DaspProcessing());
 
-	gui_params_.reset(new WdgtSuperpixelParameters(dasp_processing_));
-	gui_params_->setAttribute(Qt::WA_DeleteOnClose, false);
-	gui_params_->reload = &reload;
-	gui_params_->show();
+	gui_dasp_params_.reset(new WdgtDaspParameters(dasp_processing_->dasp_params));
+	gui_dasp_params_->setAttribute(Qt::WA_DeleteOnClose, false);
+	gui_dasp_params_->reload = &reload;
+	gui_dasp_params_->show();
+
+	gui_settings_.reset(new WdgtSettings(dasp_processing_));
+	gui_settings_->setAttribute(Qt::WA_DeleteOnClose, false);
+	gui_settings_->reload = &reload;
+	gui_settings_->show();
 
 	gui_benchmark_.reset(new WdgtBenchmark());
 	gui_benchmark_->setAttribute(Qt::WA_DeleteOnClose, false);
@@ -316,7 +322,8 @@ void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 
 void WdgtKinectSuperPoints::OnUpdateImages()
 {
-	ui.action_Parameters->setChecked(gui_params_->isVisible());
+	ui.action_DaspParameters->setChecked(gui_dasp_params_->isVisible());
+	ui.action_Settings->setChecked(gui_settings_->isVisible());
 	ui.action_Benchmarks->setChecked(gui_benchmark_->isVisible());
 	ui.actionAbout->setChecked(gui_benchmark_->isVisible());
 
@@ -326,11 +333,11 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 
 	if(dasp_processing_->dasp_params->count == 0) {
 		unsigned int actual_count = dasp_processing_->clustering_.cluster.size();
-		gui_params_->SetActualCount(actual_count);
+		gui_dasp_params_->SetActualCount(actual_count);
 	}
 	else {
 		double actual_radius = dasp_processing_->clustering_.opt.base_radius;
-		gui_params_->SetActualRadius(actual_radius);
+		gui_dasp_params_->SetActualRadius(actual_radius);
 	}
 
 	if(mode_ == ReplayOniMode) {
@@ -386,9 +393,14 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 	has_new_frame_ = false;
 }
 
-void WdgtKinectSuperPoints::onViewParameters()
+void WdgtKinectSuperPoints::onViewDaspParameters()
 {
-	gui_params_->setVisible(ui.action_Parameters->isChecked());
+	gui_dasp_params_->setVisible(ui.action_DaspParameters->isChecked());
+}
+
+void WdgtKinectSuperPoints::onViewSettings()
+{
+	gui_settings_->setVisible(ui.action_Settings->isChecked());
 }
 
 void WdgtKinectSuperPoints::onViewBenchmark()
@@ -403,7 +415,8 @@ void WdgtKinectSuperPoints::onViewAbout()
 
 void WdgtKinectSuperPoints::closeEvent(QCloseEvent* event)
 {
-	gui_params_->close();
+	gui_dasp_params_->close();
+	gui_settings_->close();
 	gui_benchmark_->close();
 	gui_about_->close();
 	event->accept();

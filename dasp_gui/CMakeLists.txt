@@ -20,15 +20,17 @@ SET(QT_USE_QTOPENGL TRUE)
 SET(dasp_gui_SOURCES
 	main.cpp
 	DaspProcessing.cpp
-	WdgtSuperpixelParameters.cpp
 	WdgtKinectSuperPoints.cpp
+	WdgtSettings.cpp
+	../common/WdgtDaspParameters.cpp
 	WdgtBenchmark.cpp
 	WdgtAbout.cpp
 )
 if (DASP_HAS_CANDY)
 	SET(dasp_gui_HEADERS
 		WdgtKinectSuperPoints.h
-		WdgtSuperpixelParameters.h
+		WdgtSettings.h
+		../common/WdgtDaspParameters.h
 		WdgtBenchmark.h
 		WdgtAbout.h
 		${CANDY_DIR}/libcandy/src/Candy/System/GLSystemQtWindow.h
@@ -36,15 +38,17 @@ if (DASP_HAS_CANDY)
 else (DASP_HAS_CANDY)
 	SET(dasp_gui_HEADERS
 		WdgtKinectSuperPoints.h
-		WdgtSuperpixelParameters.h
+		WdgtSettings.h
+		../common/WdgtDaspParameters.h
 		WdgtBenchmark.h
 		WdgtAbout.h
 	)
 endif (DASP_HAS_CANDY)
 
 SET(dasp_gui_FORMS
-	WdgtSuperpixelParameters.ui
 	WdgtKinectSuperPoints.ui
+	WdgtSettings.ui
+	../common/WdgtDaspParameters.ui
 	WdgtBenchmark.ui
 	WdgtAbout.ui
 )

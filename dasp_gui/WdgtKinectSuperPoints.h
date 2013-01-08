@@ -2,10 +2,11 @@
 #define WDGTKINECTSUPERPOINTS_H
 
 #include "ui_WdgtKinectSuperPoints.h"
-#include "WdgtSuperpixelParameters.h"
+#include "WdgtSettings.h"
 #include "WdgtBenchmark.h"
 #include "WdgtAbout.h"
 #include "DaspProcessing.h"
+#include <common/WdgtDaspParameters.h>
 #include <rgbd.hpp>
 #if defined DASP_HAS_CANDY
 #	include <Candy/System/GLSystemQtWindow.h>
@@ -47,7 +48,8 @@ public Q_SLOTS:
 #endif
 	void OnSaveDebugImages();
 	void OnSaveDasp();
-	void onViewParameters();
+	void onViewDaspParameters();
+	void onViewSettings();
 	void onViewBenchmark();
 	void onViewAbout();
 
@@ -64,7 +66,8 @@ private:
 
 	QTimer timer_;
 
-	boost::shared_ptr<WdgtSuperpixelParameters> gui_params_;
+	boost::shared_ptr<WdgtDaspParameters> gui_dasp_params_;
+	boost::shared_ptr<WdgtSettings> gui_settings_;
 	boost::shared_ptr<WdgtBenchmark> gui_benchmark_;
 	boost::shared_ptr<WdgtAbout> gui_about_;
 

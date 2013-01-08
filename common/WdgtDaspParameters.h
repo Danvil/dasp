@@ -1,18 +1,18 @@
-#ifndef WDGTKINECTCONTROL_H
-#define WDGTKINECTCONTROL_H
+#ifndef WDGTDASPPARAMETERS_H
+#define WDGTDASPPARAMETERS_H
 
 #include <QtGui/QWidget>
-#include "ui_WdgtSuperpixelParameters.h"
-#include "DaspProcessing.h"
-#include <functional>
+#include "ui_WdgtDaspParameters.h"
+#include "dasp/Parameters.hpp"
+#include <boost/shared_ptr.hpp>
 
-class WdgtSuperpixelParameters : public QWidget
+class WdgtDaspParameters : public QWidget
 {
     Q_OBJECT
 
 public:
-	WdgtSuperpixelParameters(const boost::shared_ptr<DaspProcessing>& dasp_processing, QWidget *parent = 0);
-	~WdgtSuperpixelParameters();
+	WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>& dasp_opt, QWidget *parent = 0);
+	~WdgtDaspParameters();
 
 	bool* reload;
 
@@ -35,18 +35,6 @@ public Q_SLOTS:
 	void ChangeSuperpixelWeightDepth(double val);
 	void ChangeSuperConquerEnclaves(int val);
 	void ChangeSuperpixelCoverage(double val);
-	void ChangeDaspSegmentThreshold(double val);
-	void ChangePlotPoints(int state);
-	void ChangePlotPointsColor(int selection);
-	void ChangePlotClusters(int state);
-	void ChangePlotClusterMode(int selection);
-	void ChangePlotClusterColor(int selection);
-	void ChangePlotBorders(int state);
-	void ChangePlotGraphSpatialCut(int state);
-	void ChangePlotGraph(int state);
-	void ChangePlotGraphWeights(int val);
-	void ChangePlotDensity(int state);
-	void ChangePlotSegments(int state);
 	void ChangeClipEnable(int state);
 	void ChangeClipXMin(double val);
 	void ChangeClipYMin(double val);
@@ -56,10 +44,10 @@ public Q_SLOTS:
 	void ChangeClipZMax(double val);
 
 private:
-	boost::shared_ptr<DaspProcessing> dasp_processing_;
+	boost::shared_ptr<dasp::Parameters> dasp_opt_;
 
 private:
-    Ui::WdgtSuperpixelParametersClass ui;
+    Ui::WdgtDaspParametersClass ui;
 };
 
 #endif

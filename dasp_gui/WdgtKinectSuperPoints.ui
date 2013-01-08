@@ -108,7 +108,8 @@
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="action_Parameters"/>
+    <addaction name="action_DaspParameters"/>
+    <addaction name="action_Settings"/>
     <addaction name="action_Benchmarks"/>
     <addaction name="separator"/>
     <addaction name="actionAbout"/>
@@ -151,7 +152,7 @@
     <string>Batch Save</string>
    </property>
   </action>
-  <action name="action_Parameters">
+  <action name="action_DaspParameters">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -159,7 +160,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Parameters</string>
+    <string>Dasp Parameters</string>
    </property>
   </action>
   <action name="action_Benchmarks">
@@ -176,6 +177,17 @@
    </property>
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="action_Settings">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Settings</string>
    </property>
   </action>
  </widget>
