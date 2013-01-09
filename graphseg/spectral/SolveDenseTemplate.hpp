@@ -26,6 +26,7 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 	std::cout << "SpectralSegmentation: dimension=" << dim
 			<< ", num_edges=" << num_edges
 			<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
+	std::vector<int> nodes_with_no_connection;
 #endif
 	// creating matrices
 	Mat W = Mat::Zero(dim,dim);
@@ -53,7 +54,7 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 		float& di = Di[i];
 		if(di == 0) {
 #ifdef SPECTRAL_VERBOSE
-			std::cout << "Node " << i << " has no connections! " << std::endl;
+			nodes_with_no_connection.push_back(i);
 #endif
 			// connect the disconnected cluster to all other clusters with a very small weight
 			di = 1.0f;
@@ -65,6 +66,15 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 			}
 		}
 	}
+#ifdef SPECTRAL_VERBOSE
+	if(!nodes_with_no_connection.empty()) {
+		std::cout << "Nodes without connections (#=" << nodes_with_no_connection.size() << "): ";
+		for(int i : nodes_with_no_connection) {
+			std::cout << i << ", ";
+		}
+		std::cout << std::endl;
+	}
+#endif	
 	// compute matrices D = diagonal(Di) and A = D - W
 	Mat D = Mat::Zero(dim,dim);
 	Mat A = -W;
