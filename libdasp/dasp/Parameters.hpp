@@ -63,6 +63,9 @@ namespace dasp
 		/** Desired number of superpixels */
 		unsigned int count;
 
+		/** Actual count of superpixels */
+		unsigned int count_actual;
+
 		/** Method used to compute seed points */
 		SeedMode seed_mode;
 

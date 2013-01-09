@@ -402,6 +402,8 @@ void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 	}
 	// delete empty superpixels
 	PurgeInvalidClusters();
+
+	opt.count_actual = cluster.size();
 }
 
 namespace SegmentExtraction
