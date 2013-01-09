@@ -25,6 +25,10 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.spinBoxIterations->setValue(dasp_opt_->iterations);
 	ui.doubleSpinBoxRadius->setValue(1000.0f*dasp_opt_->base_radius);
 	ui.spinBoxSuperCount->setValue(dasp_opt_->count);
+	ui.doubleSpinBoxWeightSpatial->setValue(dasp_opt_->weight_spatial);
+	ui.doubleSpinBoxWeightColor->setValue(dasp_opt_->weight_color);
+	ui.doubleSpinBoxWeightNormal->setValue(dasp_opt_->weight_normal);
+	ui.doubleSpinBoxWeightDepth->setValue(dasp_opt_->weight_depth);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
@@ -36,9 +40,9 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	QObject::connect(ui.spinBoxIterations, SIGNAL(valueChanged(int)), this, SLOT(ChangeSuperpixelIterations(int)));
 	QObject::connect(ui.doubleSpinBoxWeightSpatial, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightSpatial(double)));
 	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
-	QObject::connect(ui.comboBoxDaspColorSpace, SIGNAL(currentIndexChanged(int)), this, SLOT(OnDaspColorSpace(int)));
 	QObject::connect(ui.doubleSpinBoxWeightNormal, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightNormal(double)));
 	QObject::connect(ui.doubleSpinBoxWeightDepth, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightDepth(double)));
+	QObject::connect(ui.comboBoxDaspColorSpace, SIGNAL(currentIndexChanged(int)), this, SLOT(OnDaspColorSpace(int)));
 	QObject::connect(ui.doubleSpinBoxCoverage, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelCoverage(double)));
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
 
@@ -58,11 +62,11 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	// dasp_opt_->base_radius = 0.001f * ui.doubleSpinBoxRadius->value();
 	// dasp_opt_->count = ui.spinBoxSuperCount->value();
 	// dasp_opt_->iterations = ui.spinBoxIterations->value();
-	dasp_opt_->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
-	dasp_opt_->weight_color = ui.doubleSpinBoxWeightColor->value();
+	// dasp_opt_->weight_spatial = ui.doubleSpinBoxWeightSpatial->value();
+	// dasp_opt_->weight_color = ui.doubleSpinBoxWeightColor->value();
+	// dasp_opt_->weight_normal = ui.doubleSpinBoxWeightNormal->value();
+	// dasp_opt_->weight_depth = ui.doubleSpinBoxWeightDepth->value();
 	dasp_opt_->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(ui.comboBoxDaspColorSpace->currentIndex()).toInt());
-	dasp_opt_->weight_normal = ui.doubleSpinBoxWeightNormal->value();
-	dasp_opt_->weight_depth = ui.doubleSpinBoxWeightDepth->value();
 	dasp_opt_->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_opt_->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
 
