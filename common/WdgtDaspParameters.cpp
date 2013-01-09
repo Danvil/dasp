@@ -23,8 +23,8 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.comboBoxDaspColorSpace->setCurrentIndex(dasp_opt_->color_space);
 
 	ui.spinBoxIterations->setValue(dasp_opt_->iterations);
-	ui.spinBoxSuperCount->setValue(dasp_opt_->count);
 	ui.doubleSpinBoxRadius->setValue(1000.0f*dasp_opt_->base_radius);
+	ui.spinBoxSuperCount->setValue(dasp_opt_->count);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
@@ -79,6 +79,16 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 WdgtDaspParameters::~WdgtDaspParameters()
 {
 
+}
+
+void WdgtDaspParameters::UpdateActualCountRadius()
+{
+	if(dasp_opt_->count == 0) {
+		SetActualCount(dasp_opt_->count_actual);
+	}
+	else {
+		SetActualRadius(dasp_opt_->base_radius);
+	}
 }
 
 void WdgtDaspParameters::SetActualCount(unsigned int count)

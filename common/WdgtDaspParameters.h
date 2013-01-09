@@ -16,6 +16,7 @@ public:
 
 	bool* reload;
 
+	void UpdateActualCountRadius();
 	void SetActualCount(unsigned int count);
 	void SetActualRadius(float radius);
 
