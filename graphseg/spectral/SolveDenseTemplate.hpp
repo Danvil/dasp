@@ -85,6 +85,7 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 		D(i,i) = di;
 	}
 
+#ifdef SPECTRAL_VERBOSE
 	{	// DEBUG
 		std::ofstream ofs_D("/tmp/spectral_D.csv");
 		std::ofstream ofs_W("/tmp/spectral_W.csv");
@@ -103,6 +104,7 @@ std::vector<EigenComponent> SolveDenseTemplate(const Graph& graph, unsigned int 
 			}
 		}
 	}	// DEBUG
+#endif
 
 	// solve eigensystem
 	Eigen::GeneralizedSelfAdjointEigenSolver<Mat> solver;
