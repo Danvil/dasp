@@ -196,13 +196,13 @@ private:
 std::shared_ptr<RgbdStream> FactorTest(const std::string& arg)
 {
 	if(arg == "uniform") {
-		return std::make_shared<RgbdStreamTestUniform<true>>();
+		return std::make_shared<RgbdStreamTestUniform<false>>();
 	}
 	if(arg == "paraboloid") {
 		return std::make_shared<RgbdStreamTestParaboloid>();
 	}
 	if(arg == "sphere") {
-		return std::make_shared<RgbdStreamTestSphere<true>>();
+		return std::make_shared<RgbdStreamTestSphere<false>>();
 	}
 	std::cerr << "ERROR: Invalid rgbd test stream arg='" << arg << "'!" << std::endl;
 	throw 0;
