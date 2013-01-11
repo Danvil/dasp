@@ -29,6 +29,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.doubleSpinBoxWeightColor->setValue(dasp_opt_->weight_color);
 	ui.doubleSpinBoxWeightNormal->setValue(dasp_opt_->weight_normal);
 	ui.doubleSpinBoxWeightDepth->setValue(dasp_opt_->weight_depth);
+	ui.checkBoxDaspRepairDepth->setChecked(dasp_opt_->is_repair_depth);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
@@ -54,7 +55,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	QObject::connect(ui.doubleSpinBoxClipYMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipYMax(double)));
 	QObject::connect(ui.doubleSpinBoxClipZMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipZMax(double)));
 
-	dasp_opt_->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
+	// dasp_opt_->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
 	dasp_opt_->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
 	dasp_opt_->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(ui.comboBoxSeedType->currentIndex()).toInt());
 	dasp_opt_->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
