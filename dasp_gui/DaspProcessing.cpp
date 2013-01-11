@@ -231,7 +231,7 @@ void DaspProcessing::performSegmentationStep()
 				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
 			}
 
-			Eigen::MatrixXf saliency = ComputeSaliency(clustering_.points, clustering_.opt);
+			Eigen::MatrixXf saliency = clustering_.saliency;
 			vis_saliency = slimage::Image3ub(saliency.rows(), saliency.cols());
 			for(unsigned int i=0; i<vis_saliency.size(); i++) {
 				float d = saliency.data()[i];

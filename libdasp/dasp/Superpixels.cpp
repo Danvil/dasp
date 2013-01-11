@@ -42,6 +42,7 @@ Parameters::Parameters()
 	weight_normal = 3.0f;
 	weight_depth = 0.0f;
 	weight_image = 0.0f;
+	use_color_saliency = false;
 	iterations = 5;
 	coverage = 1.7f;
 	base_radius = 0.02f;
@@ -297,9 +298,9 @@ label_pixel_invalid_omg:
 		}
 	}
 
-	if(opt.weight_depth >= 1.0f) {
+	if(opt.use_color_saliency && opt.weight_depth >= 1.0f) {
 		DANVIL_BENCHMARK_START(saliency)
-		Eigen::MatrixXf saliency = ComputeSaliency(points, opt);
+		saliency = ComputeSaliency(points, opt);
 		AdaptClusterRadiusBySaliency(points, saliency, opt);
 		DANVIL_BENCHMARK_STOP(saliency)
 	}

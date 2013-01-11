@@ -51,6 +51,8 @@ namespace dasp
 		float weight_depth;
 		float weight_image;
 
+		bool use_color_saliency;
+
 		/** Number of iterations for superpixel k-means clustering */
 		unsigned int iterations;
 

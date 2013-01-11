@@ -45,6 +45,8 @@ namespace dasp
 
 		Eigen::MatrixXf density;
 
+		Eigen::MatrixXf saliency;
+
 		std::vector<Cluster> cluster;
 
 		std::vector<Seed> seeds_previous;
