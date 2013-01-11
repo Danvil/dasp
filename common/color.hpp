@@ -25,6 +25,14 @@ inline Eigen::Vector3f IntensityColor(float x)
 	return {color.r,color.g,color.b};
 }
 
+inline Eigen::Vector3f PlusMinusColor(float x, float range=1.0f)
+{
+	static auto cm = Danvil::ContinuousIntervalColorMapping<float, float>::Factor_MinusPlus();
+	cm.setRange(-range, +range);
+	Danvil::Colorf color = cm(x);
+	return {color.r,color.g,color.b};
+}
+
 template<typename T>
 inline Eigen::Vector3f CountColor(T num, T min, T max)
 {
@@ -50,6 +58,17 @@ inline slimage::Image3ub ColorizeDepth(const slimage::Image1ui16& img16, uint16_
 		img[i] = ColorToPixel(CountColor((uint16_t)img16[i], min, max));
 	}
 	return img;
+}
+
+template<typename CF>
+inline slimage::Image3ub MatrixToImage(const Eigen::MatrixXf& mat, CF cf)
+{
+	slimage::Image3ub vis = slimage::Image3ub(mat.rows(), mat.cols());
+	const float* p = mat.data();
+	for(unsigned int i=0; i<vis.size(); i++) {
+		vis[i] = ColorToPixel(cf(p[i]));
+	}
+	return vis;
 }
 
 //----------------------------------------------------------------------------//
