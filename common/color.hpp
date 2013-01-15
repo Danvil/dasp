@@ -17,10 +17,10 @@ inline Eigen::Vector3f SimilarityColor(float x)
 	return {color.r,color.g,color.b};
 }
 
-inline Eigen::Vector3f IntensityColor(float x)
+inline Eigen::Vector3f IntensityColor(float x, float a=0.0f, float b=1.0f)
 {
 	static auto cm = Danvil::ContinuousIntervalColorMapping<float, float>::Factor_Black_Blue_Red_Yellow_White();
-	cm.setRange(0.0f, 1.0f);
+	cm.setRange(a, b);
 	Danvil::Colorf color = cm(x);
 	return {color.r,color.g,color.b};
 }
