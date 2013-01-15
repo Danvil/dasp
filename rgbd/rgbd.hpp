@@ -15,8 +15,15 @@ class RgbdStream
 {
 public:
 	virtual ~RgbdStream() {}
+	
 	virtual bool grab() = 0;
 	virtual Rgbd get() = 0;
+
+	Rgbd grabAndGet(bool* x=0) {
+		bool v = grab();
+		if(x) *x = v;
+		return get();
+	}
 };
 
 class RandomAccessRgbdStream
