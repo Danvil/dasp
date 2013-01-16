@@ -8,6 +8,14 @@
 namespace common {
 //----------------------------------------------------------------------------//
 
+template<typename K>
+inline Eigen::Vector3f GreyColor(K x, K a, K b)
+{
+	float p = (static_cast<float>(x) - static_cast<float>(a)) / (static_cast<float>(b) - static_cast<float>(a));
+	p = std::min(1.0f, std::max(0.0f, p));
+	return {p,p,p};
+}
+
 /** Computes a color to express a similarity value between 0 and 1 */
 inline Eigen::Vector3f SimilarityColor(float x)
 {
@@ -56,6 +64,15 @@ inline slimage::Image3ub ColorizeDepth(const slimage::Image1ui16& img16, uint16_
 	const int n = img16.size();
 	for(int i=0; i<n; i++) {
 		img[i] = ColorToPixel(CountColor((uint16_t)img16[i], min, max));
+	}
+	return img;
+}
+
+inline slimage::Image3ub GreyDepth(const slimage::Image1ui16& img16, uint16_t min, uint16_t max) {
+	slimage::Image3ub img(img16.width(), img16.height());
+	const int n = img16.size();
+	for(int i=0; i<n; i++) {
+		img[i] = ColorToPixel(GreyColor<uint16_t>(img16[i], min, max));
 	}
 	return img;
 }
