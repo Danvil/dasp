@@ -17,6 +17,8 @@ namespace dasp {
 
 Eigen::MatrixXf ComputeDepthDensity(const ImagePoints& points, const Parameters& opt)
 {
+	constexpr float NZ_MIN = 0.174f; // = std::sin(80 deg)
+
 	Eigen::MatrixXf density(points.width(), points.height());
 	float* p_density = density.data();
 	for(unsigned int i=0; i<points.size(); i++) {
@@ -26,10 +28,13 @@ Eigen::MatrixXf ComputeDepthDensity(const ImagePoints& points, const Parameters&
 		 * point location is R*R*pi and the superpixel density is 1/A.
 		 * If the depth information is invalid, the density is 0.
 		 */
-		float cnt = !p.is_valid ? 0.0f : 1.0f / (M_PI * p.cluster_radius_px * p.cluster_radius_px);
-		// Additionally the local gradient has to be considered.
-		if(opt.gradient_adaptive_density) {
-			cnt /= p.computeCircularity();
+		float cnt = 0.0f;
+		if(p.is_valid) {
+			cnt = 1.0f / (M_PI * p.cluster_radius_px * p.cluster_radius_px);
+			// Additionally the local gradient has to be considered.
+			if(opt.gradient_adaptive_density) {
+				cnt /= std::max(NZ_MIN, p.computeCircularity());
+			}
 		}
 		p_density[i] = cnt;
 	}
@@ -40,7 +45,8 @@ template<typename T, typename Fxi, typename Fyi, typename Fx, typename Fy>
 Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, const Eigen::MatrixXf& target, Fxi fxi, Fyi fyi, Fx fx, Fy fy)
 {
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
-	const float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	constexpr float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	constexpr float cMagicSoftener = 0.62f;
 	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 	for(const T& s : seeds) {
 		int sx = fxi(s);
@@ -48,7 +54,7 @@ Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, c
 		float sxf = fx(s);
 		float syf = fy(s);
 		// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-		const float rho = target(sx, sy);
+		const float rho = cMagicSoftener*target(sx, sy);
 		if(rho == 0) {
 			continue;
 		}
