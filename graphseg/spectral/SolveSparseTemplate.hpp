@@ -8,6 +8,7 @@
 #ifndef DASP_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
 #define DASP_SPECTRAL_SOLVESPARSETEMPLATE_HPP_
 
+#define SPECTRAL_VERBOSE
 #include "../Common.hpp"
 #include "../as_range.hpp"
 #include <boost/graph/adjacency_list.hpp>
@@ -39,7 +40,12 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 #endif
 
 	// The dimension of the problem
-	int n = boost::num_vertices(graph);
+	const int n = boost::num_vertices(graph);
+
+	struct Entry {
+		int i, j;
+		Real value;
+	};
 
 	// Each edge defines two entries (one in the upper and one in the lower).
 	// In addition all diagonal entries are non-zero.
@@ -47,13 +53,9 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 	// the number of edges plus the number of nodes.
 	// This is not entirely true as some connections are possibly rejected.
 	// Additionally some connections may be added to assure global connectivity.
-	int nnz_guess = boost::num_edges(graph) + n;
+	const int nnz_guess = boost::num_edges(graph) + n;
 
 	// collect all non-zero elements
-	struct Entry {
-		int i, j;
-		Real value;
-	};
 	std::vector<Entry> entries;
 	entries.reserve(nnz_guess);
 
@@ -109,6 +111,7 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 					entries.push_back(Entry{j, i, q});
 				}
 			}
+			std::cerr << "Diagonal is 0! (i=" << i << ")" << std::endl;
 		}
 		else {
 			v = static_cast<Real>(1) / std::sqrt(v);
@@ -144,10 +147,12 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 	std::vector<int> irow(nnz);
 	std::vector<int> pcol;
 	pcol.reserve(n + 1);
+	std::ofstream ofs("/tmp/sparse.tsv");
 	// Assumes that each column has at least one non-zero element.
 	int current_col = -1;
 	for(unsigned int i=0; i<entries.size(); i++) {
 		const Entry& e = entries[i];
+		ofs << e.i << "\t" << e.j << "\t" << e.value << std::endl;
 		nzval[i] = e.value;
 		irow[i] = e.i;
 		if(e.j == current_col + 1) {
@@ -155,6 +160,7 @@ std::vector<EigenComponent> SolveSparseTemplate(const Graph& graph, unsigned int
 			current_col++;
 		}
 	}
+	ofs.close();
 	pcol.push_back(nnz);
 //	// check CRC
 //	{

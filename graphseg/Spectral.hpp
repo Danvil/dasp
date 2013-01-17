@@ -19,7 +19,7 @@ namespace graphseg
 	}
 
 	/** Applies spectral graph theory fu to a weighted, undirected graph */
-	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver=true);
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver);
 
 	/** Applies MCL graph segmentation to a weighted, undirected graph */
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations);
