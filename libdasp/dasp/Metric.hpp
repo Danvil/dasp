@@ -47,6 +47,11 @@ namespace dasp
 			return NormalDistanceRaw(u.normal, v.normal);
 		}
 
+		inline float NormalDistanceWithDepth(const Point& u, const Point& v) {
+			const float q = NormalDistanceRaw(u.normal, v.normal);
+			return 2.0f * q / (u.position.z() + v.position.z());
+		}
+
 	}
 
 	struct MetricDASP
@@ -62,7 +67,7 @@ namespace dasp
 					Eigen::Vector3f(
 							metric::SpatialDistanceRaw(p, q),
 							metric::ColorDistanceRaw(p, q),
-							metric::NormalDistanceRaw(p, q)));
+							metric::NormalDistanceWithDepth(p, q)));
 		}
 
 	private:
