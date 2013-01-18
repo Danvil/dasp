@@ -11,6 +11,7 @@
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <vector>
+#include <tuple>
 
 namespace dasp {
 namespace Mipmaps {
@@ -23,7 +24,7 @@ slimage::Image2f SumMipMapWithAbs(const slimage::Image2f& img_big);
 
 std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned int min_size);
 
-std::vector<slimage::Image2f> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size);
+std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size);
 
 }}
 

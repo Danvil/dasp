@@ -512,24 +512,37 @@ std::vector<Seed> FindSeedsDepthFloydExpo(const ImagePoints& points, const Eigen
 	return seeds;
 }
 
-void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds, const std::vector<slimage::Image2f>& mipmaps, int level, unsigned int x, unsigned int y)
+void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& seeds,
+	const std::vector<Eigen::MatrixXf>& mipmaps_delta,
+	const std::vector<Eigen::MatrixXf>& mipmaps_delta_abs,
+	int level, unsigned int x, unsigned int y)
 {
 	static boost::uniform_real<float> rnd(0.0f, 1.0f);
 	static boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(cGlobalRndRng, rnd);
 
-	const slimage::Image2f& mm = mipmaps[level];
+	const Eigen::MatrixXf& mm_s = mipmaps_delta[level];
+	const Eigen::MatrixXf& mm_a = mipmaps_delta_abs[level];
 
-	float v_sum = mm(x, y)[0];
-	float v_abs = std::abs(v_sum);// mm(x, y)[1];
+	const float v_sum = mm_s(x, y);
+	const float v_sum_abs = std::abs(v_sum);
+	const float v_abs = mm_a(x, y);
 
-	if(v_abs > 1.0f && level > 1) { // do not access mipmap 0!
+	if(
+		level <= 1 // do not access mipmap 0!
+		|| v_abs > 1.0f
+		//|| (std::abs(v_sum) - v_abs) / (std::abs(v_sum) + v_abs)
+	) {
 		// go down
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y    );
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x,     2*y + 1);
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y    );
-		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, level - 1, 2*x + 1, 2*y + 1);
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps_delta, mipmaps_delta_abs, level - 1, 2*x,     2*y    );
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps_delta, mipmaps_delta_abs, level - 1, 2*x,     2*y + 1);
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps_delta, mipmaps_delta_abs, level - 1, 2*x + 1, 2*y    );
+		FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps_delta, mipmaps_delta_abs, level - 1, 2*x + 1, 2*y + 1);
 	}
 	else {
+		const float brok = std::abs(v_sum_abs - v_abs) / (v_sum_abs + v_abs);
+		if(brok > 0.5f) {
+			return;
+		}
 		if(die() < v_abs)
 		{
 			unsigned int half = (1 << (level - 1));
@@ -557,44 +570,45 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 			}
 			else {
 				if(!seeds.empty()) {
-					// find nearest
-					int best_dist = 1000000000;
-					std::size_t best_index = 0;
-					for(std::size_t i=0; i<seeds.size(); i++) {
-						const Seed& s = seeds[i];
-						// do not remove fixed seed points
-						if(s.is_fixed) {
-							continue;
-						}
-						int dist =  Square(sx - s.x) + Square(sy - s.y);
-						if(dist < best_dist) {
-							best_dist = dist;
-							best_index = i;
-						}
-					}
-	//				auto it = std::min_element(seeds.begin(), seeds.end(), [sx, sy](const Seed& a, const Seed& b) {
-	//					return Square(sx - a.x) + Square(sy - a.y) < Square(sx - b.x) + Square(sy - b.y);
-	//				});
-					// delete nearest seed
-	//				seeds.erase(it);
-	#ifdef CREATE_DEBUG_IMAGES
-					slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
-					debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
-	#endif
-					seeds.erase(seeds.begin() + best_index);
+					return;
 				}
+				// find nearest
+				int best_dist = 1000000000;
+				std::size_t best_index = 0;
+				for(std::size_t i=0; i<seeds.size(); i++) {
+					const Seed& s = seeds[i];
+					// do not remove fixed seed points
+					if(s.is_fixed) {
+						continue;
+					}
+					int dist =  Square(sx - s.x) + Square(sy - s.y);
+					if(dist < best_dist) {
+						best_dist = dist;
+						best_index = i;
+					}
+				}
+				// delete nearest seed
+#ifdef CREATE_DEBUG_IMAGES
+				slimage::Image3ub debug = slimage::Ref<unsigned char, 3>(sDebugImages["seeds_delta"]);
+				debug(seeds[best_index].x, seeds[best_index].y) = slimage::Pixel3ub{{0,255,255}};
+#endif
+				seeds.erase(seeds.begin() + best_index);
 			}
 		}
 	}
 }
 
-std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const Eigen::MatrixXf& density_delta, bool delete_small_scala_seeds)
+std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Seed>& old_seeds, const Eigen::MatrixXf& density_old, const Eigen::MatrixXf& density_new, bool delete_small_scala_seeds)
 {
+	// difference
+	Eigen::MatrixXf density_delta = density_new - density_old;
+	Eigen::MatrixXf density_total = 0.5f*(density_new + density_old);
 	// compute mipmaps
-	std::vector<slimage::Image2f> mipmaps = Mipmaps::ComputeMipmapsWithAbs(density_delta, 1);
+	std::vector<Eigen::MatrixXf> mipmaps_delta = Mipmaps::ComputeMipmaps(density_delta, 1);
+	std::vector<Eigen::MatrixXf> mipmaps_delta_abs = Mipmaps::ComputeMipmaps(density_delta.cwiseAbs(), 1);
 	// we need to add and delete points!
 	std::vector<Seed> seeds = old_seeds;
-	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
+	FindSeedsDeltaMipmap_Walk(points, seeds, mipmaps_delta, mipmaps_delta_abs, mipmaps_delta.size() - 1, 0, 0);
 //	std::cout << "Delta seeds: " << int(seeds.size()) - int(old_seeds.size()) << std::endl;
 	// give all seed points the correct scala
 	for(Seed& s : seeds) {
@@ -622,13 +636,10 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
 	sDebugImages["seeds_delta"] = slimage::Ptr(debug);
 #endif
-
 	// compute old density
 	Eigen::MatrixXf density_old = ComputeDepthDensityFromSeeds(old_seeds, density_new);
-	// difference
-	Eigen::MatrixXf density_delta = density_new - density_old;
 	// use function
-	return FindSeedsDelta(points, old_seeds, density_delta, true);
+	return FindSeedsDelta(points, old_seeds, density_old, density_new, true);
 }
 
 //------------------------------------------------------------------------------
