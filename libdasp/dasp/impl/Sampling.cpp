@@ -556,7 +556,7 @@ void FindSeedsDeltaMipmap_Walk(const ImagePoints& points, std::vector<Seed>& see
 				}
 			}
 			else {
-				if(seeds.size() > 0) {
+				if(!seeds.empty()) {
 					// find nearest
 					int best_dist = 1000000000;
 					std::size_t best_index = 0;
