@@ -30,6 +30,13 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.doubleSpinBoxWeightNormal->setValue(dasp_opt_->weight_normal);
 	ui.doubleSpinBoxWeightDepth->setValue(dasp_opt_->weight_depth);
 	ui.checkBoxDaspRepairDepth->setChecked(dasp_opt_->is_repair_depth);
+	ui.checkBoxClipEnable->setChecked(dasp_opt_->enable_clipping);
+	ui.doubleSpinBoxClipXMin->setValue(dasp_opt_->clip_x_min);
+	ui.doubleSpinBoxClipYMin->setValue(dasp_opt_->clip_y_min);
+	ui.doubleSpinBoxClipZMin->setValue(dasp_opt_->clip_z_min);
+	ui.doubleSpinBoxClipXMax->setValue(dasp_opt_->clip_x_max);
+	ui.doubleSpinBoxClipYMax->setValue(dasp_opt_->clip_y_max);
+	ui.doubleSpinBoxClipZMax->setValue(dasp_opt_->clip_z_max);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
