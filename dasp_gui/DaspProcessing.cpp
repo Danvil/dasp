@@ -228,7 +228,7 @@ void DaspProcessing::performSegmentationStep()
 			vis_density = slimage::Image3ub(density.rows(), density.cols());
 			for(unsigned int i=0; i<vis_density.size(); i++) {
 				float d = density.data()[i];
-				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
+				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
 			}
 
 			Eigen::MatrixXf saliency = clustering_.saliency;
@@ -246,14 +246,14 @@ void DaspProcessing::performSegmentationStep()
 				for(unsigned int i=0; i<seed_density.size(); i++) {
 					//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
 					float d = seed_density.data()[i];
-					vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.04f);
+					vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
 				}
 //				slimage::conversion::Convert(seed_density, vis_seed_density);
 
 				vis_density_delta.resize(density.rows(), density.cols());
 				for(unsigned int i=0; i<density.size(); i++) {
 					float q = density.data()[i] - seed_density.data()[i];
-					vis_density_delta[i] = plots::PlusMinusColor(q, 0.04f);
+					vis_density_delta[i] = plots::PlusMinusColor(q, 0.010f);
 				}
 			}
 		}
