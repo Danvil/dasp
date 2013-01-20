@@ -123,7 +123,7 @@ namespace dasp
 		for(auto vid : as_range(boost::vertices(graph))) {
 			const Point& p = graph[vid];
 			ofs_v
-				<< p.px << sep << p.px << sep
+				<< p.px << sep << p.py << sep
 				<< p.position.x() << sep << p.position.y() << sep << p.position.z() << sep
 				<< p.color.x() << sep << p.color.y() << sep << p.color.z() << sep
 				<< p.normal.x() << sep << p.normal.y() << sep << p.normal.z() << std::endl;
