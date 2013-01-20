@@ -23,7 +23,7 @@ namespace dasp
 	typedef graphseg::SpectralGraph UndirectedWeightedGraph;
 
 	/** Weighted graph of superpoints */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
 		Point,
 		boost::property<boost::edge_weight_t, float>
 	> DaspGraph;
