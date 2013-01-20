@@ -18,8 +18,15 @@ namespace graphseg
 		extern bool cVerbose;
 	}
 
+	enum class SpectralMethod {
+		Eigen,
+		ArpackPPSparse,
+		Lapack,
+		Ietl
+	};
+
 	/** Applies spectral graph theory fu to a weighted, undirected graph */
-	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver);
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method);
 
 	/** Applies MCL graph segmentation to a weighted, undirected graph */
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations);

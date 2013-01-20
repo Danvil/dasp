@@ -10,6 +10,8 @@
 
 #include "SolveDenseTemplate.hpp"
 #include "SolveSparseTemplate.hpp"
+#include "SolveLapackTemplate.hpp"
+#include "SpectralIetl.hpp"
 
 namespace graphseg
 {
@@ -17,14 +19,18 @@ namespace graphseg
 	{
 		/** Computes n smallest eigenvalues/-vectors for a graph */
 		template<typename Graph>
-		std::vector<EigenComponent> SolveTemplate(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
+		std::vector<EigenComponent> SolveTemplate(const Graph& graph, unsigned int num_ev, SpectralMethod method) {
 			// pick one eigenvalue more because the first one is omitted
-			if(use_dense_solver) {
-				return detail::SolveDenseTemplate(graph, num_ev + 1);
-			}
-			else {
-				return detail::SolveSparseTemplate(graph, num_ev + 1);
-			}
+			switch(method) {
+				default: case SpectralMethod::Eigen:
+					return detail::SolveDenseTemplate(graph, num_ev + 1);
+				case SpectralMethod::ArpackPPSparse:
+					return detail::SolveSparseTemplate(graph, num_ev + 1);
+				case SpectralMethod::Lapack:
+					return detail::SolveLapackTemplate(graph, num_ev + 1);
+				case SpectralMethod::Ietl:
+					return detail::SpectralIetl(graph, num_ev + 1);
+		}
 		}
 	}
 }

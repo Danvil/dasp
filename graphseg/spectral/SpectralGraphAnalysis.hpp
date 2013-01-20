@@ -99,9 +99,9 @@ namespace graphseg
 
 	/** Applies graphseg graph theory fu to a weighted undirected graph */
 	template<typename Graph>
-	Graph SpectralGraphAnalysis(const Graph& graph, unsigned int num_ev, bool use_dense_solver) {
+	Graph SpectralGraphAnalysis(const Graph& graph, unsigned int num_ev, SpectralMethod method) {
 		// pick one more because the first one is omitted
-		std::vector<detail::EigenComponent> solution = detail::SolveTemplate(graph, num_ev, use_dense_solver);
+		std::vector<detail::EigenComponent> solution = detail::SolveTemplate(graph, num_ev, method);
 		detail::Vec weights = AssembleEdgeWeights(graph, solution);
 		// create new graph with resulting edge strength
 		Graph result = graph;

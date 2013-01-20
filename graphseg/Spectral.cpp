@@ -11,9 +11,9 @@
 
 namespace graphseg
 {
-	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, bool use_dense_solver)
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method)
 	{
-		return SpectralGraphAnalysis(graph, num_ev, use_dense_solver);
+		return SpectralGraphAnalysis(graph, num_ev, method);
 	}
 
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations)
