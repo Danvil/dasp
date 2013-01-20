@@ -12,6 +12,25 @@
 namespace dasp
 {
 
+DaspGraph CreateDaspNeighbourhoodGraph(const Superpixels& superpixels)
+{
+	UndirectedGraph gnb = CreateNeighborhoodGraph(superpixels, NeighborGraphSettings::NoCut());
+	DaspGraph result;
+	boost::copy_graph(gnb, result,
+		boost::vertex_copy(
+			[&superpixels,&gnb,&result](UndirectedWeightedGraph::vertex_descriptor src, DaspGraph::vertex_descriptor dst) {
+				result[dst] = superpixels.cluster[src].center;
+			}
+		)
+		.edge_copy(
+			[&gnb,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
+				boost::put(boost::edge_weight, result, dst, 1.0f);
+			}
+		)
+	);
+	return result;
+}
+
 DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeightedGraph& weighted_graph)
 {
 	DaspGraph result;

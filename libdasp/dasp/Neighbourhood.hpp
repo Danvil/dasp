@@ -61,6 +61,9 @@ namespace dasp
 		return result;
 	}
 
+	/** Computes a superpixel graph */
+	DaspGraph CreateDaspNeighbourhoodGraph(const Superpixels& superpixels);
+
 	/** Computes a weighted superpixel graph with superpixel values as vertex properties
 	 */
 	DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeightedGraph& weighted_graph);
