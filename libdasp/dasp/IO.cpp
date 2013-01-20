@@ -112,7 +112,36 @@ namespace dasp
 		return data;
 	}
 
-	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_graph)
+	void SaveDaspGraph(const DaspGraph& graph, const std::string& fn_dasp, const std::string& fn_edges)
+	{
+		const std::string sep = "\t";
+		// write data
+		std::ofstream ofs_v(fn_dasp);
+		if(!ofs_v.is_open()) {
+			throw std::runtime_error("Could not open file '" + fn_dasp + "'!");
+		}
+		for(auto vid : as_range(boost::vertices(graph))) {
+			const Point& p = graph[vid];
+			ofs_v
+				<< p.px << sep << p.px << sep
+				<< p.position.x() << sep << p.position.y() << sep << p.position.z() << sep
+				<< p.color.x() << sep << p.color.y() << sep << p.color.z() << sep
+				<< p.normal.x() << sep << p.normal.y() << sep << p.normal.z() << std::endl;
+		}
+		// write edges
+		std::ofstream ofs_e(fn_edges);
+		if(!ofs_e.is_open()) {
+			throw std::runtime_error("Could not open file '" + fn_edges + "'!");
+		}
+		for(auto eid : as_range(boost::edges(graph))) {
+			ofs_e
+				<< boost::source(eid, graph) << sep
+				<< boost::target(eid, graph) << sep
+				<< boost::get(boost::edge_weight, graph, eid) << std::endl;
+		}
+	}
+
+	DaspGraph LoadDaspGraph(const std::string& fn_dasp, const std::string& fn_edges)
 	{
 		const std::string separator = "\t";
 		constexpr unsigned int num_values_per_vertex = 11;
@@ -157,14 +186,12 @@ namespace dasp
 
 		// load superpixel edges
 		{
-			std::ifstream ifs(fn_graph);
+			std::ifstream ifs(fn_edges);
 			if(!ifs.is_open()) {
-				throw std::runtime_error("Could not open file '" + fn_graph + "'!");
+				throw std::runtime_error("Could not open file '" + fn_edges + "'!");
 			}
-			std::string line;
 			std::vector<std::string> tokens;
-			unsigned int e_source, e_target;
-			float weight;
+			std::string line;
 			while(std::getline(ifs,line)) {
 				// split line into tokens
 				tokens.clear();
@@ -176,9 +203,9 @@ namespace dasp
 					throw std::runtime_error("Invalid dasp edge line!");
 				}
 				// convert to indices
-				e_source = boost::lexical_cast<unsigned int>(tokens[0]);
-				e_target = boost::lexical_cast<unsigned int>(tokens[1]);
-				weight = (tokens.size() == 3) ? boost::lexical_cast<float>(tokens[2]) : 0.0f;
+				unsigned int e_source = boost::lexical_cast<unsigned int>(tokens[0]);
+				unsigned int e_target = boost::lexical_cast<unsigned int>(tokens[1]);
+				float weight = (tokens.size() == 3) ? boost::lexical_cast<float>(tokens[2]) : 0.0f;
 				// add edge to graph
 				auto result = boost::add_edge(e_source, e_target, g);
 				// set edge weight
