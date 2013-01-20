@@ -74,6 +74,8 @@ void WdgtMain::closeEvent(QCloseEvent* event)
 
 void WdgtMain::tick()
 {
+	client_->OnTick();
+
 	std::lock_guard<std::mutex> lock(show_images_cache_mutex_);
 	if(show_images_cache_.size() == 0)
 		return;
@@ -81,8 +83,6 @@ void WdgtMain::tick()
 		showImage(p.first, p.second);
 	}
 	show_images_cache_.clear();
-
-	client_->OnTick();
 }
 
 void WdgtMain::showImageThreadsafe(const std::string& tag, const slimage::Image3ub& img)
