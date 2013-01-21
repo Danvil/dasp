@@ -9,7 +9,9 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 
 	ui.comboBoxSeedType->addItem("Grid", dasp::SeedModes::Grid);
 	ui.comboBoxSeedType->addItem("DepthMipmap", dasp::SeedModes::DepthMipmap);
+	ui.comboBoxSeedType->addItem("DepthMipmap640", dasp::SeedModes::DepthMipmap640);
 	ui.comboBoxSeedType->addItem("DepthMipmapFS", dasp::SeedModes::DepthMipmapFS);
+	ui.comboBoxSeedType->addItem("DepthMipmapFS640", dasp::SeedModes::DepthMipmapFS640);
 	ui.comboBoxSeedType->addItem("DepthBlueNoise", dasp::SeedModes::DepthBlueNoise);
 	ui.comboBoxSeedType->addItem("DepthFloyd", dasp::SeedModes::DepthFloyd);
 	ui.comboBoxSeedType->addItem("DepthFloydExpo", dasp::SeedModes::DepthFloydExpo);

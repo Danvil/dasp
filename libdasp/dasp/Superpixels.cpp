@@ -286,7 +286,7 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 			{
 				// FIXME in count mode the gradient is computed using a default radius of 0.02
 				// FIXME regardless of the radius chosen later
-				Eigen::Vector2f gradient = LocalDepthGradient(depth, x, y, z_over_f, p.cluster_radius_px, opt.camera);
+				Eigen::Vector2f gradient = LocalDepthGradient(depth, x, y, z_over_f, 0.5f*p.cluster_radius_px, opt.camera);
 				p.setNormalFromGradient(gradient);
 				// limit minimal circularity such that the maximum angle is 80 deg
 				// FIXME limit normal angle
@@ -613,8 +613,12 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return FindSeedsGrid(points, opt);
 	case SeedModes::DepthMipmap:
 		return FindSeedsDepthMipmap(points, density);
+	case SeedModes::DepthMipmap640:
+		return FindSeedsDepthMipmap640(points, density);
 	case SeedModes::DepthMipmapFS:
 		return FindSeedsDepthMipmapFS(points, density);
+	case SeedModes::DepthMipmapFS640:
+		return FindSeedsDepthMipmapFS640(points, density);
 	case SeedModes::DepthBlueNoise:
 		return FindSeedsDepthBlue(points, density);
 	case SeedModes::DepthFloyd:

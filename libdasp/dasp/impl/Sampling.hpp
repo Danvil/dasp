@@ -30,7 +30,11 @@ namespace dasp
 
 	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density);
 
+	std::vector<Seed> FindSeedsDepthMipmap640(const ImagePoints& points, const Eigen::MatrixXf& density);
+
 	std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density);
+
+	std::vector<Seed> FindSeedsDepthMipmapFS640(const ImagePoints& points, const Eigen::MatrixXf& density);
 
 	std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density);
 

@@ -53,25 +53,56 @@ Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big)
 	return img_small;
 }
 
-Eigen::MatrixXf SumMipMap(const Eigen::MatrixXf& img_big)
+// template<>
+// Eigen::MatrixXf SumMipMap<2>(const Eigen::MatrixXf& img_big)
+// {
+// 	size_t w_big = img_big.rows();
+// 	size_t h_big = img_big.cols();
+// 	// the computed mipmap will have 2^i size
+// 	size_t size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
+// 	BOOST_ASSERT(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
+// 	size /= 2;
+// 	Eigen::MatrixXf img_small(size, size);
+// 	for(size_t y = 0; y < size; y++) {
+// 		size_t y_big = y * 2;
+// 		for(size_t x = 0; x < size; x++) {
+// 			size_t x_big = x * 2;
+// 			// We sum over all four corresponding pixels in the big image.
+// 			const float* p_big = &img_big(x_big, y_big);
+// 			img_small(x, y) = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
+// 		}
+// 	}
+// 	return img_small;
+// }
+
+Eigen::MatrixXf ScaleUp(const Eigen::MatrixXf& img_small, const unsigned int S)
 {
-	size_t w_big = img_big.rows();
-	size_t h_big = img_big.cols();
-	// the computed mipmap will have 2^i size
-	size_t size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-	BOOST_ASSERT(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
-	size /= 2;
-	Eigen::MatrixXf img_small(size, size);
-	for(size_t y = 0; y < size; y++) {
-		size_t y_big = y * 2;
-		for(size_t x = 0; x < size; x++) {
-			size_t x_big = x * 2;
-			// We sum over all four corresponding pixels in the big image.
-			const float* p_big = &img_big(x_big, y_big);
-			img_small(x, y) = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
+	if(S == 0) {
+		return Eigen::MatrixXf::Zero(0,0);
+	}
+	if(S == 1) {
+		return img_small;
+	}
+	// size of original image
+	const unsigned int w_sma = img_small.rows();
+	const unsigned int h_sma = img_small.cols();
+	// size of scaled up image
+	const unsigned int w_big = w_sma * S;
+	const unsigned int h_big = h_sma * S;
+	Eigen::MatrixXf img_big(w_big, h_big);
+	for(unsigned int y=0; y<h_sma; ++y) {
+		const unsigned int y_big = S*y;
+		for(unsigned int x=0; x<w_sma; ++x) {
+			const unsigned int x_big = S*x;
+			const float val = img_small(x, y);
+			for(unsigned int i=0; i<S; ++i) {
+				for(unsigned int j=0; j<S; ++j) {
+					img_big(x_big+j, y_big+i) = val;
+				}
+			}
 		}
 	}
-	return img_small;
+	return img_big;
 }
 
 std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned int min_size)
@@ -81,17 +112,32 @@ std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned
 	int n_mipmaps = Danvil::MoreMath::PowerOfTwoExponent(max_size);
 	n_mipmaps -= Danvil::MoreMath::PowerOfTwoExponent(min_size);
 	BOOST_ASSERT(n_mipmaps >= 1);
-	std::vector<Eigen::MatrixXf> mipmaps(n_mipmaps + 1);
-	mipmaps[0] = img;
-	mipmaps[1] = SumMipMapWithBlackBorder(img);
+	std::vector<Eigen::MatrixXf> mipmaps(n_mipmaps);
+	mipmaps[0] = SumMipMapWithBlackBorder(img);
 	// create remaining mipmaps
-	for(unsigned int i=2; i<=n_mipmaps; i++) {
+	for(unsigned int i=1; i<n_mipmaps; i++) {
 		BOOST_ASSERT(mipmaps[i-1].rows() == mipmaps[i-1].cols());
 		BOOST_ASSERT(mipmaps[i-1].rows() >= 1);
-		mipmaps[i] = SumMipMap(mipmaps[i - 1]);
+		mipmaps[i] = SumMipMap<2>(mipmaps[i - 1]);
 //		std::cout << std::accumulate(mipmaps[i].begin(), mipmaps[i].end(), 0.0f, [](float sum, float x) { return sum + x; }) << std::endl;
 	}
 	return mipmaps;
+}
+
+std::vector<Eigen::MatrixXf> ComputeMipmaps640x480(const Eigen::MatrixXf& img)
+{
+	// 640 = 4*32*5
+	// 480 = 3*32*5
+	// 32 = 2^5
+	if(img.rows() != 640 || img.cols() != 480) {
+		throw std::runtime_error("ERROR: ComputeMipmaps640x480 required size 640x480!");
+	}
+	std::vector<Eigen::MatrixXf> v(6);
+	v[0] = SumMipMap<5>(img);
+	for(unsigned int i=0; i<5; i++) {
+		v[i+1] = SumMipMap<2>(v[i]);
+	}
+	return v;
 }
 
 std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size)
@@ -109,8 +155,8 @@ std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(co
 	for(unsigned int i=2; i<=n_mipmaps; i++) {
 		BOOST_ASSERT(mipmaps[i-1].width() == mipmaps[i-1].height());
 		BOOST_ASSERT(mipmaps[i-1].width() >= 1);
-		mipmaps[i].first = SumMipMap(mipmaps[i - 1].first);
-		mipmaps[i].second = SumMipMap(mipmaps[i - 1].second);
+		mipmaps[i].first = SumMipMap<2>(mipmaps[i - 1].first);
+		mipmaps[i].second = SumMipMap<2>(mipmaps[i - 1].second);
 	}
 	return mipmaps;
 }
