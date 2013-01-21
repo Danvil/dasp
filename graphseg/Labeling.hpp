@@ -152,7 +152,7 @@ namespace graphseg
 		std::vector<int> cluster_labels(num_vertices);
 		for(auto vid : as_range(boost::vertices(graph))) {
 			const int label = boost::get(vertex_label_map, vid);
-			if(label != -1) {
+			if(label >= 0) {
 				// supervised cluster
 				cluster_labels[vid] = label;
 			}
@@ -178,6 +178,8 @@ namespace graphseg
 		}
 		// sort edges by weight
 		std::sort(edges.begin(), edges.end(), [](const Edge& x, const Edge& y) { return x.weight < y.weight; });
+		// collect uncut edges
+		std::vector<Edge> merged_edges;
 		// cut one edge after another and merge clusters into segments
 		for(unsigned int k=0; k<edges.size(); k++) {
 			const Edge& edge = edges[k];
@@ -191,6 +193,7 @@ namespace graphseg
 			const int label_b = cluster_labels[edge.b];
 			if(label_a == label_b) {
 				// clusters are already part of the same segment -> nothing to do
+				merged_edges.push_back(edge);
 				continue;
 			}
 			// check if cluster segments are supervised
@@ -205,7 +208,49 @@ namespace graphseg
 			const unsigned int old_label = std::max(label_a, label_b);
 			const unsigned int new_label = std::min(label_a, label_b);
 			std::replace(cluster_labels.begin(), cluster_labels.end(), old_label, new_label);
+			merged_edges.push_back(edge);
 		}
+
+		// compute connected componentes
+		// create a graph will all edges with costs >= threshold
+		SpectralGraph cropped(boost::num_vertices(graph));
+		for(const Edge& e : merged_edges) {
+			auto p = boost::add_edge(e.a, e.b, cropped);
+			boost::put(boost::edge_weight, cropped, p.first, e.weight);
+		}
+		// compute connected components
+		std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
+		unsigned int num_labels = boost::connected_components(cropped, &cluster_labels_components[0]);
+		// check if two components have the same index
+		std::vector<std::map<int,unsigned int>> component_labels(num_labels);
+		for(unsigned int i=0; i<cluster_labels_components.size(); i++) {
+			int component = cluster_labels_components[i];
+			int label = cluster_labels[i];
+			component_labels[component][label] ++;
+		}
+		for(unsigned int i=0; i<component_labels.size(); i++) {
+			if(component_labels[i].size() > 1) {
+				std::cout << "Component " << i << ": " << std::endl;
+				std::cout << "\tlabel\tcount" << std::endl;
+				int max_label = -1;
+				unsigned int max_num = 0;
+				for(const auto& p : component_labels[i]) {
+					std::cout << "\t" << p.first << "\t" << p.second << std::endl;
+					if(p.second > max_num) {
+						max_label = p.first;
+						max_num = p.second;
+					}
+				}
+				for(const auto& p : component_labels[i]) {
+					if(p.first != max_label) {
+						// exchange label p.first with ++label_max
+						int new_label = ++label_max;
+						std::replace(cluster_labels.begin(), cluster_labels.end(), p.first, new_label);
+					}
+				}
+			}
+		}
+
 		// return raw labels
 		return cluster_labels;
 	}
