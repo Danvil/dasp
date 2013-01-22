@@ -1,11 +1,16 @@
 #include "rgbd.hpp"
 #include <Slimage/IO.hpp>
+#include <Slimage/Gui.hpp>
+#include <common/color.hpp>
 #ifdef DASP_HAS_OPENNI
 	#include "KinectGrabber.h"
 #endif
 #include <iostream>
 #include <stdexcept>
 #include <random>
+#include <iterator>
+#include <fstream>
+#include <snappy.h>
 
 constexpr int WIDTH = 640;
 constexpr int HEIGHT = 480;
@@ -134,6 +139,134 @@ private:
 	Rgbd data_;
 };
 
+class RgbdStreamFreenectRecord : public RandomAccessRgbdStream
+{
+public:
+	RgbdStreamFreenectRecord(const std::string& fn)
+	:base_dir_(fn) {
+		// prepare images
+		img_depth_ = slimage::Image1ui16(640, 480, slimage::Pixel1ui16{1000});
+		img_color_ = slimage::Image3ub(640, 480, {{0,0,0}});
+		// read index file
+		std::ifstream f_index(base_dir_ + "/INDEX.txt");
+		if(!f_index.is_open()) {
+			throw std::runtime_error("Could not open index file!");
+		}
+		std::vector<std::string> raw_index;
+		while(f_index) {
+			std::string q;
+			f_index >> q;
+			raw_index.push_back(q);
+		}
+		parse_index(raw_index);
+		cur_frame_ = 0;
+	}
+	~RgbdStreamFreenectRecord() {
+	}
+	unsigned int numFrames() {
+		return num_frames_;
+	}
+	unsigned int tell() {
+		return cur_frame_;
+	}
+	void seek(unsigned int frame) {
+		cur_frame_ = frame;
+	}
+	bool grab() {
+		cur_frame_ ++;
+		if(cur_frame_ < num_frames_) {
+			std::cout << "Current frame " << cur_frame_ << std::endl;
+			unsnap_depth(base_dir_ + "/" + index_[cur_frame_].first);
+			unsnap_color(base_dir_ + "/" + index_[cur_frame_].second);
+			return true;
+		}
+		else {
+			cur_frame_ = num_frames_;
+			return false;
+		}
+	}
+	Rgbd get() {
+		return {
+			img_color_.clone(),
+			img_depth_.clone()
+		};
+	}
+private:
+	void parse_index(const std::vector<std::string>& raw_index) {
+		int i=0;
+		while(i < raw_index.size()) {
+			// wait for depth frame
+			int i_depth = -1;
+			while(i < raw_index.size()) {
+				std::string q = raw_index[i];
+				if(q[0] == 'd') {
+					i_depth = i;
+					break;
+				}
+				i++;
+			}
+			// wait for color frame
+			int i_color = -1;
+			while(i < raw_index.size()) {
+				std::string q = raw_index[i];
+				if(q[0] == 'r') {
+					i_color = i;
+					break;
+				}
+				i++;
+			}
+			// add to index
+			if(i_depth == -1 || i_color == -1) {
+				break;
+			}
+			index_.push_back({raw_index[i_depth], raw_index[i_color]});
+		}
+		num_frames_ = index_.size();
+		std::cout << "freenect stream with " << num_frames_ << " frames" << std::endl;
+	}
+	std::vector<char> unsnap(const std::string& fn) {
+		// read data
+		std::ifstream ifs(fn);
+		if(!ifs.is_open()) {
+			throw std::runtime_error("Could not open file!");
+		}
+		ifs.seekg(0, std::ios::end);
+		std::size_t compressed_length = ifs.tellg();
+		std::cout << "compressed_length "  << compressed_length << std::endl;
+		ifs.seekg(0, std::ios::beg);
+		std::vector<char> compressed(compressed_length);
+		ifs.read(compressed.data(), compressed_length);
+		// unsnap
+		std::size_t uncompressed_length = 0;
+		snappy::GetUncompressedLength(compressed.data(), compressed.size(), &uncompressed_length);
+		std::cout << "uncompressed_length "  << uncompressed_length << std::endl;
+		std::vector<char> uncompressed(uncompressed_length);
+		snappy::RawUncompress(compressed.data(), compressed.size(), uncompressed.data());
+		return uncompressed;
+	}
+	void unsnap_depth(const std::string& fn) {
+		std::cout << "unsnap depth" << std::endl;
+		std::vector<char> v = unsnap(fn);
+		std::copy(v.begin(), v.end(), (char*)(img_depth_.begin().pointer()));
+		// slimage::gui::Show("depth", common::GreyDepth(img_depth_,500,3000), 10);
+		std::cout << "depth ready" << std::endl;
+	}
+	void unsnap_color(const std::string& fn) {
+		std::cout << "unsnap color" << std::endl;
+		std::vector<char> v = unsnap(fn);
+		std::copy(v.begin(), v.end(), img_color_.begin().pointer());
+		// slimage::gui::Show("color", img_color_, 10);
+		std::cout << "color ready" << std::endl;
+	}
+private:
+	std::vector<std::pair<std::string,std::string>> index_;
+	std::string base_dir_;
+	slimage::Image3ub img_color_;
+	slimage::Image1ui16 img_depth_;
+	unsigned int num_frames_;
+	unsigned int cur_frame_;
+};
+
 #ifdef DASP_HAS_OPENNI
 
 class RgbdStreamOni : public RandomAccessRgbdStream
@@ -213,6 +346,11 @@ std::shared_ptr<RgbdStream> FactorStatic(const std::string& fn)
 	return std::make_shared<RgbdStreamStatic>(fn);
 }
 
+std::shared_ptr<RandomAccessRgbdStream> FactorFreenectRecord(const std::string& fn)
+{
+	return std::make_shared<RgbdStreamFreenectRecord>(fn);
+}
+
 std::shared_ptr<RandomAccessRgbdStream> FactorOni(const std::string& fn)
 {
 #ifdef DASP_HAS_OPENNI
@@ -240,6 +378,9 @@ std::shared_ptr<RgbdStream> FactorStream(const std::string& mode, const std::str
 	}
 	if(mode == "static") {
 		return FactorStatic(arg);
+	}
+	if(mode == "freenect") {
+		return FactorFreenectRecord(arg);
 	}
 	if(mode == "oni") {
 		return FactorOni(arg);

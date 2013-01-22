@@ -40,6 +40,8 @@ std::shared_ptr<RgbdStream> FactorTest(const std::string& arg);
 
 std::shared_ptr<RgbdStream> FactorStatic(const std::string& fn);
 
+std::shared_ptr<RandomAccessRgbdStream> FactorFreenectRecord(const std::string& fn);
+
 std::shared_ptr<RandomAccessRgbdStream> FactorOni(const std::string& fn);
 
 std::shared_ptr<RgbdStream> FactorKinectLive(const std::string& fn_config);
