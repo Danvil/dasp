@@ -103,7 +103,7 @@ void WdgtKinectSuperPoints::ShowLive()
 	StopProcessingThread();
 
 	// open Kinect in live mode
-	std::string config = "/home/david/Programs/RGBD/OpenNI/Platform/Linux-x86/Redist/Samples/Config/SamplesConfig.xml";
+	std::string config = "/home/david/git/OpenNI/Platform/Linux/Redist/OpenNI-Bin-Dev-Linux-x64-v1.5.4.0/Samples/Config/SamplesConfig.xml";
 	std::cout << "Opening kinect config file: " << config << std::endl;
 	rgbd_stream_ = FactorKinectLive(config);
 	mode_ = LiveMode;
