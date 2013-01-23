@@ -15,8 +15,6 @@
 #include <fstream>
 #include <vector>
 
-#define SPECTRAL_VERBOSE
-
 extern "C" int ssyevr_(
 		char*,char*,char*,
 		int*,float*,int*,

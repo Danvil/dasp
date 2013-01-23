@@ -8,7 +8,6 @@
 #ifndef DASP_SPECTRAL_SPECTRALIETL_HPP_
 #define DASP_SPECTRAL_SPECTRALIETL_HPP_
 
-#define SPECTRAL_VERBOSE
 #include "../Common.hpp"
 #include "../as_range.hpp"
 #include <boost/graph/adjacency_list.hpp>
