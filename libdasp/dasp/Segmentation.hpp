@@ -11,7 +11,7 @@
 #include "Superpixels.hpp"
 #include "Graph.hpp"
 #include <graphseg/Labeling.hpp>
-#include <graphseg/Spectral.hpp>
+#include <graphseg/graphseg.hpp>
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
@@ -44,7 +44,7 @@ UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, Weigh
 	));
 	// do spectral graph foo
 	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, 24,
-		graphseg::SpectralMethod::Ietl);
+		graphseg::SpectralMethod::Eigen);
 //	graphseg::SpectralGraph solved = graphseg::SolveMCL(spectral, 1.41f, 50);
 	// create superpixel neighbourhood graph with edge strength
 	UndirectedWeightedGraph result;

@@ -10,19 +10,34 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <Eigen/Dense>
+#include <vector>
 
 namespace graphseg
 {
 	namespace detail
 	{
-		typedef float Real;
-		typedef Eigen::MatrixXf Mat;
-		typedef Eigen::VectorXf Vec;
-
 		struct EigenComponent
 		{
-			Real eigenvalue;
-			Vec eigenvector;
+			float eigenvalue;
+			Eigen::VectorXf eigenvector;
+		};
+
+		struct SparseEntry
+		{
+			unsigned int i; // row index
+			unsigned int j; // column index
+			float weight; // value
+		};
+
+		/** A symmetric lower triangle sparse matrix
+		 * Assertion: i >= j
+		 * Assertion: sorted by j then by i
+		 * Entries are sorted s.t. i
+		 */
+		struct SparseMatrix
+		{
+			unsigned int dim;
+			std::vector<SparseEntry> entries;
 		};
 	}
 	

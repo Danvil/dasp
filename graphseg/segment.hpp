@@ -1,12 +1,12 @@
 /*
- * Spectral.hpp
+ * segment.hpp
  *
- *  Created on: Dec 30, 2012
+ *  Created on: Jan 29, 2012
  *      Author: david
  */
 
-#ifndef DASP_SPCTRAL_HPP
-#define DASP_SPCTRAL_HPP
+#ifndef GRAPHSEG_SEGMENT_HPP
+#define GRAPHSEG_SEGMENT_HPP
 
 #include "Common.hpp"
 
@@ -20,9 +20,9 @@ namespace graphseg
 
 	enum class SpectralMethod {
 		Eigen,
-		Magma,
-		ArpackPPSparse,
 		Lapack,
+		Magma,
+		ArpackPP,
 		Ietl
 	};
 

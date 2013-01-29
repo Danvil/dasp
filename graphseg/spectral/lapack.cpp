@@ -1,16 +1,11 @@
 /*
- * SolveLapackTemplate.hpp
+ * lapack.hpp
  *
  *  Created on: Jan 19, 2012
  *      Author: david
  */
 
-#ifndef DASP_SPECTRAL_SOLVELAPACKTEMPLATE_HPP_
-#define DASP_SPECTRAL_SOLVELAPACKTEMPLATE_HPP_
-
-#include "../Common.hpp"
-#include "../as_range.hpp"
-#include <boost/graph/adjacency_list.hpp>
+#include "solver.hpp"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -26,99 +21,14 @@ extern "C" int ssyevr_(
 
 namespace graphseg { namespace detail {
 
-template<typename Graph>
-std::vector<EigenComponent> SolveLapackTemplate(const Graph& graph, unsigned int num_ev)
+std::vector<EigenComponent> solver_lapack(const Eigen::MatrixXf& Ain, unsigned int num_ev)
 {
-
-	unsigned int dim = boost::num_vertices(graph);
-#ifdef SPECTRAL_VERBOSE
-	unsigned int num_edges = boost::num_edges(graph);
-	std::cout << "SpectralSegmentation: dimension=" << dim
-			<< ", num_edges=" << num_edges
-			<< ", matrix non-zero elements = " << 100*static_cast<float>(2 * num_edges) / static_cast<float>(dim*dim) << "%" << std::endl;
-	std::vector<int> nodes_with_no_connection;
-#endif
-	// creating matrices
-	Mat W = Mat::Zero(dim,dim);
-	std::vector<float> Di(dim, 0.0f);
-	for(auto eid : as_range(boost::edges(graph))) {
-		unsigned int ea = boost::source(eid, graph);
-		unsigned int eb = boost::target(eid, graph);
-		float ew = boost::get(boost::edge_weight, graph, eid);
-		if(std::isnan(ew)) {
-			std::cerr << "Weight for edge (" << ea << "," << eb << ") is nan!" << std::endl;
-			continue;
-		}
-		if(ew < 0) {
-			std::cerr << "Weight for edge (" << ea << "," << eb << ") is negative!" << std::endl;
-			continue;
-		}
-		W(ea, eb) = ew;
-		W(eb, ea) = ew;
-		Di[ea] += ew;
-		Di[eb] += ew;
-	}
-	// connect disconnected segments to everything
-	// FIXME why is this necessary?
-	for(unsigned int i=0; i<dim; i++) {
-		float& di = Di[i];
-		if(di == 0) {
-#ifdef SPECTRAL_VERBOSE
-			nodes_with_no_connection.push_back(i);
-#endif
-			// connect the disconnected cluster to all other clusters with a very small weight
-			di = 1.0f;
-			float q = di / static_cast<float>(dim-1);
-			for(unsigned int j=0; j<dim; j++) {
-				if(j == i) continue;
-				W(i,j) = q;
-				W(j,i) = q;
-			}
-		}
-	}
-#ifdef SPECTRAL_VERBOSE
-	if(!nodes_with_no_connection.empty()) {
-		std::cout << "Nodes without connections (#=" << nodes_with_no_connection.size() << "): ";
-		for(int i : nodes_with_no_connection) {
-			std::cout << i << ", ";
-		}
-		std::cout << std::endl;
-	}
-#endif	
-	// compute matrix A = D^{-1/2} * (D - W) * D^{-1/2}
-	Eigen::VectorXf di_sqrt_inv(dim);
-	for(unsigned int i=0; i<dim; i++) {
-		di_sqrt_inv[i] = 1.0f / std::sqrt(Di[i]);
-	}
-	Eigen::MatrixXf A(dim, dim);
-	for(unsigned int i=0; i<dim; i++) {
-		for(unsigned int j=0; j<dim; j++) {
-			A(j,i) = - W(j,i) * di_sqrt_inv[i] * di_sqrt_inv[j];
-		}
-		A(i,i) = 1.0f;
-	}
-
-#ifdef SPECTRAL_VERBOSE
-	{	// DEBUG
-		std::ofstream ofs_A("/tmp/spectral_A.csv");
-		for(unsigned int i=0; i<dim; i++) {
-			for(unsigned int j=0; j<dim; j++) {
-				ofs_A << A(i,j);
-				if(j+1 == dim) {
-					ofs_A << std::endl;
-				}
-				else {
-					ofs_A << ", ";
-				}
-			}
-		}
-	}	// DEBUG
-#endif
+	Eigen::MatrixXf A = Ain;
 
 	// calling lapack!
 	std::cout << "LAPACK: Start!" << std::endl;
 
-	int N = dim;
+	int N = A.rows();
 	std::cout << "N=" << N << std::endl;
 	float* data = A.data();
 	float vl, vu;
@@ -201,9 +111,9 @@ std::vector<EigenComponent> SolveLapackTemplate(const Graph& graph, unsigned int
 #ifdef SPECTRAL_VERBOSE
 		std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
 #endif
-		solution[i].eigenvector = Eigen::VectorXf(dim);
-		for(unsigned int j=0; j<dim; j++) {
-			solution[i].eigenvector[j] = result_ev[i*dim + j]; // FIXME correct order?
+		solution[i].eigenvector = Eigen::VectorXf(N);
+		for(unsigned int j=0; j<N; j++) {
+			solution[i].eigenvector[j] = result_ev[i*N + j]; // FIXME correct order?
 		}
 	}
 
@@ -217,5 +127,3 @@ std::vector<EigenComponent> SolveLapackTemplate(const Graph& graph, unsigned int
 }
 
 }}
-
-#endif

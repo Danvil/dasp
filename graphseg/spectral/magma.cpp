@@ -1,8 +1,9 @@
-#include "Magma.hpp"
+#include "../Common.hpp"
 #include <cuda_runtime_api.h>
 #include <cublas.h>
 #include <magma.h>
 #include <magma_lapack.h>
+#include <iostream>
 
 namespace graphseg { namespace detail {
 
@@ -53,26 +54,12 @@ struct MagmaSpectralSolver
 	}
 };
 
-std::vector<EigenComponent> MagmaImpl(const Eigen::MatrixXf& A_in, const Eigen::VectorXf& D_in, unsigned int num_ev)
+std::vector<EigenComponent> solver_magma(const Eigen::MatrixXf& A, unsigned int num_ev)
 {
 	static MagmaSpectralSolver magma;
 
-	magma_int_t N = A_in.rows();
-	std::cout << "N=" << N << std::endl;
-
-	std::cout << "Converting from general to normal system" << std::endl;
-
-	// convert general problem
-	Eigen::VectorXf D_inv_sqrt(N);
-	for(unsigned int i=0; i<N; i++) {
-		D_inv_sqrt[i] = 1.0f / std::sqrt(D_in[i]);
-	}
-	Eigen::MatrixXf A(N,N);
-	for(unsigned int i=0; i<N; i++) {
-		for(unsigned int j=0; j<N; j++) {
-			A(j,i) = A_in(j,i) / (D_inv_sqrt[i] * D_inv_sqrt[j]);
-		}
-	}
+	magma_int_t N = A.rows();
+	std::cout << "MAGMA Solver N=" << N << std::endl;
 
 	magma_timestr_t start, end;
 	float gpu_time;
@@ -125,7 +112,7 @@ std::vector<EigenComponent> MagmaImpl(const Eigen::MatrixXf& A_in, const Eigen::
 		solution[i].eigenvalue = w1[i+1];
 		Eigen::VectorXf ev(N);
 		for(unsigned int j=0; j<N; j++) {
-			ev[j] = *(h_R + i*N + j) * D_inv_sqrt[j];
+			ev[j] = *(h_R + i*N + j);
 		}
 		solution[i].eigenvector = ev;
 	}

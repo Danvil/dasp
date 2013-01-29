@@ -10,7 +10,7 @@
 
 #include "Point.hpp"
 #include "graphseg/as_range.hpp"
-#include "graphseg/Spectral.hpp"
+#include "graphseg/graphseg.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <Eigen/Dense>
 

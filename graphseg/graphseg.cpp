@@ -5,19 +5,19 @@
  *      Author: david
  */
 
-#include "Spectral.hpp"
+#include "spectral/spectral.hpp"
 #include "Common.hpp"
-#include "spectral/SpectralGraphAnalysis.hpp"
 
 namespace graphseg
 {
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method)
 	{
-		return SpectralGraphAnalysis(graph, num_ev, method);
+		return detail::graphseg_spectral(graph, num_ev, method);
 	}
 
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations)
 	{
+		typedef Eigen::MatrixXf Mat;
 		std::cout << "input graph has " << boost::num_edges(graph) << " edges" << std::endl;
 		using namespace detail;
 		unsigned int dim = boost::num_vertices(graph);

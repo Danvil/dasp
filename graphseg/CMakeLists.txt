@@ -1,10 +1,13 @@
 
 
 add_library(graphseg SHARED
-	Spectral.cpp
+	graphseg.cpp
 	Labeling.cpp
-	spectral/SolveSparseTemplate.cpp
-	spectral/Magma.cpp
+	spectral/arpackpp.cpp
+	spectral/eigen.cpp
+	spectral/ietl.cpp
+	spectral/lapack.cpp
+	spectral/magma.cpp
 )
 
 include_directories(graphseg
