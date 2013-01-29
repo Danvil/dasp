@@ -20,6 +20,7 @@ namespace graphseg
 
 	enum class SpectralMethod {
 		Eigen,
+		Magma,
 		ArpackPPSparse,
 		Lapack,
 		Ietl

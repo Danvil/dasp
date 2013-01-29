@@ -9,6 +9,7 @@
 #define DASP_SPECTRAL_SOLVETEMPLATE_HPP_
 
 #include "SolveDenseTemplate.hpp"
+#include "Magma.hpp"
 #include "SolveSparseTemplate.hpp"
 #include "SolveLapackTemplate.hpp"
 #include "SpectralIetl.hpp"
@@ -24,6 +25,8 @@ namespace graphseg
 			switch(method) {
 				default: case SpectralMethod::Eigen:
 					return detail::SolveDenseTemplate(graph, num_ev + 1);
+				case SpectralMethod::Magma:
+					return detail::SolveSpectral_Magma(graph, num_ev + 1);
 				case SpectralMethod::ArpackPPSparse:
 					return detail::SolveSparseTemplate(graph, num_ev + 1);
 				case SpectralMethod::Lapack:

@@ -13,9 +13,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/numeric/ublas/symmetric.hpp>
 #include <boost/numeric/ublas/io.hpp>
-#include <ietl/interface/ublas.h>
-#include <ietl/vectorspace.h>
-#include <ietl/lanczos.h>
+// #include <ietl/interface/ublas.h>
+// #include <ietl/vectorspace.h>
+// #include <ietl/lanczos.h>
 #include <boost/random.hpp>
 #include <boost/limits.hpp>
 #include <limits>
@@ -28,6 +28,7 @@ namespace graphseg { namespace detail {
 template<typename Graph>
 std::vector<EigenComponent> SpectralIetl(const Graph& graph, unsigned int num_ev)
 {
+#if 0
 #ifdef SPECTRAL_VERBOSE
 	std::cout << "Sparse Solver: started" << std::endl;
 #endif
@@ -244,6 +245,7 @@ std::vector<EigenComponent> SpectralIetl(const Graph& graph, unsigned int num_ev
 #endif
 
 	return solution;
+#endif
 }
 
 }}
