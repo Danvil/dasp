@@ -19,9 +19,6 @@ include_directories(
 target_link_libraries(libdasp
 	graphseg
 	boost_thread
-	parpack
-	arpack
-	superlu
 )
 
 if (DASP_HAS_CANDY)
