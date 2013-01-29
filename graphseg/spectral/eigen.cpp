@@ -1,5 +1,8 @@
 #include "solver.hpp"
 #include <Eigen/Dense>
+#ifdef SPECTRAL_VERBOSE
+#	include <iostream>
+#endif
 
 namespace graphseg { namespace detail {
 

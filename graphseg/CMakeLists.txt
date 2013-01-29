@@ -1,4 +1,5 @@
 
+add_definitions(-DSPECTRAL_VERBOSE)
 
 add_library(graphseg SHARED
 	graphseg.cpp
@@ -21,6 +22,12 @@ if (USE_MAGMA)
 		/usr/local/cuda-5.0/include
 	)
 endif (USE_MAGMA)
+
+if (SOLVER_IETL)
+	include_directories(graphseg
+		/home/david/Downloads/ietl-2.2
+	)
+endif (SOLVER_IETL)
 
 target_link_libraries(graphseg
 	parpack

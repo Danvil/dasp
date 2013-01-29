@@ -10,9 +10,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/numeric/ublas/symmetric.hpp>
 #include <boost/numeric/ublas/io.hpp>
-// #include <ietl/interface/ublas.h>
-// #include <ietl/vectorspace.h>
-// #include <ietl/lanczos.h>
+#include <ietl/interface/ublas.h>
+#include <ietl/vectorspace.h>
+#include <ietl/lanczos.h>
 #include <boost/random.hpp>
 #include <boost/limits.hpp>
 #include <limits>
@@ -24,19 +24,17 @@ namespace graphseg { namespace detail {
 
 std::vector<EigenComponent> solver_ietl(const SparseMatrix& A, unsigned int num_ev)
 {
-	throw 0;
-#if 0
 	typedef boost::numeric::ublas::symmetric_matrix<
 		double, boost::numeric::ublas::lower> Matrix; 
 	typedef boost::numeric::ublas::vector<double> Vector;
 
-	int N = n;
+	int N = A.dim;
 	Matrix mat(N, N);
 	for(int i=0;i<N;i++)
 		for(int j=0;j<=i;j++)
 			mat(i,j) = 0;   
-	for(Entry& e : entries)
-		mat(e.i,e.j) = e.value;
+	for(auto& e : A.entries)
+		mat(e.i,e.j) = e.weight;
 
 	typedef ietl::vectorspace<Vector> Vecspace;
 	typedef boost::lagged_fibonacci607 Gen;  
@@ -47,8 +45,8 @@ std::vector<EigenComponent> solver_ietl(const SparseMatrix& A, unsigned int num_
 
 	// Creation of an iteration object:  
 	int max_iter = 10*N;  
-	double rel_tol = 5000*std::numeric_limits<double>::epsilon();
-	double abs_tol = 0.0001f;// std::pow(std::numeric_limits<double>::epsilon(),2./3);  
+	double rel_tol = 50*std::numeric_limits<double>::epsilon();
+	double abs_tol = 0.00001f;// std::pow(std::numeric_limits<double>::epsilon(),2./3);
 	std::cout << "Computation of 2 lowest converged eigenvalues\n\n";
 	std::cout << "-----------------------------------\n\n";
 	int n_lowest_eigenval = num_ev;
@@ -110,19 +108,17 @@ std::vector<EigenComponent> solver_ietl(const SparseMatrix& A, unsigned int num_
 		cmp.eigenvalue = *(ew_begin + i);
 #ifdef SPECTRAL_VERBOSE
 		std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
-		cmp.eigenvector = Vec(n);
+		cmp.eigenvector = Eigen::VectorXf(N);
 #endif
 		for(unsigned int j=0; j<N; j++) {
-			Real v = eigenvectors[i][j];
 			// convert back to generalized eigenvalue problem!
-			cmp.eigenvector[j] = v;
+			cmp.eigenvector[j] = eigenvectors[i][j];
 		}
 	}
 #ifdef SPECTRAL_VERBOSE
 	std::cout << "Sparse Solver: returning" << std::endl;
 #endif
 	return solution;
-#endif
 }
 
 }}

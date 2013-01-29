@@ -30,6 +30,9 @@ namespace graphseg
 	/** Applies spectral graph theory fu to a weighted, undirected graph */
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method);
 
+	/** Like SolveSpectral, but with fastest available solver */
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev);
+
 	/** Applies MCL graph segmentation to a weighted, undirected graph */
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations);
 

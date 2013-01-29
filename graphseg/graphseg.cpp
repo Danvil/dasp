@@ -10,6 +10,11 @@
 
 namespace graphseg
 {
+	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev)
+	{
+		return detail::graphseg_spectral(graph, num_ev, SpectralMethod::Eigen);
+	}
+
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method)
 	{
 		return detail::graphseg_spectral(graph, num_ev, method);

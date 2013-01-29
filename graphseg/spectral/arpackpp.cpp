@@ -101,7 +101,7 @@ std::vector<EigenComponent> solver_arpackpp(const SparseMatrix& A, unsigned int 
 		std::cout << "Warning: Using sparse eigensolver, but trying to get a huge number of eigenvectors!" << std::endl;
 	}
 	ARluSymStdEig<Real> solv(num_ev, mat, "SM");
-	std::vector<Real> v_ew(num_ev);
+std::vector<Real> v_ew(num_ev);
 	std::vector<Real> v_ev(num_ev * n);
 	Real* p_ew = v_ew.data();
 	Real* p_ev = v_ev.data();
@@ -116,8 +116,8 @@ std::vector<EigenComponent> solver_arpackpp(const SparseMatrix& A, unsigned int 
 		cmp.eigenvalue = p_ew[i];
 #ifdef SPECTRAL_VERBOSE
 		std::cout << "Eigenvalue " << i << ": " << cmp.eigenvalue << std::endl;
-		cmp.eigenvector = Vec(n);
 #endif
+		cmp.eigenvector = Eigen::VectorXf(n);
 		for(unsigned int j=0; j<n; j++) {
 			cmp.eigenvector[j] = p_ev[i*n + j];
 		}

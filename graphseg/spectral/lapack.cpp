@@ -32,7 +32,7 @@ std::vector<EigenComponent> solver_lapack(const Eigen::MatrixXf& Ain, unsigned i
 	std::cout << "N=" << N << std::endl;
 	float* data = A.data();
 	float vl, vu;
-	int il = 1, iu = 25;
+	int il = 1, iu = num_ev;
 	float accuracy = 0.00001f;
 	int result_num_ew_found;
 	float* result_ew = new float[N];
@@ -79,7 +79,7 @@ std::vector<EigenComponent> solver_lapack(const Eigen::MatrixXf& Ain, unsigned i
 	iwork = new int[iwork_dim];
 
 	ssyevr_(
-		"N", // JOBZ eigenvalues + eigenvectors
+		"V", // JOBZ eigenvalues + eigenvectors
 		"A", // RANGE only some eigenvalues
 		"U", // UPLO upper triangle is stored
 		&N, // N order of A
@@ -112,9 +112,13 @@ std::vector<EigenComponent> solver_lapack(const Eigen::MatrixXf& Ain, unsigned i
 		std::cout << "SpectralSegmentation: eigenvalue #" << i << "=" << solution[i].eigenvalue << std::endl;
 #endif
 		solution[i].eigenvector = Eigen::VectorXf(N);
+		auto& ev = solution[i].eigenvector;
 		for(unsigned int j=0; j<N; j++) {
-			solution[i].eigenvector[j] = result_ev[i*N + j]; // FIXME correct order?
+			ev[j] = result_ev[i*N + j]; // FIXME correct order?
 		}
+#ifdef SPECTRAL_VERBOSE
+		std::cout << ev.transpose() << std::endl;
+#endif
 	}
 
 	delete[] result_ew;

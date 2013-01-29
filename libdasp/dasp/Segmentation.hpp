@@ -43,8 +43,7 @@ UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, Weigh
 				}
 	));
 	// do spectral graph foo
-	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, 24,
-		graphseg::SpectralMethod::Eigen);
+	graphseg::SpectralGraph solved = graphseg::SolveSpectral(spectral, 24);
 //	graphseg::SpectralGraph solved = graphseg::SolveMCL(spectral, 1.41f, 50);
 	// create superpixel neighbourhood graph with edge strength
 	UndirectedWeightedGraph result;
