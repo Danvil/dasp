@@ -212,7 +212,7 @@ void PlotWeightedGraphLines(slimage::Image3ub& vis_img, const Superpixels& clust
 	for(auto eid : as_range(boost::edges(graph))) {
 		const Point& a = clustering.cluster[boost::source(eid, graph)].center;
 		const Point& b = clustering.cluster[boost::target(eid, graph)].center;
-		float weight = boost::get(boost::edge_weight_t(), graph, eid);
+		float weight = graph[eid];
 		slimage::PaintLine(vis_img, a.px, a.py, b.px, b.py, weight_to_color(weight));
 	}
 }

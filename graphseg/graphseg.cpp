@@ -12,12 +12,12 @@ namespace graphseg
 {
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev)
 	{
-		return detail::graphseg_spectral(graph, num_ev, SpectralMethod::Eigen);
+		return SolveSpectral(graph, num_ev, SpectralMethod::Eigen);
 	}
 
 	SpectralGraph SolveSpectral(const SpectralGraph& graph, unsigned int num_ev, SpectralMethod method)
 	{
-		return detail::graphseg_spectral(graph, num_ev, method);
+		return detail::graphseg_spectral(graph, boost::get(boost::edge_bundle, graph), num_ev, method);
 	}
 
 	SpectralGraph SolveMCL(const SpectralGraph& graph, float p, unsigned int iterations)
@@ -32,7 +32,7 @@ namespace graphseg
 		for(auto eid : as_range(boost::edges(graph))) {
 			unsigned int ea = boost::source(eid, graph);
 			unsigned int eb = boost::target(eid, graph);
-			float ew = boost::get(boost::edge_weight, graph, eid);
+			float ew = graph[eid];
 			W(ea, eb) = ew;
 			W(eb, ea) = ew;
 		}
@@ -59,7 +59,7 @@ namespace graphseg
 					bool ok;
 					SpectralGraph::edge_descriptor eid;
 					boost::tie(eid,ok) = boost::add_edge(x, y, result);
-					boost::put(boost::edge_weight, result, eid, w);
+					result[eid] = w;
 				}
 			}
 		}

@@ -44,7 +44,7 @@ namespace graphseg
 	/** A simple weighted undirected graph */
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
 			boost::no_property,
-			boost::property<boost::edge_weight_t, float>
+			float
 	> SpectralGraph;
 
 }

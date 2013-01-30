@@ -42,8 +42,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeight
 		)
 		.edge_copy(
 			[&weighted_graph,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
-				boost::put(boost::edge_weight, result, dst,
-					boost::get(boost::edge_weight, weighted_graph, src));
+				boost::put(boost::edge_weight, result, dst, weighted_graph[src]);
 			}
 		)
 	);

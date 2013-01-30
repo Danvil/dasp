@@ -29,8 +29,8 @@ struct DenseGev
 	Eigen::Matrix<K,-1,1> D;
 };
 
-template<typename K, typename Graph>
-DenseGev<K> dense_graph_to_gev(const Graph& graph)
+template<typename K, typename Graph, typename EdgeWeightMap>
+DenseGev<K> dense_graph_to_gev(const Graph& graph, EdgeWeightMap edge_weights)
 {
 	typedef Eigen::Matrix<K,-1,-1> matrix_t;
 	typedef Eigen::Matrix<K,-1,1> vector_t;
@@ -41,7 +41,7 @@ DenseGev<K> dense_graph_to_gev(const Graph& graph)
 	for(auto eid : as_range(boost::edges(graph))) {
 		unsigned int ea = boost::source(eid, graph);
 		unsigned int eb = boost::target(eid, graph);
-		K ew = boost::get(boost::edge_weight, graph, eid);
+		K ew = edge_weights[eid];
 		if(std::isnan(ew)) {
 			std::cerr << "ERROR: Weight for edge (" << ea << "," << eb << ") is nan!" << std::endl;
 			continue;
@@ -137,8 +137,8 @@ struct SparseGEVT
 	Eigen::VectorXf D_inv_sqrt;
 };
 
-template<typename K, typename Graph>
-SparseGEVT<K> sparse_graph_entries(const Graph& graph)
+template<typename K, typename Graph, typename EdgeWeightMap>
+SparseGEVT<K> sparse_graph_entries(const Graph& graph, EdgeWeightMap edge_weights)
 {
 	// We want to solve the EV problem: (D - W) x = \lamda D x.
 	// Each edge of the graph defines two entries into the symmetric matrix W.
@@ -175,7 +175,7 @@ SparseGEVT<K> sparse_graph_entries(const Graph& graph)
 	for(auto eid : as_range(boost::edges(graph))) {
 		int ea = static_cast<int>(boost::source(eid, graph));
 		int eb = static_cast<int>(boost::target(eid, graph));
-		K ew = boost::get(boost::edge_weight, graph, eid);
+		K ew = edge_weights[eid];
 		// assure correct edge weight
 		if(std::isnan(ew)) {
 			std::cerr << "ERROR: Weight for edge (" << ea << "," << eb << ") is nan!" << std::endl;
@@ -352,13 +352,13 @@ inline void print_matrix(std::ostream& os, const Eigen::Matrix<K,ROWS,COLS>& m)
 	}
 }
 
-template<typename Graph>
-std::vector<EigenComponent> solve_dense(const Graph& graph,
+template<typename Graph, typename EdgeWeightMap>
+std::vector<EigenComponent> solve_dense(const Graph& graph, EdgeWeightMap edge_weights,
 	const std::function<std::vector<EigenComponent>(const Eigen::MatrixXf&)>& solver)
 {
 	typedef float K;
 
-	DenseGev<K> gev = dense_graph_to_gev<K>(graph);
+	DenseGev<K> gev = dense_graph_to_gev<K>(graph, edge_weights);
 #ifdef SEGS_DBG_PRINT
 		{	std::ofstream ofs("/tmp/L.tsv"); print_matrix(ofs, gev.L); }
 		{	std::ofstream ofs("/tmp/D.tsv"); print_matrix(ofs, gev.D); }
@@ -377,12 +377,12 @@ std::vector<EigenComponent> solve_dense(const Graph& graph,
 	return v_ec;
 }
 
-template<typename Graph>
-std::vector<EigenComponent> solve_sparse(const Graph& graph,
+template<typename Graph, typename EdgeWeightMap>
+std::vector<EigenComponent> solve_sparse(const Graph& graph, EdgeWeightMap edge_weights,
 	const std::function<std::vector<EigenComponent>(const SparseMatrix&)>& solver)
 {
 	typedef float K;
-	SparseGEVT<K> sgevt = sparse_graph_entries<K>(graph);
+	SparseGEVT<K> sgevt = sparse_graph_entries<K>(graph, edge_weights);
 	std::vector<EigenComponent> v_ec = solver(sgevt.A);
 	transform_gev_solution(sgevt.D_inv_sqrt, v_ec);
 	return v_ec;

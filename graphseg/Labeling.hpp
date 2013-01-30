@@ -72,7 +72,7 @@ namespace graphseg
 		// create a graph will all edges with costs >= threshold
 		SpectralGraph cropped(boost::num_vertices(graph));
 		for(auto eid : as_range(boost::edges(graph))) {
-			float weight = boost::get(boost::edge_weight_t(), graph, eid);
+			float weight = graph[eid];
 			// take only edges with weight < threshold
 			if(weight <= threshold) {
 				boost::add_edge(boost::source(eid, graph), boost::target(eid, graph), cropped);
@@ -103,7 +103,7 @@ namespace graphseg
 			edges.push_back(Edge{
 				static_cast<unsigned int>(boost::source(eid, graph)),
 				static_cast<unsigned int>(boost::target(eid, graph)),
-				boost::get(boost::edge_weight_t(), graph, eid)
+				graph[eid]
 			});
 		}
 		// sort edges by weight

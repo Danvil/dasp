@@ -57,7 +57,7 @@ namespace dasp
 				const unsigned int ea = boost::source(src, graph);
 				const unsigned int eb = boost::target(src, graph);
 				const float w = metric(superpixels.cluster[ea].center, superpixels.cluster[eb].center);
-				boost::put(boost::edge_weight, result, dst, w);
+				result[dst] = w;
 			}));
 		return result;
 	}

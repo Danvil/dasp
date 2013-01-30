@@ -306,7 +306,7 @@ void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 			std::string fn2 = (boost::format(save_dasp_fn_+"%1$05d_graph.txt") % frame_counter_).str();
 			graphseg::WriteEdges(fn2,
 				dasp_processing_->Gnb_weighted,
-				boost::get(boost::edge_weight, dasp_processing_->Gnb_weighted));
+				boost::get(boost::edge_bundle, dasp_processing_->Gnb_weighted));
 		}
 		else {
 			if(frame_counter_ == 1) {
