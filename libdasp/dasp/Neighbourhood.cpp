@@ -14,7 +14,7 @@ namespace dasp
 
 DaspGraph CreateDaspNeighbourhoodGraph(const Superpixels& superpixels)
 {
-	UndirectedGraph gnb = CreateNeighborhoodGraph(superpixels, NeighborGraphSettings::NoCut());
+	NeighbourhoodGraph gnb = CreateNeighborhoodGraph(superpixels, NeighborGraphSettings::NoCut());
 	DaspGraph result;
 	boost::copy_graph(gnb, result,
 		boost::vertex_copy(
@@ -156,13 +156,10 @@ std::vector<unsigned int> FindCommonBorder(const std::vector<std::vector<BorderP
 	return common;
 }
 
-UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings, std::vector<std::vector<unsigned int>>* edge_border_pixels)
+NeighbourhoodGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings)
 {
-	if(edge_border_pixels) {
-		edge_border_pixels->clear();
-	}
 	// create one node for each superpixel
-	UndirectedGraph neighbourhood_graph(superpixels.clusterCount());
+	NeighbourhoodGraph neighbourhood_graph(superpixels.clusterCount());
 	// compute superpixel borders
 	std::vector<std::vector<BorderPixel> > border = ComputeBorderLabels(superpixels);
 	// connect superpixels
@@ -202,14 +199,12 @@ UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neighbor
 				continue;
 			}
 			// add edge
-			UndirectedGraph::edge_descriptor eid;
+			NeighbourhoodGraph::edge_descriptor eid;
 			bool ok;
 			boost::tie(eid,ok) = boost::add_edge(i, j, neighbourhood_graph); // FIXME correctly convert superpixel_id to vertex descriptor
 			assert(ok);
-			if(edge_border_pixels) {
-				//boost::put(borderpixels_t(), neighbourhood_graph, eid, common_border);
-				edge_border_pixels->push_back(common_border);
-			}
+			neighbourhood_graph[eid].num_border_pixels = common_border_size;
+			neighbourhood_graph[eid].border_pixel_ids = common_border;
 		}
 	}
 	return neighbourhood_graph;

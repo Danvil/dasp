@@ -42,7 +42,8 @@ namespace dasp
 	/** Computes the superpixel neighborhood graph
 	 * Superpixels are neighbors if they share border pixels.
 	 */
-	UndirectedGraph CreateNeighborhoodGraph(const Superpixels& superpixels, NeighborGraphSettings settings=NeighborGraphSettings::SpatialCut(), std::vector<std::vector<unsigned int>>* edge_border_pixels=0);
+	NeighbourhoodGraph CreateNeighborhoodGraph(const Superpixels& superpixels,
+		NeighborGraphSettings settings=NeighborGraphSettings::SpatialCut());
 
 	/** Computes edge weights for a superpixel graph using the given metric
 	 * Metric : Point x Point -> float (should be lightweight)

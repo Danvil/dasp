@@ -16,8 +16,18 @@
 
 namespace dasp
 {
+	struct NeighbourhoodProperties
+	{
+		unsigned int num_border_pixels;
+		std::vector<unsigned int> border_pixel_ids;
+	};
+
 	/** Undirected graph */
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> UndirectedGraph;
+	typedef boost::adjacency_list<
+		boost::vecS, boost::vecS, boost::undirectedS,
+		boost::no_property,
+		NeighbourhoodProperties
+	> NeighbourhoodGraph;
 
 	/** Undirected, weighted (type=float) graph */
 	typedef graphseg::SpectralGraph UndirectedWeightedGraph;

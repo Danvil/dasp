@@ -70,7 +70,7 @@ private:
 public:
 	dasp::Superpixels clustering_;
 
-	dasp::UndirectedGraph Gnb;
+	dasp::NeighbourhoodGraph Gnb;
 	dasp::UndirectedWeightedGraph Gnb_weighted;
 
 private:
