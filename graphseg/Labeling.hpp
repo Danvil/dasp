@@ -216,7 +216,7 @@ namespace graphseg
 		SpectralGraph cropped(boost::num_vertices(graph));
 		for(const Edge& e : merged_edges) {
 			auto p = boost::add_edge(e.a, e.b, cropped);
-			boost::put(boost::edge_weight, cropped, p.first, e.weight);
+			cropped[p.first] = e.weight;
 		}
 		// compute connected components
 		std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
