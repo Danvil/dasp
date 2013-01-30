@@ -137,7 +137,7 @@ namespace dasp
 			ofs_e
 				<< boost::source(eid, graph) << sep
 				<< boost::target(eid, graph) << sep
-				<< boost::get(boost::edge_weight, graph, eid) << std::endl;
+				<< graph[eid] << std::endl;
 		}
 	}
 
@@ -209,7 +209,7 @@ namespace dasp
 				// add edge to graph
 				auto result = boost::add_edge(e_source, e_target, g);
 				// set edge weight
-				boost::put(boost::edge_weight, g, result.first, weight);
+				g[result.first] = weight;
 			}
 		}		
 

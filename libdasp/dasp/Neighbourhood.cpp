@@ -24,7 +24,7 @@ DaspGraph CreateDaspNeighbourhoodGraph(const Superpixels& superpixels)
 		)
 		.edge_copy(
 			[&gnb,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
-				boost::put(boost::edge_weight, result, dst, 1.0f);
+				result[dst] = 1.0f;
 			}
 		)
 	);
@@ -42,7 +42,7 @@ DaspGraph CreateDaspGraph(const Superpixels& superpixels, const UndirectedWeight
 		)
 		.edge_copy(
 			[&weighted_graph,&result](UndirectedWeightedGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
-				boost::put(boost::edge_weight, result, dst, weighted_graph[src]);
+				result[dst] = weighted_graph[src];
 			}
 		)
 	);
@@ -53,9 +53,9 @@ DaspGraph ConvertToSimilarityGraph(const DaspGraph& source, const float sigma) {
 	DaspGraph result;
 	boost::copy_graph(source, result,
 			boost::edge_copy([&source,&result,sigma](typename DaspGraph::edge_descriptor src, DaspGraph::edge_descriptor dst) {
-				const float d = boost::get(boost::edge_weight, source, src);
+				const float d = source[src];
 				const float s = std::exp(-d/sigma);
-				boost::put(boost::edge_weight, result, dst, s);
+				result[dst] = s;
 	}));
 	return result;
 }

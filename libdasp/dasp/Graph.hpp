@@ -35,7 +35,7 @@ namespace dasp
 	/** Weighted graph of superpoints */
 	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
 		Point,
-		boost::property<boost::edge_weight_t, float>
+		float
 	> DaspGraph;
 
 }
