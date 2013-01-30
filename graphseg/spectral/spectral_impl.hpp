@@ -122,15 +122,10 @@ DenseGevTransformed<K> dense_gev_to_ev(const DenseGev<K>& gev)
 	assert(L.cols() == L.rows());
 	assert(D.rows() == L.rows());
 	const unsigned int N = L.rows();
-	vector_t D_inv_sqrt(N);
-	for(unsigned int i=0; i<N; i++) {
-		D_inv_sqrt[i] = 1.0f / std::sqrt(D[i]);
-	}
+	vector_t D_inv_sqrt = D.array().sqrt().inverse().matrix();
 	matrix_t A(N,N);
 	for(unsigned int i=0; i<N; i++) {
-		for(unsigned int j=0; j<N; j++) {
-			A(j,i) = L(j,i) / (D_inv_sqrt[i] * D_inv_sqrt[j]);
-		}
+		A.col(i) = D_inv_sqrt[i] * L.col(i).cwiseProduct(D_inv_sqrt);
 	}
 	return { A, D_inv_sqrt };
 }
@@ -262,10 +257,7 @@ void transform_gev_solution(const Eigen::Matrix<K,-1,1>& D_inv_sqrt, std::vector
 	// thus x_i = z_i / \sqrt(d_i)
 	const unsigned int dim = D_inv_sqrt.rows();
 	for(std::size_t i=0; i<ec.size(); i++) {
-		auto& ev = ec[i].eigenvector;
-		for(unsigned int j=0; j<dim; j++) {
-			ev[j] *= D_inv_sqrt[i];
-		}
+		ec[i].eigenvector = ec[i].eigenvector.cwiseProduct(D_inv_sqrt);
 	}
 }
 
@@ -322,7 +314,7 @@ Eigen::VectorXf ev_to_graph_weights(const Graph& graph, const std::vector<EigenC
 			eid_index++;
 		}
 #ifdef SPECTRAL_VERBOSE
-		std::cout << "w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
+		std::cout << "DEBUG w=" << w << " e_k.maxCoeff()=" << e_k.maxCoeff() << std::endl;
 #endif
 //		e_k /= e_k.maxCoeff();
 //		for(unsigned int i=0; i<e_k.rows(); i++) {
@@ -344,15 +336,44 @@ Eigen::VectorXf ev_to_graph_weights(const Graph& graph, const std::vector<EigenC
 	return edge_weight;
 }
 
+template<typename K, int ROWS, int COLS>
+inline void print_matrix(std::ostream& os, const Eigen::Matrix<K,ROWS,COLS>& m)
+{
+	for(unsigned int j=0; j<m.rows(); j++) {
+		for(unsigned int i=0; i<m.cols(); i++) {
+			os << m(j,i);
+			if(i+1 == m.cols()) {
+				os << "\n";
+			}
+			else {
+				os << "\t";
+			}
+		}
+	}
+}
+
 template<typename Graph>
 std::vector<EigenComponent> solve_dense(const Graph& graph,
 	const std::function<std::vector<EigenComponent>(const Eigen::MatrixXf&)>& solver)
 {
 	typedef float K;
+
 	DenseGev<K> gev = dense_graph_to_gev<K>(graph);
+#ifdef SEGS_DBG_PRINT
+		{	std::ofstream ofs("/tmp/L.tsv"); print_matrix(ofs, gev.L); }
+		{	std::ofstream ofs("/tmp/D.tsv"); print_matrix(ofs, gev.D); }
+#endif
+
 	DenseGevTransformed<K> gevt = dense_gev_to_ev(gev);
+#ifdef SEGS_DBG_PRINT
+		{	std::ofstream ofs("/tmp/A.tsv"); print_matrix(ofs, gevt.A); }
+		{	std::ofstream ofs("/tmp/D_inv_sqrt.tsv"); print_matrix(ofs, gevt.D_inv_sqrt); }
+#endif
+
 	std::vector<EigenComponent> v_ec = solver(gevt.A);
+
 	transform_gev_solution(gevt.D_inv_sqrt, v_ec);
+
 	return v_ec;
 }
 

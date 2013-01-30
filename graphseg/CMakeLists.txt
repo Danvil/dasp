@@ -1,6 +1,8 @@
 
 add_definitions(-DSPECTRAL_VERBOSE)
 
+add_definitions(-DSEGS_DBG_PRINT)
+
 add_library(graphseg SHARED
 	graphseg.cpp
 	Labeling.cpp
