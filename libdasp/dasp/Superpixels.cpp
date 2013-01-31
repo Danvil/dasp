@@ -82,6 +82,14 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		Eigen::Vector2f pixel = opt.camera.project(center.position);
 		center.px = static_cast<float>(pixel.x() + 0.5f);
 		center.py = static_cast<float>(pixel.y() + 0.5f);
+		// // compute color covariance
+		// color_covariance = Eigen::Matrix3f::Zero();
+		// for(unsigned int i : pixel_ids) {
+		// 	const Point& p = points[i];
+		// 	auto d = p.color - mean_color;
+		// 	color_covariance += d * d.transpose();
+		// }
+		// color_covariance *= 1.0f / static_cast<float>(pixel_ids.size() - 1);
 	}
 
 //	// FIXME change or not change? (SLIC mode does not allow change!)

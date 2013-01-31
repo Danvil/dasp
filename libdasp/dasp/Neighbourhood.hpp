@@ -81,7 +81,7 @@ namespace dasp
 				const float w = static_cast<float>(graph[src].num_border_pixels)
 					/ static_cast<float>(cluster_border_length_px[ea] + cluster_border_length_px[eb]);
 				const float d = metric(superpixels.cluster[ea], superpixels.cluster[eb]);
-				result[dst] = 6.0f * w * d;
+				result[dst] = 12.0f * w * d;
 			}));
 		return result;
 	}

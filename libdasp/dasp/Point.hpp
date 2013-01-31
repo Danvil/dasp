@@ -131,6 +131,8 @@ namespace dasp
 
 		Point center;
 
+		// Eigen::Matrix3f color_covariance;
+
 		std::vector<unsigned int> pixel_ids;
 
 		bool isValid() const {

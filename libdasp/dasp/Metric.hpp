@@ -172,10 +172,10 @@ namespace dasp
 		: superpixel_radius_(superpixel_radius),
 		  ww_(w_spatial), wc_(w_color), wn_(w_normal)
 		{
-			float w_total = ww_ + wc_ + wn_;
-			ww_ /= w_total;
-			wc_ /= w_total;
-			wn_ /= w_total;
+			// float w_total = ww_ + wc_ + wn_;
+			// ww_ /= w_total;
+			// wc_ /= w_total;
+			// wn_ /= w_total;
 		}
 
 		float operator()(const Cluster& x, const Cluster& y) const {
@@ -186,17 +186,17 @@ namespace dasp
 			const Eigen::Vector3f& x_norm = x.center.normal;
 			const Eigen::Vector3f& y_norm = y.center.normal;
 			// spatial distance
-			float dw = (x_pos - y_pos).norm() / (2.0f * superpixel_radius_);
+			float dw = (x_pos - y_pos).squaredNorm() / (4.0f * superpixel_radius_ * superpixel_radius_);
 			dw = std::max(0.0f, dw - 1.2f); // distance of 1 indicates estimated distance
 			// color distance
-			float dc = 3.0f * (x_col - y_col).norm();
+			float dc = 3.2f * (x_col - y_col).squaredNorm();
 			// normal distance (only use concave edges)
 			Eigen::Vector3f u = y_pos - x_pos;
-			float dn = (x_norm - y_norm).dot(u) * Danvil::MoreMath::FastInverseSqrt(u.squaredNorm());
+			float dn = (x_norm - y_norm).dot(u) / u.norm();
 			dn = std::max(0.0f, dn);
 			// compute total edge connectivity
 			float d = ww_*dw + wc_*dc + wn_*dn;
-			return exp_cache_(3.0f*d*d);
+			return exp_cache_(d);
 		}
 
 	private:
