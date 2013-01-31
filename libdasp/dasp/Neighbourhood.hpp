@@ -62,6 +62,30 @@ namespace dasp
 		return result;
 	}
 
+	template<typename Metric>
+	UndirectedWeightedGraph ComputeEdgeWeightsFromMetricWeighted(const Superpixels& superpixels, const NeighbourhoodGraph& graph, const Metric& metric)
+	{
+		std::vector<unsigned int> cluster_border_length_px(boost::num_vertices(graph));
+		for(auto eid : as_range(boost::edges(graph))) {
+			const unsigned int ea = boost::source(eid, graph);
+			const unsigned int eb = boost::target(eid, graph);
+			const unsigned int num = graph[eid].num_border_pixels;
+			cluster_border_length_px[ea] += num;
+			cluster_border_length_px[eb] += num;
+		}
+		UndirectedWeightedGraph result;
+		boost::copy_graph(graph, result,
+			boost::edge_copy([&superpixels, &graph, &result, &metric, &cluster_border_length_px](typename NeighbourhoodGraph::edge_descriptor src, UndirectedWeightedGraph::edge_descriptor dst) {
+				const unsigned int ea = boost::source(src, graph);
+				const unsigned int eb = boost::target(src, graph);
+				const float w = static_cast<float>(graph[src].num_border_pixels)
+					/ static_cast<float>(cluster_border_length_px[ea] + cluster_border_length_px[eb]);
+				const float d = metric(superpixels.cluster[ea], superpixels.cluster[eb]);
+				result[dst] = 6.0f * w * d;
+			}));
+		return result;
+	}
+
 	/** Computes a superpixel graph */
 	DaspGraph CreateDaspNeighbourhoodGraph(const Superpixels& superpixels);
 
