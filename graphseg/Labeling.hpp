@@ -150,16 +150,15 @@ namespace graphseg
 		// labels will indicate if clusters are supervised:
 		//   is_supervised(c) := (label(c) <= label_supervised_threshold)
 		std::vector<int> cluster_labels(num_vertices);
+		std::map<int, unsigned int> label_count;
 		for(auto vid : as_range(boost::vertices(graph))) {
-			const int label = boost::get(vertex_label_map, vid);
-			if(label >= 0) {
-				// supervised cluster
-				cluster_labels[vid] = label;
+			int label = boost::get(vertex_label_map, vid);
+			if(label < 0) {
+				// unsupervised cluster -> need label
+				label = ++label_max;
 			}
-			else {
-				// unsupervised cluster
-				cluster_labels[vid] = ++label_max;
-			}
+			cluster_labels[vid] = label;
+			label_count[label] ++;
 		}
 		// get all edges
 		struct Edge
@@ -199,14 +198,25 @@ namespace graphseg
 			// check if cluster segments are supervised
 			const bool is_supervised_a = (label_a <= label_supervised_threshold);
 			const bool is_supervised_b = (label_b <= label_supervised_threshold);
+			// compute label merge
+			int old_label = label_a;
+			int new_label = label_b;
 			if(is_supervised_a && is_supervised_b) {
 				// do not merge if both clusters are supervised
 				continue;
+				// // keep the label which has the higher occurence count
+				// if(label_count[old_label] > label_count[new_label]) {
+				// 	std::swap(old_label, new_label);
+				// }
 			}
-			// join segments connected by edge and keep the smaller label
-			// this assures that the label supervision property is guaranteed
-			const unsigned int old_label = std::max(label_a, label_b);
-			const unsigned int new_label = std::min(label_a, label_b);
+			else {
+				// keep the smaller label
+				// this assures that the label supervision property is guaranteed
+				if(old_label < new_label) {
+					std::swap(old_label, new_label);
+				}
+			}
+			// join segments connected by edge
 			std::replace(cluster_labels.begin(), cluster_labels.end(), old_label, new_label);
 			merged_edges.push_back(edge);
 		}
@@ -218,38 +228,47 @@ namespace graphseg
 			auto p = boost::add_edge(e.a, e.b, cropped);
 			cropped[p.first] = e.weight;
 		}
-		// compute connected components
-		std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
-		unsigned int num_labels = boost::connected_components(cropped, &cluster_labels_components[0]);
-		// check if two components have the same index
-		std::vector<std::map<int,unsigned int>> component_labels(num_labels);
-		for(unsigned int i=0; i<cluster_labels_components.size(); i++) {
-			int component = cluster_labels_components[i];
-			int label = cluster_labels[i];
-			component_labels[component][label] ++;
-		}
-		for(unsigned int i=0; i<component_labels.size(); i++) {
-			if(component_labels[i].size() > 1) {
-				std::cout << "Component " << i << ": " << std::endl;
-				std::cout << "\tlabel\tcount" << std::endl;
-				int max_label = -1;
-				unsigned int max_num = 0;
-				for(const auto& p : component_labels[i]) {
-					std::cout << "\t" << p.first << "\t" << p.second << std::endl;
-					if(p.second > max_num) {
-						max_label = p.first;
-						max_num = p.second;
-					}
-				}
-				for(const auto& p : component_labels[i]) {
-					if(p.first != max_label) {
-						// exchange label p.first with ++label_max
-						int new_label = ++label_max;
-						std::replace(cluster_labels.begin(), cluster_labels.end(), p.first, new_label);
-					}
-				}
-			}
-		}
+
+		// // compute connected components
+		// std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
+		// unsigned int num_labels = boost::connected_components(cropped, &cluster_labels_components[0]);
+		// std::cout << "CC# = " << num_labels << std::endl;
+		// // check if two components have the same label index
+		// std::map<int, std::map<unsigned int, unsigned int>> component_count_per_label;
+		// for(unsigned int i=0; i<cluster_labels.size(); i++) {
+		// 	int label = cluster_labels[i];
+		// 	unsigned int cmp_id = cluster_labels_components[i];
+		// 	component_count_per_label[label][cmp_id] ++;
+		// }
+		// for(auto p : component_count_per_label) {
+		// 	if(p.second.size() > 1) {
+		// 		//std::cout << "Label " << p.first << ": " << std::endl;
+		// 		//std::cout << "\tcmp\tcnt" << std::endl;
+		// 		unsigned int max_cmp = 0;
+		// 		unsigned int max_num = 0;
+		// 		for(auto q : p.second) {
+		// 			if(q.second >= max_num) {
+		// 				max_cmp = q.first;
+		// 				max_num = q.second;
+		// 			}
+		// 		}
+		// 		std::map<unsigned int, int> label_remap;
+		// 		for(auto q : p.second) {
+		// 			if(q.first != max_cmp) {
+		// 				label_remap[q.first] = ++label_max;
+		// 			}
+		// 			else {
+		// 				label_remap[q.first] = p.first;
+		// 			}
+		// 			//std::cout << "\t" << q.first << "\t" << q.second << "\t->" << label_remap[q.first] << std::endl;
+		// 		}
+		// 		for(unsigned int i=0; i<cluster_labels.size(); i++) {
+		// 			if(cluster_labels[i] == p.first) {
+		// 				cluster_labels[i] = label_remap[cluster_labels_components[i]];
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		// return raw labels
 		return cluster_labels;

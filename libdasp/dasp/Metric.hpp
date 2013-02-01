@@ -172,10 +172,10 @@ namespace dasp
 		: superpixel_radius_(superpixel_radius),
 		  ww_(w_spatial), wc_(w_color), wn_(w_normal)
 		{
-			// float w_total = ww_ + wc_ + wn_;
-			// ww_ /= w_total;
-			// wc_ /= w_total;
-			// wn_ /= w_total;
+			float w_total = ww_ + wc_ + wn_;
+			ww_ /= w_total;
+			wc_ /= w_total;
+			wn_ /= w_total;
 		}
 
 		float operator()(const Cluster& x, const Cluster& y) const {
