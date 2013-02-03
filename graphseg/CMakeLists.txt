@@ -1,36 +1,64 @@
 
-#add_definitions(-DSPECTRAL_VERBOSE)
-#add_definitions(-DSEGS_DBG_PRINT)
+SET(graphseg_DEFINES
+#	-DSPECTRAL_VERBOSE
+#	-DSEGS_DBG_PRINT
+)
 
-add_library(graphseg SHARED
+if (USE_SOLVER_MAGMA)
+	LIST(APPEND graphseg_DEFINES
+		-DUSE_SOLVER_MAGMA
+		-DADD_
+	)
+endif (USE_SOLVER_MAGMA)
+
+if (SOLVER_IETL)
+	LIST(APPEND graphseg_DEFINES
+		-DUSE_SOLVER_IETL
+	)
+endif (SOLVER_IETL)
+
+ADD_DEFINITIONS(${graphseg_DEFINES})
+
+
+SET(graphseg_SOURCES
 	graphseg.cpp
 	Labeling.cpp
 	spectral/arpackpp.cpp
 	spectral/eigen.cpp
-	spectral/ietl.cpp
 	spectral/lapack.cpp
-	spectral/magma.cpp
 )
 
-include_directories(graphseg
-	/home/david/Downloads/ietl-2.2
+if (USE_SOLVER_MAGMA)
+	LIST(APPEND graphseg_SOURCES spectral/magma.cpp)
+endif (USE_SOLVER_MAGMA)
+
+if (SOLVER_IETL)
+	LIST(APPEND graphseg_SOURCES spectral/ietl.cpp)
+endif (SOLVER_IETL)
+
+ADD_LIBRARY(graphseg SHARED ${graphseg_SOURCES})
+
+
+SET(graphseg_INCLUDES
 )
 
-if (USE_MAGMA)
-	add_definitions(-DADD_)
-	include_directories(graphseg
+if (USE_SOLVER_MAGMA)
+	LIST(APPEND graphseg_INCLUDES
 		/home/david/Downloads/magma-1.3.0/include
 		/usr/local/cuda-5.0/include
 	)
-endif (USE_MAGMA)
+endif (USE_SOLVER_MAGMA)
 
 if (SOLVER_IETL)
-	include_directories(graphseg
+	LIST(APPEND graphseg_INCLUDES
 		/home/david/Downloads/ietl-2.2
 	)
 endif (SOLVER_IETL)
 
-target_link_libraries(graphseg
+INCLUDE_DIRECTORIES(graphseg ${graphseg_INCLUDES})
+
+
+SET(graphseg_LIBRARIES
 	parpack
 	arpack
 	superlu
@@ -38,8 +66,8 @@ target_link_libraries(graphseg
 	blas
 )
 
-if (USE_MAGMA)
-	target_link_libraries(graphseg
+if (USE_SOLVER_MAGMA)
+	LIST(APPEND graphseg_LIBRARIES
 		magma
 		magmablas
 		lapack
@@ -49,4 +77,6 @@ if (USE_MAGMA)
 		cudart
 		blas
 	)
-endif (USE_MAGMA)
+endif (USE_SOLVER_MAGMA)
+
+TARGET_LINK_LIBRARIES(graphseg ${graphseg_LIBRARIES})

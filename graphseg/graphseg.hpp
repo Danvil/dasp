@@ -20,11 +20,15 @@ namespace graphseg
 
 	enum class SpectralMethod
 	{
-		Eigen,
-		ArpackPP,
-		Lapack,
-		Ietl,
-		Magma
+		Eigen
+		,ArpackPP
+		,Lapack
+#ifdef USE_SOLVER_MAGMA
+		,Magma
+#endif
+#ifdef USE_SOLVER_IETL
+		,Ietl
+#endif
 	};
 
 	/** Applies spectral graph theory fu to a weighted, undirected graph */

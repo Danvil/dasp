@@ -21,16 +21,23 @@ namespace graphseg { namespace detail {
 	using namespace std::placeholders;
 		// pick one eigenvalue more because the first one is omitted
 		switch(method) {
-			default: case SpectralMethod::Eigen:
+			case SpectralMethod::Eigen:
 				return detail::solve_dense(graph, edge_weights, std::bind(&solver_eigen, _1, num_ev + 1));
 			case SpectralMethod::Lapack:
 				return detail::solve_dense(graph, edge_weights, std::bind(&solver_lapack, _1, num_ev + 1));
+#ifdef USE_SOLVER_MAGMA
 			case SpectralMethod::Magma:
 				return detail::solve_dense(graph, edge_weights, std::bind(&solver_magma, _1, num_ev + 1));
+#endif
 			case SpectralMethod::ArpackPP:
 				return detail::solve_sparse(graph, edge_weights, std::bind(&solver_arpackpp, _1, num_ev + 1));
+#ifdef USE_SOLVER_IETL
 			case SpectralMethod::Ietl:
 				return detail::solve_sparse(graph, edge_weights, std::bind(&solver_ietl, _1, num_ev + 1));
+#endif
+			default:
+				std::cerr << "ERROR: Solver not available!" << std::endl;
+				return {};
 		}
 	}
 
