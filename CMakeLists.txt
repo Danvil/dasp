@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 2.6)
 option(DASP_HAS_CANDY "Use DanvilSimpleEngine to enable 3D rendering" OFF) 
 option(DASP_HAS_OPENNI "Use OpenNI for Kinect live mode" OFF)
 
-option(USE_MAGMA "Use CUDA magma for spectral solving" ON) 
-option(SOLVER_IETL "Use IETL sparse eigensolver" ON) 
+option(USE_SOLVER_MAGMA "Use CUDA magma for spectral solving" ON) 
+option(USE_SOLVER_IETL "Use IETL sparse eigensolver" ON) 
 
 set(OPENNI_INCLUDE_DIR "/home/david/Programs/RGBD/OpenNI/Include" CACHE STRING "OpenNI include directory")
 set(EIGEN3_INCLUDE_DIR "/usr/local/include/eigen3" CACHE STRING "Eigen3 include directory")
@@ -18,12 +18,12 @@ if (DASP_HAS_CANDY)
 	link_directories(/home/david/Projects/candy/release/libcandy) # FIXME
 endif (DASP_HAS_CANDY)
 
-if (USE_MAGMA)
+if (USE_SOLVER_MAGMA)
 	link_directories(
 		/usr/local/cuda-5.0/lib64
 		/home/david/Downloads/magma-1.3.0/lib
 	)
-endif (USE_MAGMA)
+endif (USE_SOLVER_MAGMA)
 
 include_directories(
 	${EIGEN3_INCLUDE_DIR}

@@ -11,11 +11,11 @@ if (USE_SOLVER_MAGMA)
 	)
 endif (USE_SOLVER_MAGMA)
 
-if (SOLVER_IETL)
+if (USE_SOLVER_IETL)
 	LIST(APPEND graphseg_DEFINES
-		-DUSE_SOLVER_IETL
+		-DUSE_USE_SOLVER_IETL
 	)
-endif (SOLVER_IETL)
+endif (USE_SOLVER_IETL)
 
 ADD_DEFINITIONS(${graphseg_DEFINES})
 
@@ -32,9 +32,9 @@ if (USE_SOLVER_MAGMA)
 	LIST(APPEND graphseg_SOURCES spectral/magma.cpp)
 endif (USE_SOLVER_MAGMA)
 
-if (SOLVER_IETL)
+if (USE_SOLVER_IETL)
 	LIST(APPEND graphseg_SOURCES spectral/ietl.cpp)
-endif (SOLVER_IETL)
+endif (USE_SOLVER_IETL)
 
 ADD_LIBRARY(graphseg SHARED ${graphseg_SOURCES})
 
@@ -49,11 +49,11 @@ if (USE_SOLVER_MAGMA)
 	)
 endif (USE_SOLVER_MAGMA)
 
-if (SOLVER_IETL)
+if (USE_SOLVER_IETL)
 	LIST(APPEND graphseg_INCLUDES
 		/home/david/Downloads/ietl-2.2
 	)
-endif (SOLVER_IETL)
+endif (USE_SOLVER_IETL)
 
 INCLUDE_DIRECTORIES(graphseg ${graphseg_INCLUDES})
 
