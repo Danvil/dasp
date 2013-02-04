@@ -2,6 +2,7 @@
 #include <Slimage/IO.hpp>
 #include <Slimage/Gui.hpp>
 #include <common/color.hpp>
+#include <boost/filesystem.hpp>
 #ifdef DASP_HAS_OPENNI
 	#include "KinectGrabber.h"
 #endif
@@ -137,6 +138,89 @@ public:
 	Rgbd get() { return data_; }
 private:
 	Rgbd data_;
+};
+
+class RgbdStreamImages : public RandomAccessRgbdStream
+{
+public:
+	RgbdStreamImages(const std::string& fn)
+	:base_dir_(fn) {
+		// prepare images
+		img_depth_ = slimage::Image1ui16(640, 480, slimage::Pixel1ui16{1000});
+		img_color_ = slimage::Image3ub(640, 480, {{0,0,0}});
+		// create index
+		create_index();
+		cur_frame_ = 0;
+	}
+	~RgbdStreamImages() {
+	}
+	unsigned int numFrames() {
+		return num_frames_;
+	}
+	unsigned int tell() {
+		return cur_frame_;
+	}
+	void seek(unsigned int frame) {
+		cur_frame_ = frame;
+	}
+	bool grab() {
+		if(cur_frame_ < num_frames_) {
+			// std::cout << "Current frame " << cur_frame_ << std::endl;
+			img_depth_ = slimage::Load1ui16(base_dir_ + "/" + index_[cur_frame_].first);
+			img_color_ = slimage::Load3ub(base_dir_ + "/" + index_[cur_frame_].second);
+			cur_frame_ ++;
+			return true;
+		}
+		else {
+			cur_frame_ = num_frames_;
+			return false;
+		}
+	}
+	Rgbd get() {
+		return {
+			img_color_.clone(),
+			img_depth_.clone()
+		};
+	}
+private:
+	void create_index() {
+		namespace bfs = boost::filesystem;
+		bfs::path dir_path(base_dir_);
+		bfs::directory_iterator it_end;
+		bfs::directory_iterator it(dir_path);
+		std::vector<std::string> fns_depth;
+		std::vector<std::string> fns_color; 
+		for(; it!=it_end; ++it) {
+			if(bfs::is_directory(it->status())) {
+				continue;
+			}
+			// pgm -> depth
+			if(it->path().extension() == ".pgm") {
+				fns_depth.push_back(it->path().filename().string());
+			}
+			// ppm -> color
+			if(it->path().extension() == ".ppm") {
+				fns_color.push_back(it->path().filename().string());
+			}
+		}
+		if(fns_depth.size() != fns_color.size()) {
+			std::cerr << "Number of color and depht images do not match" << std::endl;
+		}
+		num_frames_ = fns_depth.size();
+		std::sort(fns_depth.begin(), fns_depth.end());
+		std::sort(fns_color.begin(), fns_color.end());
+		for(unsigned int i=0; i<num_frames_; i++) {
+			index_.push_back({fns_depth[i], fns_color[i]});
+		}
+		std::cout << "Images stream with " << num_frames_ << " frames" << std::endl;
+	}
+private:
+	std::vector<std::pair<std::string,std::string>> index_;
+	std::string base_dir_;
+	slimage::Image3ub img_color_;
+	slimage::Image1ui16 img_depth_;
+	unsigned int num_frames_;
+	unsigned int cur_frame_;
 };
 
 class RgbdStreamFreenectRecord : public RandomAccessRgbdStream
@@ -346,6 +430,11 @@ std::shared_ptr<RgbdStream> FactorStatic(const std::string& fn)
 	return std::make_shared<RgbdStreamStatic>(fn);
 }
 
+std::shared_ptr<RandomAccessRgbdStream> FactorImages(const std::string& fn)
+{
+	return std::make_shared<RgbdStreamImages>(fn);
+}
+
 std::shared_ptr<RandomAccessRgbdStream> FactorFreenectRecord(const std::string& fn)
 {
 	return std::make_shared<RgbdStreamFreenectRecord>(fn);
@@ -378,6 +467,9 @@ std::shared_ptr<RgbdStream> FactorStream(const std::string& mode, const std::str
 	}
 	if(mode == "static") {
 		return FactorStatic(arg);
+	}
+	if(mode == "images") {
+		return FactorImages(arg);
 	}
 	if(mode == "freenect") {
 		return FactorFreenectRecord(arg);

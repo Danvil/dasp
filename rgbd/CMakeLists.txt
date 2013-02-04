@@ -23,6 +23,7 @@ SET(rgbd_LIBRARIES
 	opencv_core
 	opencv_highgui
 	snappy
+	boost_filesystem
 )
 
 
