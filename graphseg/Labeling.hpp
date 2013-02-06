@@ -136,7 +136,8 @@ namespace graphseg
 		const Graph& graph,
 		EdgeWeightMap edge_weight_map,
 		VertexLabelMap vertex_label_map,
-		float threshold)
+		float threshold,
+		bool split_unconnected)
 	{
 		const std::size_t num_vertices = boost::num_vertices(graph);
 		// find maximal used label
@@ -221,50 +222,52 @@ namespace graphseg
 			merged_edges.push_back(edge);
 		}
 
-		// compute connected componentes
-		// create a graph will all edges with costs >= threshold
-		SpectralGraph cropped(boost::num_vertices(graph));
-		for(const Edge& e : merged_edges) {
-			auto p = boost::add_edge(e.a, e.b, cropped);
-			cropped[p.first] = e.weight;
-		}
+		if(split_unconnected) {
+			// compute connected componentes
+			// create a graph will all edges with costs >= threshold
+			SpectralGraph cropped(boost::num_vertices(graph));
+			for(const Edge& e : merged_edges) {
+				auto p = boost::add_edge(e.a, e.b, cropped);
+				cropped[p.first] = e.weight;
+			}
 
-		// compute connected components
-		std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
-		unsigned int num_labels = boost::connected_components(cropped, &cluster_labels_components[0]);
-		std::cout << "CC# = " << num_labels << std::endl;
-		// check if two components have the same label index
-		std::map<int, std::map<unsigned int, unsigned int>> component_count_per_label;
-		for(unsigned int i=0; i<cluster_labels.size(); i++) {
-			int label = cluster_labels[i];
-			unsigned int cmp_id = cluster_labels_components[i];
-			component_count_per_label[label][cmp_id] ++;
-		}
-		for(auto p : component_count_per_label) {
-			if(p.second.size() > 1) {
-				//std::cout << "Label " << p.first << ": " << std::endl;
-				//std::cout << "\tcmp\tcnt" << std::endl;
-				unsigned int max_cmp = 0;
-				unsigned int max_num = 0;
-				for(auto q : p.second) {
-					if(q.second >= max_num) {
-						max_cmp = q.first;
-						max_num = q.second;
+			// compute connected components
+			std::vector<int> cluster_labels_components(boost::num_vertices(cropped));
+			unsigned int num_labels = boost::connected_components(cropped, &cluster_labels_components[0]);
+			std::cout << "CC# = " << num_labels << std::endl;
+			// check if two components have the same label index
+			std::map<int, std::map<unsigned int, unsigned int>> component_count_per_label;
+			for(unsigned int i=0; i<cluster_labels.size(); i++) {
+				int label = cluster_labels[i];
+				unsigned int cmp_id = cluster_labels_components[i];
+				component_count_per_label[label][cmp_id] ++;
+			}
+			for(auto p : component_count_per_label) {
+				if(p.second.size() > 1) {
+					//std::cout << "Label " << p.first << ": " << std::endl;
+					//std::cout << "\tcmp\tcnt" << std::endl;
+					unsigned int max_cmp = 0;
+					unsigned int max_num = 0;
+					for(auto q : p.second) {
+						if(q.second >= max_num) {
+							max_cmp = q.first;
+							max_num = q.second;
+						}
 					}
-				}
-				std::map<unsigned int, int> label_remap;
-				for(auto q : p.second) {
-					if(q.first != max_cmp) {
-						label_remap[q.first] = ++label_max;
+					std::map<unsigned int, int> label_remap;
+					for(auto q : p.second) {
+						if(q.first != max_cmp) {
+							label_remap[q.first] = ++label_max;
+						}
+						else {
+							label_remap[q.first] = p.first;
+						}
+						//std::cout << "\t" << q.first << "\t" << q.second << "\t->" << label_remap[q.first] << std::endl;
 					}
-					else {
-						label_remap[q.first] = p.first;
-					}
-					//std::cout << "\t" << q.first << "\t" << q.second << "\t->" << label_remap[q.first] << std::endl;
-				}
-				for(unsigned int i=0; i<cluster_labels.size(); i++) {
-					if(cluster_labels[i] == p.first) {
-						cluster_labels[i] = label_remap[cluster_labels_components[i]];
+					for(unsigned int i=0; i<cluster_labels.size(); i++) {
+						if(cluster_labels[i] == p.first) {
+							cluster_labels[i] = label_remap[cluster_labels_components[i]];
+						}
 					}
 				}
 			}
