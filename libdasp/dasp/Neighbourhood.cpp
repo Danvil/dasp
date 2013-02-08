@@ -209,19 +209,4 @@ NeighbourhoodGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neigh
 	return neighbourhood_graph;
 }
 
-slimage::Image1ub CreateSmoothedContourImage(const slimage::Image1f& src, float scl)
-{
-	slimage::Image1f tmp(src.dimensions(), slimage::Pixel1f{1.0f});
-	for(unsigned int x=1; x<tmp.width()-1; x++) {
-		for(unsigned int y=1; y<tmp.height()-1; y++) {
-			float nb = src(x-1,y) + src(x+1,y) + src(x,y-1) + src(x,y+1);
-			float v = src(x,y) + nb / 4.0f;
-			tmp(x,y) = 1.0f - scl * v;
-		}
-	}
-	slimage::Image1ub vis(tmp.dimensions());
-	slimage::conversion::Convert(tmp, vis);
-	return vis;
-}
-
 }

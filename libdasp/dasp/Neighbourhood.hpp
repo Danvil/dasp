@@ -13,6 +13,7 @@
 #include <Slimage/Slimage.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/copy.hpp>
+#include <Eigen/Dense>
 #include <vector>
 
 namespace dasp
@@ -108,20 +109,18 @@ namespace dasp
 	 * @param return image with painted border pixels
 	 */
 	template<typename Graph, typename WeightMap, typename BorderPixelMap>
-	slimage::Image1f CreateBorderPixelImage(unsigned int w, unsigned int h, const Graph& graph, WeightMap weights, BorderPixelMap border_pixels)
+	Eigen::MatrixXf CreateBorderPixelImage(unsigned int w, unsigned int h, const Graph& graph, WeightMap weights, BorderPixelMap border_pixels)
 	{
-		slimage::Image1f result(w, h, slimage::Pixel1f{0.0f});
+		Eigen::MatrixXf result = Eigen::MatrixXf::Zero(w, h);
+		float* p = result.data();
 		for(auto eid : as_range(boost::edges(graph))) {
 			float v = boost::get(weights, eid);
 			for(unsigned int pid : boost::get(border_pixels, eid)) {
-				result[pid] = v;
+				p[pid] = v;
 			}
 		}
 		return result;
 	}
-
-	/** Smoothes a contour image and converts to unsigned char */
-	slimage::Image1ub CreateSmoothedContourImage(const slimage::Image1f& src, float scl);
 
 }
 
