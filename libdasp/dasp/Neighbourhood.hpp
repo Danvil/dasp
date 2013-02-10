@@ -81,7 +81,7 @@ namespace dasp
 				const unsigned int eb = boost::target(src, graph);
 				const float w = static_cast<float>(graph[src].num_border_pixels)
 					/ static_cast<float>(cluster_border_length_px[ea] + cluster_border_length_px[eb]);
-				const float d = metric(superpixels.cluster[ea], superpixels.cluster[eb]);
+				const float d = metric(ea, eb);
 				result[dst] = 12.0f * w * d;
 			}));
 		return result;
