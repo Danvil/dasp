@@ -22,6 +22,8 @@
 
 namespace graphseg { namespace detail {
 
+constexpr float c_D_min = 0.001f;
+
 template<typename K>
 struct DenseGev
 {
@@ -62,7 +64,7 @@ DenseGev<K> dense_graph_to_gev(const Graph& graph, EdgeWeightMap edge_weights)
 #endif
 	for(unsigned int i=0; i<dim; i++) {
 		K& di = D[i];
-		if(di == 0) {
+		if(di < c_D_min) {
 #ifdef SPECTRAL_VERBOSE
 			nodes_with_no_connection.push_back(i);
 #endif
