@@ -99,27 +99,22 @@ namespace dasp
 
 	/** Computes a border image
 	 * All border pixels for each edge are set to the edge weight in the image.
-	 * Default value for non border pixels is 0.
 	 * Border pixels are given in index form x + y*w where w must be the same given as parameter.
-	 * @param w width of result image
-	 * @param h width of result image
 	 * @param graph a boost graph
 	 * @param weights an weight property map of type float
 	 * @param border_pixels an edge property map of type std::vector<unsigned int>
 	 * @param return image with painted border pixels
 	 */
 	template<typename Graph, typename WeightMap, typename BorderPixelMap>
-	Eigen::MatrixXf CreateBorderPixelImage(unsigned int w, unsigned int h, const Graph& graph, WeightMap weights, BorderPixelMap border_pixels)
+	void PlotBorderPixels(Eigen::MatrixXf& mat, const Graph& graph, WeightMap weights, BorderPixelMap border_pixels)
 	{
-		Eigen::MatrixXf result = Eigen::MatrixXf::Zero(w, h);
-		float* p = result.data();
+		float* p = mat.data();
 		for(auto eid : as_range(boost::edges(graph))) {
-			float v = boost::get(weights, eid);
+			float v = weights[eid];
 			for(unsigned int pid : boost::get(border_pixels, eid)) {
 				p[pid] = v;
 			}
 		}
-		return result;
 	}
 
 }
