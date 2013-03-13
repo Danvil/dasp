@@ -3,6 +3,7 @@ add_library(libdasp SHARED
 	dasp/impl/Mipmaps.cpp
 	dasp/impl/RepairDepth.cpp
 	dasp/impl/Sampling.cpp
+	dasp/eval/Recall.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp
