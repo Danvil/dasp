@@ -4,6 +4,8 @@ add_library(libdasp SHARED
 	dasp/impl/RepairDepth.cpp
 	dasp/impl/Sampling.cpp
 	dasp/eval/Recall.cpp
+	dasp/eval/ipq.cpp
+	dasp/eval/ev.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp
@@ -15,6 +17,7 @@ set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 
 include_directories(
 	${dasp_SOURCE_DIR}
+	${dasp_SOURCE_DIR}/libdasp
 )
 
 target_link_libraries(libdasp

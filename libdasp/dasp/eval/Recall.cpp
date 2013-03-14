@@ -206,7 +206,9 @@ std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevan
 	}
 	std::vector<float> error;
 	for(auto it=relevant_superpixel_labels.begin(); it!=relevant_superpixel_labels.end(); ++it) {
+#ifdef DASP_DEBUG_GUI
 		std::cout << "Relevant label " << it->first << std::endl;
+#endif
 		unsigned int g_area = relevant_area[it->first];
 		unsigned int s_area = 0;
 		for(int sid : it->second) {

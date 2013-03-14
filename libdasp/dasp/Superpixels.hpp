@@ -32,6 +32,23 @@ namespace dasp
 
 	void SetRandomNumberSeed(unsigned int seed);
 
+	struct Partition
+	{
+		std::vector<std::vector<unsigned int>> segments;
+
+		unsigned int numSegments() const {
+			return segments.size();
+		}
+
+		unsigned int segmentSize(unsigned int i) const {
+			return segments[i].size();
+		}
+
+		const std::vector<unsigned int>& segmentPixelIds(unsigned int i) const {
+			return segments[i];
+		}
+	};
+
 	class Superpixels
 	{
 	public:
@@ -76,6 +93,8 @@ namespace dasp
 		std::vector<int> ComputePixelLabels() const;
 
 		slimage::Image1i ComputeLabels() const;
+
+		Partition ComputePartition() const;
 
 		void ComputeSuperpixels(const std::vector<Seed>& seeds);
 

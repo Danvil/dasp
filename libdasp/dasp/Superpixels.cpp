@@ -671,6 +671,16 @@ slimage::Image1i Superpixels::ComputeLabels() const
 	return img;
 }
 
+Partition Superpixels::ComputePartition() const
+{
+	Partition p;
+	p.segments.resize(cluster.size());
+	for(unsigned int i=0; i<cluster.size(); i++) {
+		p.segments[i] = cluster[i].pixel_ids;
+	}
+	return p;
+}
+
 void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 {
 	// create clusters
