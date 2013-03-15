@@ -14,10 +14,12 @@ float ExplainedVariation(const Partition& partition, FPX fpx, FSEG fseg, F fover
 	for(unsigned int i=0; i<partition.numSegments(); i++) {
 		const F& fi = fseg(i);
 		// segment mean contribution
-		segment_total += partition.segmentSize(i) * metric(fi, foverall);
+		float dS = metric(fi, foverall);
+		segment_total += partition.segmentSize(i) * dS*dS;
 		// segment pixel contribution
 		for(unsigned int j : partition.segmentPixelIds(i)) {
-			pixel_total += metric(fpx(j), foverall);
+			float d = metric(fpx(j), foverall);
+			pixel_total += d*d;
 		}
 	}
 	return segment_total / pixel_total;
@@ -95,7 +97,6 @@ float ExplainedVariationNormal(const Superpixels& sp)
 		}
 	}
 	mean_normal /= mean_normal.norm();
-	std::cout << mean_normal.transpose() << std::endl;
 	return ExplainedVariation(
 		sp.ComputePartition(),
 		[&sp](unsigned int j) { return sp.points[j].normal; },

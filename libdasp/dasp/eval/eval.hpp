@@ -20,6 +20,14 @@ float ExplainedVariationPosition(const Superpixels& sp);
 
 float ExplainedVariationNormal(const Superpixels& sp);
 
+float CompressionErrorColor(const Superpixels& sp);
+
+float CompressionErrorDepth(const Superpixels& sp);
+
+float CompressionErrorPosition(const Superpixels& sp);
+
+float CompressionErrorNormal(const Superpixels& sp);
+
 }
 }
 
