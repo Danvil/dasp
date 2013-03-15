@@ -115,6 +115,24 @@ int main(int argc, char** argv)
 		write_result(p_result_path, p_mode, br);
 	}
 
+	if(p_mode == "area") {
+		float v = evaluate(img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) {
+				return dasp::eval::Area(superpixel);
+			});
+		if(p_verbose) std::cout << "Superpixel Area (AREA): " << v << std::endl;
+		write_result(p_result_path, p_mode, v);
+	}
+
+	if(p_mode == "area3") {
+		float v = evaluate(img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) {
+				return dasp::eval::Area3D(superpixel);
+			});
+		if(p_verbose) std::cout << "Superpixel Area 3D (AREA3): " << v << std::endl;
+		write_result(p_result_path, p_mode, v);
+	}
+
 	if(p_mode == "ipq") {
 		float v = evaluate(img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) {
@@ -122,6 +140,16 @@ int main(int argc, char** argv)
 				return ipq.first;
 			});
 		if(p_verbose) std::cout << "Isoperimetric Quotient (IPQ): " << v << std::endl;
+		write_result(p_result_path, p_mode, v);
+	}
+
+	if(p_mode == "ipq3") {
+		float v = evaluate(img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) {
+				std::pair<float,std::vector<float>> ipq = dasp::eval::IsoperimetricQuotient3D(superpixel);
+				return ipq.first;
+			});
+		if(p_verbose) std::cout << "Isoperimetric Quotient 3D (IPQ3): " << v << std::endl;
 		write_result(p_result_path, p_mode, v);
 	}
 
@@ -194,6 +222,15 @@ int main(int argc, char** argv)
 				return dasp::eval::CompressionErrorNormal(superpixel);
 			});
 		if(p_verbose) std::cout << "Compression Error (CE) - Normal: " << v << std::endl;
+		write_result(p_result_path, p_mode, v);
+	}
+
+	if(p_mode == "nd") {
+		float v = evaluate(img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) {
+				return dasp::eval::MeanNeighbourDistance(superpixel);
+			});
+		if(p_verbose) std::cout << "Mean Neighbour Distance (MND): " << v << std::endl;
 		write_result(p_result_path, p_mode, v);
 	}
 

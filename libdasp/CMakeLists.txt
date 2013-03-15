@@ -7,6 +7,7 @@ add_library(libdasp SHARED
 	dasp/eval/ipq.cpp
 	dasp/eval/ev.cpp
 	dasp/eval/ce.cpp
+	dasp/eval/misc.cpp
 	dasp/Neighbourhood.cpp
 	dasp/Plots.cpp
 	dasp/Segmentation.cpp

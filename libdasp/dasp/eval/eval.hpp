@@ -10,7 +10,13 @@ namespace dasp {
 namespace eval {
 
 
+float Area(const Superpixels& u);
+
+float Area3D(const Superpixels& u);
+
 std::pair<float,std::vector<float>> IsoperimetricQuotient(const Superpixels& u);
+
+std::pair<float,std::vector<float>> IsoperimetricQuotient3D(const Superpixels& u);
 
 float ExplainedVariationColor(const Superpixels& sp);
 
@@ -27,6 +33,8 @@ float CompressionErrorDepth(const Superpixels& sp);
 float CompressionErrorPosition(const Superpixels& sp);
 
 float CompressionErrorNormal(const Superpixels& sp);
+
+float MeanNeighbourDistance(const Superpixels& sp);
 
 }
 }
