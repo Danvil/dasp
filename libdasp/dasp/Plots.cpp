@@ -244,11 +244,6 @@ namespace detail
 	}
 
 	template<>
-	slimage::Pixel3ub ComputeClusterColor<Circularity>(const Cluster& c) {
-		return IntensityColor(c.circularity, 0.0f, 1.0f);
-	}
-
-	template<>
 	slimage::Pixel3ub ComputeClusterColor<Eccentricity>(const Cluster& c) {
 		return IntensityColor(c.eccentricity, 0.0f, 1.0f);
 	}
@@ -351,7 +346,6 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorM
 	ComputeClusterColors_HELPER(Depth)
 	ComputeClusterColors_HELPER(Gradient)
 	ComputeClusterColors_HELPER(Thickness)
-	ComputeClusterColors_HELPER(Circularity)
 	ComputeClusterColors_HELPER(Eccentricity)
 	ComputeClusterColors_HELPER(AreaQuotient)
 	ComputeClusterColors_HELPER(CoverageError)

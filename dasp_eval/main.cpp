@@ -11,37 +11,87 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <fstream>
 
-void write_result(const std::string& filename, const std::string& mode, float v)
+bool p_verbose = false;
+
+namespace impl
 {
-	std::ofstream ofs(filename);
-	ofs << mode << "," << v << std::endl;
+	void write_result(std::ostream& ofs, const std::vector<float>& v)
+	{
+		for(float x : v) {
+			ofs << "," << x << std::endl;
+		}
+	}
+
+	template<typename F>
+	std::vector<std::vector<float>> evaluate(
+		const slimage::Image3ub& img_color, const slimage::Image1ui16& img_depth,
+		const dasp::Parameters& opt,
+		unsigned int num,
+		F f
+	)
+	{
+		std::vector<std::vector<float>> result;
+		float total = 0.0f;
+		for(unsigned int k=0; k<num; k++) {
+			dasp::Superpixels dasp = dasp::ComputeSuperpixels(img_color, img_depth, opt);
+			auto v = f(dasp);
+			result.push_back(v);
+		}
+		return result;
+	}
+
+	std::vector<float> mean(const std::vector<std::vector<float>>& v) {
+		std::vector<float> u(v[0].size(), 0.0f);
+		for(unsigned int i=0; i<v.size(); i++) {
+			assert(v[i].size() == u.size());
+			for(unsigned int j=0; j<u.size(); j++) {
+				u[j] += v[i][j];
+			}
+		}
+		for(unsigned int j=0; j<u.size(); j++) {
+			u[j] /= static_cast<float>(v.size());
+		}
+		return u;
+	}
 }
 
 template<typename F>
-float evaluate(
+void process(
+	const std::string& mode, const std::string& name, const std::string& filename,
 	const slimage::Image3ub& img_color, const slimage::Image1ui16& img_depth,
 	const dasp::Parameters& opt,
 	unsigned int num,
 	F f
 )
 {
-	float total = 0.0f;
-	for(unsigned int k=0; k<num; k++) {
-		dasp::Superpixels dasp = dasp::ComputeSuperpixels(img_color, img_depth, opt);
-		float v = f(dasp);
-		total += v;
+	auto q = impl::mean(impl::evaluate(img_color, img_depth, opt, num, f));
+	if(p_verbose) {
+		std::cout << name << ": ";
+		impl::write_result(std::cout, q);
 	}
-	return total / static_cast<float>(num);
+	{
+		std::ofstream ofs(filename);
+		ofs << mode;
+		impl::write_result(ofs, q);
+	}
+}
+
+dasp::DensityMode StringToDensityMode(const std::string& dm)
+{
+	if(dm == "ASP_const") return dasp::DensityMode::ASP_const;
+	if(dm == "ASP_depth") return dasp::DensityMode::ASP_depth;
+	if(dm == "DASP") return dasp::DensityMode::DASP;
+	exit(0);
 }
 
 int main(int argc, char** argv)
 {
 	std::string p_mode;
+	std::string p_density = "DASP";
 	std::string p_img_path;
 	std::string p_truth_path;
 	std::string p_result_path;
 	unsigned int p_br_d = 2;
-	bool p_verbose = false;
 	unsigned int p_num = 5;
 
 	dasp::Parameters opt;
@@ -54,6 +104,7 @@ int main(int argc, char** argv)
 	desc.add_options()
 		("help", "produce help message")
 		("mode", po::value<std::string>(&p_mode), "operating mode: use, br, ...")
+		("density_mode", po::value<std::string>(&p_density), "density mode: ASP_const, ASP_depth, DASP")
 		("image", po::value<std::string>(&p_img_path), "path to RGBD image")
 		("truth", po::value<std::string>(&p_truth_path), "path to ground truth")
 		("result", po::value<std::string>(&p_result_path)->default_value("/tmp/result.txt"), "path to result")
@@ -72,6 +123,8 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	opt.density_mode = StringToDensityMode(p_density);
+
 	const std::string p_img_path_color = p_img_path + "_color.png";
 	const std::string p_img_path_depth = p_img_path + "_depth.pgm";
 	if(p_verbose) std::cout << "Reading COLOR: '" << p_img_path_color << "'" << std::endl;
@@ -85,16 +138,15 @@ int main(int argc, char** argv)
 		slimage::Image1i img_truth;
 		slimage::conversion::Convert(slimage::Load1ui16(p_truth_path), img_truth);
 		// eval
-		float use = evaluate(img_color, img_depth, opt, p_num,
-			[=](const dasp::Superpixels& superpixels) {
+		process("use", "Undersegmentation error (USE)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[=](const dasp::Superpixels& superpixels) -> std::vector<float> {
 				// actual labels
 				slimage::Image1i labels = superpixels.ComputeLabels();
 				// undersegmentation error
 				std::pair<float,unsigned int> use = dasp::UndersegmentationErrorTotal(img_truth, labels);
-				return use.first;
+				return {use.first};
 			});
-		if(p_verbose) std::cout << "Undersegmentation error (USE): " << use << std::endl;
-		write_result(p_result_path, p_mode, use);
 	}
 
 	if(p_mode == "br") {
@@ -102,143 +154,159 @@ int main(int argc, char** argv)
 		if(p_verbose) std::cout << "Reading TRUTH: '" << p_truth_path << "'" << std::endl;
 		slimage::Image1ub truth_boundary = slimage::Pick<unsigned char>(slimage::Load(p_truth_path), 0);
 		// eval
-		float br = evaluate(img_color, img_depth, opt, p_num,
-			[=](const dasp::Superpixels& superpixels) {
+		process("br", "Boundary recall (BR)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[=](const dasp::Superpixels& superpixels) -> std::vector<float> {
 				// actual boundaries
 				slimage::Image1i labels = superpixels.ComputeLabels();
 				slimage::Image1ub img_boundaries(superpixels.width(), superpixels.height(), slimage::Pixel1ub{0});
 				dasp::plots::PlotEdges(img_boundaries, labels, slimage::Pixel1ub{255}, 2);
 				// boundary recall
-				return dasp::ComputeRecallBox(truth_boundary, img_boundaries, p_br_d);
+				return {dasp::ComputeRecallBox(truth_boundary, img_boundaries, p_br_d)};
 			});
-		if(p_verbose) std::cout << "Boundary recall (BR): " << br << std::endl;
-		write_result(p_result_path, p_mode, br);
 	}
 
 	if(p_mode == "area") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::Area(superpixel);
+		process("area", "Superpixel Area (AREA)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::Area(superpixel) };
 			});
-		if(p_verbose) std::cout << "Superpixel Area (AREA): " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "area3") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::Area3D(superpixel);
+		process("area3", "Superpixel Area 3D (AREA3)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::Area3D(superpixel) };
 			});
-		if(p_verbose) std::cout << "Superpixel Area 3D (AREA3): " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ipq") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
+		process("ipq", "Isoperimetric Quotient (IPQ)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				std::pair<float,std::vector<float>> ipq = dasp::eval::IsoperimetricQuotient(superpixel);
-				return ipq.first;
+				return { ipq.first };
 			});
-		if(p_verbose) std::cout << "Isoperimetric Quotient (IPQ): " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ipq3") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
+		process("ipq3", "Isoperimetric Quotient 3D (IPQ3)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				std::pair<float,std::vector<float>> ipq = dasp::eval::IsoperimetricQuotient3D(superpixel);
-				return ipq.first;
+				return { ipq.first };
 			});
-		if(p_verbose) std::cout << "Isoperimetric Quotient 3D (IPQ3): " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ev_c") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::ExplainedVariationColor(superpixel);
+		process("ev_c", "Explained Variation (EV) - Color", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::ExplainedVariationColor(superpixel) };
 			});
-		if(p_verbose) std::cout << "Explained Variation (EV) - Color: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ev_d") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::ExplainedVariationColor(superpixel);
+		process("ev_d", "Explained Variation (EV) - Depth", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::ExplainedVariationDepth(superpixel) };
 			});
-		if(p_verbose) std::cout << "Explained Variation (EV) - Depth: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ev_v") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::ExplainedVariationPosition(superpixel);
+		process("ev_v", "Explained Variation (EV) - Position", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::ExplainedVariationPosition(superpixel) };
 			});
-		if(p_verbose) std::cout << "Explained Variation (EV) - Position: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ev_n") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::ExplainedVariationNormal(superpixel);
+		process("ev_n", "Explained Variation (EV) - Normal", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::ExplainedVariationNormal(superpixel) };
 			});
-		if(p_verbose) std::cout << "Explained Variation (EV) - Normal: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ce_c") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::CompressionErrorColor(superpixel);
+		process("ce_c", "Compression Error (CE) - Color", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::CompressionErrorColor(superpixel) };
 			});
-		if(p_verbose) std::cout << "Compression Error (CE) - Color: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ce_d") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::CompressionErrorDepth(superpixel);
+		process("ce_d", "Compression Error (CE) - Depth", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::CompressionErrorDepth(superpixel) };
 			});
-		if(p_verbose) std::cout << "Compression Error (CE) - Depth: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ce_v") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::CompressionErrorPosition(superpixel);
+		process("ce_v", "Compression Error (CE) - Position", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::CompressionErrorPosition(superpixel) };
 			});
-		if(p_verbose) std::cout << "Compression Error (CE) - Position: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "ce_n") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::CompressionErrorNormal(superpixel);
+		process("ce_n", "Compression Error (CE) - Normal", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::CompressionErrorNormal(superpixel) };
 			});
-		if(p_verbose) std::cout << "Compression Error (CE) - Normal: " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
 	if(p_mode == "nd") {
-		float v = evaluate(img_color, img_depth, opt, p_num,
-			[](const dasp::Superpixels& superpixel) {
-				return dasp::eval::MeanNeighbourDistance(superpixel);
+		process("nd", "Mean Neighbour Distance (MND)", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				return { dasp::eval::MeanNeighbourDistance(superpixel) };
 			});
-		if(p_verbose) std::cout << "Mean Neighbour Distance (MND): " << v << std::endl;
-		write_result(p_result_path, p_mode, v);
 	}
 
-//	const slimage::Image1i& labels = superpixels.ComputeLabels();
-//	slimage::Image3ub result = dasp::plots::PlotPoints(superpixels, dasp::plots::Color);
-//	dasp::plots::PlotEdges(result, labels, slimage::Pixel3ub{{255,0,0}}, 1);
-//	std::cout << "Writing result to '" << p_result_path << "'" << std::endl;
-//	slimage::Save(result, p_result_path);
+	if(p_mode == "ev_thick") {
+		process("ev_thick", "Eigenvalues Thickness", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
+					[](float a, const dasp::Cluster& c) {
+						return a + c.thickness;
+					});
+				return { q };
+			});
+	}
+
+	if(p_mode == "ev_ecc") {
+		process("ev_ecc", "Eigenvalues Eccentricity", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
+					[](float a, const dasp::Cluster& c) {
+						return a + c.eccentricity;
+					}) / static_cast<float>(superpixel.cluster.size());
+				return { q };
+			});
+	}
+
+	if(p_mode == "ev_aq") {
+		process("ev_aq", "Eigenvalues Area Quotient", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
+					[](float a, const dasp::Cluster& c) {
+						return a + c.area_quotient;
+					}) / static_cast<float>(superpixel.cluster.size());
+				return { q };
+			});
+	}
 
 	return 0;
 }

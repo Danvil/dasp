@@ -147,11 +147,9 @@ namespace dasp
 
 		/** Thickness of the cluster computed using smalles eigenvalue */
 		float thickness;
-		/** Ratio of plane eigenvalues */
-		float circularity;
 		/** eccentricity of the ellipse described by a and b */
 		float eccentricity;
-		/** actual area / expeted area defined by base radius*/
+		/** actual area / expected area defined by base radius*/
 		float area_quotient;
 
 		/** Thickness of cluster computed using orthogonal distance from plane

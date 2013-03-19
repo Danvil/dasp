@@ -122,16 +122,20 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 
 //	center.normal = points(center.pos).normal;
 
-	// eigenvalues are the square of the standard deviation!
-
 	// FIXME all of the following code does not use the fixed normal!
 
+	// eigensystem defines an ellipsoid
+	// eigenvalues are the square of the standard deviation!
+	// eigenvalues have to be multiplied by a factor to get the probable size
+	// eigenvalues are sorted smallest to largest (d, b, a)
+
+	// thickness: smallest diameter of ellipsoid
 	thickness = cSigmaScale * std::sqrt(std::abs(ew(0))) * 2.0f;
 
-	circularity = std::sqrt(std::abs(ew(1) / ew(2)));
-
+	// eccentricity: \sqrt{1 - \frac{b^2}{a^2}}
 	eccentricity = std::sqrt(1.0f - std::abs(ew(1) / ew(2)));
 
+	// area_actual / area_expected = (a*b)/(R*R)
 	area_quotient = cSigmaScale * cSigmaScale * std::sqrt(std::abs(ew(1) * ew(2))) / (opt.base_radius * opt.base_radius);
 
 }
@@ -851,12 +855,10 @@ ClusterGroupInfo Superpixels::ComputeClusterGroupInfo(unsigned int n, float max_
 {
 	ClusterGroupInfo cgi;
 	cgi.hist_thickness = Histogram<float>(n, 0, max_thick);
-	cgi.hist_circularity = Histogram<float>(n, 0, 1);
 	cgi.hist_area_quotient = Histogram<float>(n, 0.5f, 2.0f);
 	cgi.hist_coverage_error = Histogram<float>(n, 0, 0.10f);
 	for(const Cluster& c : cluster) {
 		cgi.hist_thickness.add(c.thickness);
-		cgi.hist_circularity.add(c.circularity);
 		cgi.hist_area_quotient.add(c.area_quotient);
 		cgi.hist_coverage_error.add(c.coverage_error);
 //		std::cout << ci.t << " " << ci.b << " " << ci.a << std::endl;

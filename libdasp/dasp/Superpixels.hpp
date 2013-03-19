@@ -25,7 +25,6 @@ namespace dasp
 	struct ClusterGroupInfo
 	{
 		Histogram<float> hist_thickness;
-		Histogram<float> hist_circularity;
 		Histogram<float> hist_area_quotient;
 		Histogram<float> hist_coverage_error;
 	};

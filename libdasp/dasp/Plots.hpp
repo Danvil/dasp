@@ -113,7 +113,6 @@ enum ColorMode {
 	ClusterRadius,
 	Density,
 	Thickness,
-	Circularity,
 	Eccentricity,
 	AreaQuotient,
 	CoverageError
