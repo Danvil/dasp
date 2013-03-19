@@ -17,8 +17,10 @@ namespace impl
 {
 	void write_result(std::ostream& ofs, const std::vector<float>& v)
 	{
-		for(float x : v) {
-			ofs << "," << x << std::endl;
+		for(unsigned int i=0; i<v.size(); i++) {
+			if(i > 0)
+				ofs << "," << std::endl;
+			ofs << v[i] << std::endl;
 		}
 	}
 
@@ -65,13 +67,13 @@ void process(
 )
 {
 	auto q = impl::mean(impl::evaluate(img_color, img_depth, opt, num, f));
-	if(p_verbose) {
+	if(p_verbose || filename.empty()) {
 		std::cout << name << ": ";
 		impl::write_result(std::cout, q);
 	}
-	{
+	if(!filename.empty()) {
 		std::ofstream ofs(filename);
-		ofs << mode;
+		ofs << mode << ",";
 		impl::write_result(ofs, q);
 	}
 }
@@ -107,7 +109,7 @@ int main(int argc, char** argv)
 		("density_mode", po::value<std::string>(&p_density), "density mode: ASP_const, ASP_depth, DASP")
 		("image", po::value<std::string>(&p_img_path), "path to RGBD image")
 		("truth", po::value<std::string>(&p_truth_path), "path to ground truth")
-		("result", po::value<std::string>(&p_result_path)->default_value("/tmp/result.txt"), "path to result")
+		("result", po::value<std::string>(&p_result_path), "path to result")
 		("radius", po::value(&opt.base_radius)->default_value(opt.base_radius), "superpixel radius (meters)")
 		("count", po::value(&opt.count)->default_value(opt.count), "number of superpixels (set to 0 to use radius)")
 		("iterations", po::value(&opt.iterations)->default_value(opt.iterations), "number of iterations for local nearest neighbour clustering")
@@ -279,7 +281,7 @@ int main(int argc, char** argv)
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
 					[](float a, const dasp::Cluster& c) {
 						return a + c.thickness;
-					});
+					}) / static_cast<float>(superpixel.cluster.size());
 				return { q };
 			});
 	}
@@ -288,6 +290,9 @@ int main(int argc, char** argv)
 		process("ev_ecc", "Eigenvalues Eccentricity", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				// for(unsigned int i=0; i<superpixel.cluster.size(); i++) {
+				// 	std::cout << superpixel.cluster[i].eccentricity << std::endl;
+				// }
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
 					[](float a, const dasp::Cluster& c) {
 						return a + c.eccentricity;
@@ -303,6 +308,18 @@ int main(int argc, char** argv)
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
 					[](float a, const dasp::Cluster& c) {
 						return a + c.area_quotient;
+					}) / static_cast<float>(superpixel.cluster.size());
+				return { q };
+			});
+	}
+
+	if(p_mode == "ev_area") {
+		process("ev_area", "Eigenvalues Area", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
+					[](float a, const dasp::Cluster& c) {
+						return a + c.area;
 					}) / static_cast<float>(superpixel.cluster.size());
 				return { q };
 			});

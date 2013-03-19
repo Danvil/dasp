@@ -115,6 +115,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	solver.compute(cov);
 	ew = solver.eigenvalues();
 	ev = solver.eigenvectors();
+	// std::cout << std::sqrt(ew[0]) << " " << std::sqrt(ew[1]) << " " << std::sqrt(ew[2]) << std::endl;
 
 	if(!is_fixed) {
 		center.setNormal(ev.col(0));
@@ -135,8 +136,11 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	// eccentricity: \sqrt{1 - \frac{b^2}{a^2}}
 	eccentricity = std::sqrt(1.0f - std::abs(ew(1) / ew(2)));
 
+	float area_base = cSigmaScale * cSigmaScale * std::sqrt(std::abs(ew(1) * ew(2)));
+	area = area_base * boost::math::constants::pi<float>();
+
 	// area_actual / area_expected = (a*b)/(R*R)
-	area_quotient = cSigmaScale * cSigmaScale * std::sqrt(std::abs(ew(1) * ew(2))) / (opt.base_radius * opt.base_radius);
+	area_quotient = area_base / (opt.base_radius * opt.base_radius);
 
 }
 
