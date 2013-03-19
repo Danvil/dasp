@@ -6,6 +6,7 @@
  */
 
 #include "Neighbourhood.hpp"
+#include "Metric.hpp"
 #include <Slimage/Convert.hpp>
 #include <boost/graph/copy.hpp>
 
@@ -179,7 +180,7 @@ NeighbourhoodGraph CreateNeighborhoodGraph(const Superpixels& superpixels, Neigh
 			}
 			else {
 				// pixel distance on camera image plane
-				float d = std::sqrt(static_cast<float>(PixelDistanceSquared(c_i,c_j)));
+				float d = std::sqrt(static_cast<float>(metric::PixelDistanceSquared(c_i,c_j)));
 				// only test if pixel distance is smaller then C * pixel_radius
 				float r = std::max(c_i.cluster_radius_px, c_j.cluster_radius_px);
 				if(d > pixel_distance_mult_threshold * r) {

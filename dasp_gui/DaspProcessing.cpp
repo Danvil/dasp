@@ -118,7 +118,7 @@ void DaspProcessing::performSegmentationStep()
 		Gnb = CreateNeighborhoodGraph(clustering_,
 			graph_cut_spatial_ ? NeighborGraphSettings::SpatialCut() : NeighborGraphSettings::NoCut());
 		Gnb_weighted = ComputeEdgeWeights(clustering_, Gnb,
-				MetricDASP(
+				DepthAdaptiveMetric(
 					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal,
 					clustering_.opt.base_radius));
 	}

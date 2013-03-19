@@ -24,13 +24,18 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.comboBoxDaspColorSpace->addItem("HN", dasp::ColorSpaces::HN);
 	ui.comboBoxDaspColorSpace->setCurrentIndex(dasp_opt_->color_space);
 
+	ui.comboBoxDensityMode->addItem("ASP", dasp::DensityModes::ASP);
+	ui.comboBoxDensityMode->addItem("ASP_const", dasp::DensityModes::ASP_const);
+	ui.comboBoxDensityMode->addItem("ASP_depth", dasp::DensityModes::ASP_depth);
+	ui.comboBoxDensityMode->addItem("DASP", dasp::DensityModes::DASP);
+	ui.comboBoxDensityMode->setCurrentIndex(dasp_opt_->density_mode);
+
 	ui.spinBoxIterations->setValue(dasp_opt_->iterations);
 	ui.doubleSpinBoxRadius->setValue(1000.0f*dasp_opt_->base_radius);
 	ui.spinBoxSuperCount->setValue(dasp_opt_->count);
 	ui.doubleSpinBoxWeightSpatial->setValue(dasp_opt_->weight_spatial);
 	ui.doubleSpinBoxWeightColor->setValue(dasp_opt_->weight_color);
 	ui.doubleSpinBoxWeightNormal->setValue(dasp_opt_->weight_normal);
-	ui.doubleSpinBoxWeightDepth->setValue(dasp_opt_->weight_depth);
 	ui.checkBoxDaspRepairDepth->setChecked(dasp_opt_->is_repair_depth);
 	ui.checkBoxClipEnable->setChecked(dasp_opt_->enable_clipping);
 	ui.doubleSpinBoxClipXMin->setValue(dasp_opt_->clip_x_min);
@@ -51,8 +56,8 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	QObject::connect(ui.doubleSpinBoxWeightSpatial, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightSpatial(double)));
 	QObject::connect(ui.doubleSpinBoxWeightColor, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightColor(double)));
 	QObject::connect(ui.doubleSpinBoxWeightNormal, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightNormal(double)));
-	QObject::connect(ui.doubleSpinBoxWeightDepth, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelWeightDepth(double)));
 	QObject::connect(ui.comboBoxDaspColorSpace, SIGNAL(currentIndexChanged(int)), this, SLOT(OnDaspColorSpace(int)));
+	QObject::connect(ui.comboBoxDensityMode, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangeDaspDensityMode(int)));
 	QObject::connect(ui.doubleSpinBoxCoverage, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelCoverage(double)));
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
 
@@ -186,15 +191,15 @@ void WdgtDaspParameters::OnDaspColorSpace(int selection)
 	*reload = true;
 }
 
-void WdgtDaspParameters::ChangeSuperpixelWeightNormal(double val)
+void WdgtDaspParameters::ChangeDaspDensityMode(int selection)
 {
-	dasp_opt_->weight_normal = val;
+	dasp_opt_->density_mode = (dasp::DensityMode)(ui.comboBoxDensityMode->itemData(selection).toInt());
 	*reload = true;
 }
 
-void WdgtDaspParameters::ChangeSuperpixelWeightDepth(double val)
+void WdgtDaspParameters::ChangeSuperpixelWeightNormal(double val)
 {
-	dasp_opt_->weight_depth = val;
+	dasp_opt_->weight_normal = val;
 	*reload = true;
 }
 

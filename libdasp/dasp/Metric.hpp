@@ -18,12 +18,18 @@ namespace dasp
 
 	namespace metric
 	{
+		inline int PixelDistanceSquared(const Point& a, const Point& b) {
+			const int dx = a.px - b.px;
+			const int dy = a.py - b.py;
+			return dx*dx + dy*dy;
+		}
+
 		inline float ImageDistanceRaw(const Point& x, const Point& y) {
 			return static_cast<float>(PixelDistanceSquared(x,y)) / (y.cluster_radius_px * y.cluster_radius_px);
 		}
 
 		inline float SpatialDistanceRaw(const Eigen::Vector3f& x, const Eigen::Vector3f& y) {
-			return (x - y).squaredNorm();// / (y.spatial_normalizer * y.spatial_normalizer);
+			return (x - y).squaredNorm();
 		}
 
 		inline float SpatialDistanceRaw(const Point& x, const Point& y) {
@@ -54,31 +60,16 @@ namespace dasp
 
 	}
 
-	struct MetricDASP
+	/** Computes the density-adaptive distance from a point to a center point
+	 * - uses pixel distance and color metric
+	 * - Takes the density at the center point
+	 */
+	struct DensityAdaptiveMetric_UxRGB
 	{
-		MetricDASP(float w_r, float w_c, float w_n, float R) {
-			weights_[0] = w_r / (R * R);
-			weights_[1] = w_c;
-			weights_[2] = w_n;
-		}
-
-		float operator()(const Point& p, const Point& q) const {
-			return weights_.dot(
-					Eigen::Vector3f(
-							metric::SpatialDistanceRaw(p, q),
-							metric::ColorDistanceRaw(p, q),
-							metric::NormalDistanceWithDepth(p, q)));
-		}
-
-	private:
-		Eigen::Vector3f weights_;
-	};
-
-	struct MetricSLIC
-	{
-		MetricSLIC(float w_s, float w_c) {
-			weights_[0] = w_s;
-			weights_[1] = w_c;
+		DensityAdaptiveMetric_UxRGB(float w_u, float w_c) {
+			weights_ = {
+				w_u,
+				w_c };
 		}
 
 		float operator()(const Point& p, const Point& q) const {
@@ -92,28 +83,56 @@ namespace dasp
 		Eigen::Vector2f weights_;
 	};
 
-//	struct ClassicNeighbourhoodMetric
-//	{
-//		float operator()(const Point& x, const Point& y) {
-//			NeighbourhoodGraphEdgeData& edge = neighbourhood_graph[eid];
-//			// compute cost using color and normal
-//			edge.c_px = metric::ImageDistanceRaw(x, y);
-//			edge.c_world = metric::SpatialDistanceRaw(x, y) / (opt.base_radius * opt.base_radius); // F IXME HAAAACK
-//			edge.c_color = metric::ColorDistanceRaw(x, y);
-//			edge.c_normal = metric::NormalDistanceRaw(x, y);
-//			// F IXME metric needs central place!
-//			if(opt.weight_image == 0.0f) {
-//				// dasp
-//				MetricDASP fnc(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
-//				edge.weight = fnc(x, y);
-//			}
-//			else {
-//				// slic
-//				MetricSLIC fnc(opt.weight_image, opt.weight_color);
-//				edge.weight = fnc(x, y);
-//			}
-//		}
-//	};
+	/** Computes the density-adaptive distance from a point to a center point
+	 * - uses pixel distance, color metric and depth difference
+	 * - Takes the density at the center point
+	 */
+	struct DensityAdaptiveMetric_UxRGBxD
+	{
+		DensityAdaptiveMetric_UxRGBxD(float w_u, float w_c, float w_d) {
+			weights_ = {
+				w_u,
+				w_c,
+				w_d };
+		}
+
+		float operator()(const Point& p, const Point& q) const {
+			return weights_.dot(
+					Eigen::Vector3f(
+							metric::ImageDistanceRaw(p, q),
+							metric::ColorDistanceRaw(p, q),
+							std::abs(p.depth() - q.depth())));
+		}
+
+	private:
+		Eigen::Vector3f weights_;
+	};
+
+	/** Computes the depth-adaptive distance from a point to a center point
+	 * - Takes the density at the center point
+	 * - Uses 3D position instead of pixel position
+	 * - Additionally uses normals.
+	 */
+	struct DepthAdaptiveMetric
+	{
+		DepthAdaptiveMetric(float w_r, float w_c, float w_n, float R) {
+			weights_ = {
+				w_r / (R * R),
+				w_c,
+				w_n };
+		}
+
+		float operator()(const Point& p, const Point& q) const {
+			return weights_.dot(
+					Eigen::Vector3f(
+							metric::SpatialDistanceRaw(p, q),
+							metric::ColorDistanceRaw(p, q),
+							metric::NormalDistanceWithDepth(p, q)));
+		}
+
+	private:
+		Eigen::Vector3f weights_;
+	};
 
 	template<bool SupressConvexEdges=true>
 	struct ClassicSpectralAffinity

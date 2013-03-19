@@ -37,12 +37,10 @@ Parameters::Parameters()
 	camera.focal = 528.01f;
 	camera.z_slope = 0.001f;
 	color_space = ColorSpaces::RGB;
+	density_mode = DensityModes::DASP;
 	weight_color = 2.0f;
 	weight_spatial = 1.0f;
 	weight_normal = 3.0f;
-	weight_depth = 0.0f;
-	weight_image = 0.0f;
-	use_color_saliency = false;
 	iterations = 5;
 	coverage = 1.7f;
 	base_radius = 0.02f;
@@ -306,16 +304,34 @@ label_pixel_invalid_omg:
 		}
 	}
 
-	if(opt.use_color_saliency && opt.weight_depth >= 1.0f) {
-		DANVIL_BENCHMARK_START(saliency)
-		saliency = ComputeSaliency(points, opt);
-		AdaptClusterRadiusBySaliency(points, saliency, opt);
-		DANVIL_BENCHMARK_STOP(saliency)
-	}
-
 	DANVIL_BENCHMARK_START(density)
-	// compute desired density
-	density = ComputeDepthDensity(points, opt);
+	if(opt.density_mode == DensityModes::ASP) {
+		std::cerr << "ASP not supported" << std::endl;
+	// 	saliency = ComputeSaliency(points, opt);
+	// 	AdaptClusterRadiusBySaliency(points, saliency, opt);
+		density = ComputeDepthDensity(points, opt); // FIXME
+	}
+	else if(opt.density_mode == DensityModes::ASP_const || opt.density_mode == DensityModes::ASP_depth) {
+		// compute cluster radius [px]
+		constexpr float MM_TO_PX = 4.0f; // random constant to convert mm^2 to px^2
+		const float cluster_radius_px = opt.base_radius * MM_TO_PX;
+		// compute density
+		float A = cluster_radius_px*cluster_radius_px*boost::math::constants::pi<float>();
+		float rho = 1.0f / A;
+		density = Eigen::MatrixXf::Constant(points.width(), points.height(), rho);
+		// set cluster radius
+		for(unsigned int i=0; i<points.size(); i++) {
+			points[i].cluster_radius_px = cluster_radius_px;
+		}
+	}
+	else if(opt.density_mode == DensityModes::DASP) {
+		// compute density
+		density = ComputeDepthDensity(points, opt);
+		// cluster radius [px] computed earlier
+	}
+	else {
+		std::cerr << "Invalid densiyt mode type" << std::endl;
+	}
 	DANVIL_BENCHMARK_STOP(density)
 
 	if(opt.count > 0) {
@@ -731,15 +747,22 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 slimage::Image1f Superpixels::ComputeEdges()
 {
 	// FIXME metric needs central place!
-	if(opt.weight_image == 0.0f) {
+	if(opt.density_mode == DensityModes::ASP || opt.density_mode == DensityModes::ASP_const) {
+		DensityAdaptiveMetric_UxRGB metric(opt.weight_spatial, opt.weight_color);
+		return dasp::ComputeEdges(points, metric);
+	}
+	else if(opt.density_mode == DensityModes::ASP_depth) {
+		DensityAdaptiveMetric_UxRGBxD metric(opt.weight_spatial, opt.weight_color, opt.weight_normal);
+		return dasp::ComputeEdges(points, metric);
+	}
+	else if(opt.density_mode == DensityModes::DASP) {
 		// dasp
-		MetricDASP metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
+		DepthAdaptiveMetric metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
 		return dasp::ComputeEdges(points, metric);
 	}
 	else {
-		// slic
-		MetricSLIC metric(opt.weight_image, opt.weight_color);
-		return dasp::ComputeEdges(points, metric);
+		// error!
+		std::cerr << "Invalid depth mode" << std::endl;
 	}
 }
 
@@ -787,15 +810,21 @@ void Superpixels::MoveClusters()
 	// compute next iteration of cluster labeling
 	slimage::Image1i labels;
 	// FIXME metric needs central place!
-	if(opt.weight_image == 0.0f) {
-		// dasp
-		MetricDASP metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
+	if(opt.density_mode == DensityModes::ASP || opt.density_mode == DensityModes::ASP_const) {
+		DensityAdaptiveMetric_UxRGB metric(opt.weight_spatial, opt.weight_color);
+		labels = dasp::IterateClusters(cluster, points, opt, metric);
+	}
+	else if(opt.density_mode == DensityModes::ASP_depth) {
+		DensityAdaptiveMetric_UxRGBxD metric(opt.weight_spatial, opt.weight_color, opt.weight_normal);
+		labels = dasp::IterateClusters(cluster, points, opt, metric);
+	}
+	else if(opt.density_mode == DensityModes::DASP) {
+		DepthAdaptiveMetric metric(opt.weight_spatial, opt.weight_color, opt.weight_normal, opt.base_radius);
 		labels = dasp::IterateClusters(cluster, points, opt, metric);
 	}
 	else {
-		// slic
-		MetricSLIC metric(opt.weight_image, opt.weight_color);
-		labels = dasp::IterateClusters(cluster, points, opt, metric);
+		// error!
+		std::cerr << "Invalid depth mode" << std::endl;
 	}
 	// delete old clusters assignments
 	for(Cluster& c : cluster) {

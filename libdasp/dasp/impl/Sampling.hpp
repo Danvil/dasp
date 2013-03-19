@@ -15,7 +15,6 @@
 
 namespace dasp
 {
-
 	Eigen::MatrixXf ComputeDepthDensity(const ImagePoints& points, const Parameters& opt);
 
 	Eigen::MatrixXf ComputeDepthDensityFromSeeds(const std::vector<Seed>& seeds, const Eigen::MatrixXf& target);

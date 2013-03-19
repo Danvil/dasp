@@ -30,6 +30,17 @@ namespace dasp
 	}
 	typedef SeedModes::Type SeedMode;
 
+	namespace DensityModes
+	{
+		enum Type {
+			ASP, // use given density
+			ASP_const, // constant density (similar to SLIC)
+			ASP_depth, // constant density, RGBxD metric
+			DASP // depth-adaptive density as used in DASP
+		};
+	}
+	typedef DensityModes::Type DensityMode;
+
 	namespace ColorSpaces
 	{
 		enum Type {
@@ -47,13 +58,11 @@ namespace dasp
 
 		ColorSpace color_space;
 
+		DensityMode density_mode;
+
 		float weight_color;
 		float weight_spatial;
 		float weight_normal;
-		float weight_depth;
-		float weight_image;
-
-		bool use_color_saliency;
 
 		/** Number of iterations for superpixel k-means clustering */
 		unsigned int iterations;

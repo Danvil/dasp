@@ -15,6 +15,7 @@
 #include <functional>
 #include <boost/random.hpp>
 #include <boost/format.hpp>
+#include <boost/math/constants/constants.hpp>
 #include <cmath>
 
 //#define CREATE_DEBUG_IMAGES
@@ -238,7 +239,8 @@ Eigen::MatrixXf ComputeSaliency(const ImagePoints& points, const Parameters& opt
 
 void AdaptClusterRadiusBySaliency(ImagePoints& points, const Eigen::MatrixXf& saliency, const Parameters& opt)
 {
-	const float base = std::max(1.0f, opt.weight_depth);
+	// FIXME what is base?
+	const float base = 0.5f;
 	auto it_p = points.begin();
 	auto it_p_end = points.end();
 	auto it_s = saliency.data();

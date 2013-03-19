@@ -32,8 +32,8 @@ public Q_SLOTS:
 	void ChangeSuperpixelWeightSpatial(double val);
 	void ChangeSuperpixelWeightColor(double val);
 	void OnDaspColorSpace(int selection);
+	void ChangeDaspDensityMode(int selection);
 	void ChangeSuperpixelWeightNormal(double val);
-	void ChangeSuperpixelWeightDepth(double val);
 	void ChangeSuperConquerEnclaves(int val);
 	void ChangeSuperpixelCoverage(double val);
 	void ChangeClipEnable(int state);
