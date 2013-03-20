@@ -60,7 +60,10 @@ float CompressionErrorNormal(const Superpixels& sp)
 		[&sp](unsigned int j) { return sp.points[j].normal; },
 		[&sp](unsigned int i) { return sp.cluster[i].center.normal; },
 		[](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
-			return 180.0f / boost::math::constants::pi<float>() * std::acos(a.dot(b));
+			// protect acos from slightly wrong dot product results
+			float h = a.dot(b);
+			h = std::min(1.0f, std::max(0.0f, h));
+			return 180.0f / boost::math::constants::pi<float>() * std::acos(h);
 		}
 	);
 }
