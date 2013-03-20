@@ -35,6 +35,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	ui.actionSave_RBG_D_Image->setEnabled(false);
 #endif
 	QObject::connect(ui.actionSave_Debug_Images, SIGNAL(triggered()), this, SLOT(OnSaveDebugImages()));
+	QObject::connect(ui.actionSave_Active_Image, SIGNAL(triggered()), this, SLOT(OnSaveActiveImage()));
 	QObject::connect(ui.actionBatch_Save, SIGNAL(triggered()), this, SLOT(OnSaveDasp()));
 
 	QObject::connect(ui.action_Settings, SIGNAL(triggered()), this, SLOT(onViewSettings()));
@@ -259,6 +260,15 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 	for(auto p : dasp_processing_->getImages()) {
 		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
 	}
+}
+
+void WdgtKinectSuperPoints::OnSaveActiveImage()
+{
+	// ask for filename
+	QString fn = QFileDialog::getSaveFileName(this,
+		"Save Active Image", "/home/david");
+	// save active generated dasp images
+	((QLabel*)ui.tabs->widget(ui.tabs->currentIndex()))->pixmap()->save(fn);
 }
 
 void WdgtKinectSuperPoints::OnSaveDasp()

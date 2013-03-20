@@ -47,6 +47,7 @@ public Q_SLOTS:
 	void OnLive();
 #endif
 	void OnSaveDebugImages();
+	void OnSaveActiveImage();
 	void OnSaveDasp();
 	void onViewDaspParameters();
 	void onViewSettings();
