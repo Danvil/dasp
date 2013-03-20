@@ -88,7 +88,6 @@ float ExplainedVariationPosition(const Superpixels& sp)
 float ExplainedVariationNormal(const Superpixels& sp)
 {
 	Eigen::Vector3f mean_normal = Eigen::Vector3f::Zero();
-	// FIXME mean normal is probably not good ...
 	unsigned int num_valid = 0;
 	for(const Point& p : sp.points) {
 		if(p.is_valid) {
@@ -97,6 +96,22 @@ float ExplainedVariationNormal(const Superpixels& sp)
 		}
 	}
 	mean_normal /= mean_normal.norm();
+
+	// auto part = sp.ComputePartition();
+	// std::cout << mean_normal.transpose() << std::endl;
+	// for(unsigned int i=0; i<part.numSegments(); i++) {
+	// 	std::cout << mean_normal.transpose() << std::endl;
+	// 	std::cout << sp.cluster[i].center.normal.transpose() << " -> " << 1.0f - mean_normal.dot(sp.cluster[i].center.normal.transpose()) << std::endl;
+	// 	float total = 0.0f;
+	// 	for(unsigned int j : part.segmentPixelIds(i)) {
+	// 		float d = 1.0f - mean_normal.dot(sp.points[j].normal);
+	// 		total += d;
+	// 		std::cout << "\t" << sp.points[j].normal.transpose() << " -> " << d << std::endl;
+	// 	}
+	// 	total /= static_cast<float>(part.segmentSize(i));
+	// 	std::cout << "total=" << total << std::endl;
+	// }
+
 	return ExplainedVariation(
 		sp.ComputePartition(),
 		[&sp](unsigned int j) { return sp.points[j].normal; },

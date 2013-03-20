@@ -149,6 +149,8 @@ namespace dasp
 		float thickness;
 		/** eccentricity of the ellipse described by a and b */
 		float eccentricity;
+		/** flatness of the ellipsoide described by a and c */
+		float flatness;
 		/** actual area */
 		float area;
 		/** actual area / expected area defined by base radius*/

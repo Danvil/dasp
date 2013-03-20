@@ -275,7 +275,7 @@ int main(int argc, char** argv)
 	}
 
 	if(p_mode == "ew_thick") {
-		process("ew_thick", "Eigenvalues Thickness", p_result_path,
+		process("ew_thick", "Eigenvalue Thickness", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
@@ -287,7 +287,7 @@ int main(int argc, char** argv)
 	}
 
 	if(p_mode == "ew_ecc") {
-		process("ew_ecc", "Eigenvalues Eccentricity", p_result_path,
+		process("ew_ecc", "Eigenvalue Eccentricity", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				// for(unsigned int i=0; i<superpixel.cluster.size(); i++) {
@@ -301,8 +301,23 @@ int main(int argc, char** argv)
 			});
 	}
 
+	if(p_mode == "ew_flat") {
+		process("ew_flat", "Eigenvalue Flatness", p_result_path,
+			img_color, img_depth, opt, p_num,
+			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
+				// for(unsigned int i=0; i<superpixel.cluster.size(); i++) {
+				// 	std::cout << superpixel.cluster[i].eccentricity << std::endl;
+				// }
+				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
+					[](float a, const dasp::Cluster& c) {
+						return a + c.flatness;
+					}) / static_cast<float>(superpixel.cluster.size());
+				return { q };
+			});
+	}
+
 	if(p_mode == "ew_aq") {
-		process("ew_aq", "Eigenvalues Area Quotient", p_result_path,
+		process("ew_aq", "Eigenvalue Area Quotient", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
@@ -314,7 +329,7 @@ int main(int argc, char** argv)
 	}
 
 	if(p_mode == "ew_area") {
-		process("ew_area", "Eigenvalues Area", p_result_path,
+		process("ew_area", "Eigenvalue Area", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,

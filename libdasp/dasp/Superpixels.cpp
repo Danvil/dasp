@@ -136,6 +136,9 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	// eccentricity: \sqrt{1 - \frac{b^2}{a^2}}
 	eccentricity = std::sqrt(1.0f - std::abs(ew(1) / ew(2)));
 
+	// flatness: \sqrt{1 - \frac{d^2}{a^2}}
+	flatness = std::sqrt(1.0f - std::abs(ew(0) / ew(2)));
+
 	float area_base = cSigmaScale * cSigmaScale * std::sqrt(std::abs(ew(1) * ew(2)));
 	area = area_base * boost::math::constants::pi<float>();
 
