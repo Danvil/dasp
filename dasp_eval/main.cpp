@@ -274,8 +274,8 @@ int main(int argc, char** argv)
 			});
 	}
 
-	if(p_mode == "ev_thick") {
-		process("ev_thick", "Eigenvalues Thickness", p_result_path,
+	if(p_mode == "ew_thick") {
+		process("ew_thick", "Eigenvalues Thickness", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
@@ -286,8 +286,8 @@ int main(int argc, char** argv)
 			});
 	}
 
-	if(p_mode == "ev_ecc") {
-		process("ev_ecc", "Eigenvalues Eccentricity", p_result_path,
+	if(p_mode == "ew_ecc") {
+		process("ew_ecc", "Eigenvalues Eccentricity", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				// for(unsigned int i=0; i<superpixel.cluster.size(); i++) {
@@ -301,8 +301,8 @@ int main(int argc, char** argv)
 			});
 	}
 
-	if(p_mode == "ev_aq") {
-		process("ev_aq", "Eigenvalues Area Quotient", p_result_path,
+	if(p_mode == "ew_aq") {
+		process("ew_aq", "Eigenvalues Area Quotient", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
@@ -313,8 +313,8 @@ int main(int argc, char** argv)
 			});
 	}
 
-	if(p_mode == "ev_area") {
-		process("ev_area", "Eigenvalues Area", p_result_path,
+	if(p_mode == "ew_area") {
+		process("ew_area", "Eigenvalues Area", p_result_path,
 			img_color, img_depth, opt, p_num,
 			[](const dasp::Superpixels& superpixel) -> std::vector<float> {
 				float q = std::accumulate(superpixel.cluster.begin(), superpixel.cluster.end(), 0.0f,
