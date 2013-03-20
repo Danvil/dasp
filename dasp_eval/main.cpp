@@ -146,8 +146,8 @@ int main(int argc, char** argv)
 				// actual labels
 				slimage::Image1i labels = superpixels.ComputeLabels();
 				// undersegmentation error
-				std::pair<float,unsigned int> use = dasp::UndersegmentationErrorTotal(img_truth, labels);
-				return {use.first};
+				float use = dasp::eval::UndersegmentationError(img_truth, labels);
+				return { use };
 			});
 	}
 

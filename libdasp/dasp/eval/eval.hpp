@@ -9,6 +9,7 @@
 namespace dasp {
 namespace eval {
 
+float UndersegmentationError(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved);
 
 float Area(const Superpixels& u);
 

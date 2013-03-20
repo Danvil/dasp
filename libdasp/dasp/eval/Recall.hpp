@@ -68,15 +68,6 @@ float ComputeRecallGaussian(const slimage::Image1ub& img_exp, const slimage::Ima
 
 slimage::Image3ub CreateRecallImage(const slimage::Image1ub& img_relevant, const slimage::Image1ub& img_retrieved, int d);
 
-std::vector<float> UndersegmentationError(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved);
-
-/** Computes undersegmentation error
- * E(g_i) undersegmentation error of ground truth segment 1 <= i <= n
- * n number of ground truth segments
- * @returns (sum E(g_i),n)
- */
-std::pair<float,unsigned int> UndersegmentationErrorTotal(const slimage::Image1i& labels_relevant, const slimage::Image1i& labels_retrieved);
-
 }
 
 #endif
