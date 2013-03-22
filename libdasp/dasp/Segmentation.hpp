@@ -17,6 +17,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/copy.hpp>
 #include <vector>
+#include <iostream>
 
 namespace dasp
 {
@@ -39,7 +40,7 @@ UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, Weigh
 	boost::copy_graph(graph, spectral,
 			boost::edge_copy(
 				[&spectral,&weights](typename SuperpixelGraph::edge_descriptor src, typename graphseg::SpectralGraph::edge_descriptor dst) {
-					boost::put(boost::edge_weight, spectral, dst, boost::get(weights, src));
+					spectral[dst] = boost::get(weights, src);
 				}
 	));
 	// do spectral graph foo
@@ -50,7 +51,7 @@ UndirectedWeightedGraph SpectralSegmentation(const SuperpixelGraph& graph, Weigh
 	boost::copy_graph(solved, result,
 			boost::edge_copy(
 				[&solved,&result](typename graphseg::SpectralGraph::edge_descriptor src, typename UndirectedWeightedGraph::edge_descriptor dst) {
-					boost::put(boost::edge_weight, result, dst, boost::get(boost::edge_weight, solved, src));
+					result[dst] = solved[src];
 				}
 	));
 	return result;
