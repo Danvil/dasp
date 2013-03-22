@@ -40,6 +40,12 @@ DenseGev<K> dense_graph_to_gev(const Graph& graph, EdgeWeightMap edge_weights)
 	// creating matrices
 	matrix_t W = matrix_t::Zero(dim,dim);
 	vector_t D = vector_t::Zero(dim);
+
+#ifdef SPECTRAL_VERBOSE
+	std::cout << "DEBUG: Number of vertices = " << boost::num_vertices(graph) << std::endl; 
+	std::cout << "DEBUG: Number of edges = " << boost::num_edges(graph) << std::endl; 
+#endif
+
 	for(auto eid : as_range(boost::edges(graph))) {
 		unsigned int ea = boost::source(eid, graph);
 		unsigned int eb = boost::target(eid, graph);

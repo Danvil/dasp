@@ -128,16 +128,16 @@ void DaspProcessing::performSegmentationStep()
 	UndirectedWeightedGraph similarity_graph;
 	UndirectedWeightedGraph dasp_segment_graph;
 	graphseg::GraphLabeling dasp_segment_labeling;
-	if(plot_segments_ || show_graph_weights_ == 3 || show_graph_weights_ == 4) {
+	if(plot_segments_ || show_graph_weights_ >= 3) {
 		// create segmentation graph
 		//segments = MinCutSegmentation(clustering_);
 		similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
 				ClassicSpectralAffinity<true>(
 					clustering_.clusterCount(), clustering_.opt.base_radius,
 					1.0f, 2.0f, 3.0f));
-		if(plot_segments_ || show_graph_weights_ == 4) {
+		if(plot_segments_ || show_graph_weights_ >= 4) {
 //					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal));
-			dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
+			dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_bundle, similarity_graph));
 			dasp_segment_labeling = graphseg::ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
 		}
 	}
@@ -204,6 +204,41 @@ void DaspProcessing::performSegmentationStep()
 							float q = std::max(0.0f, 2.0f*T - sim);
 							return plots::IntensityColor(q, 0, 2.0f*T);
 						});
+					break;
+				}
+				case 5: { // spectral result
+					vis_img.fill({{255,255,255}});
+					const float T = clustering_.opt.segment_threshold;
+					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
+						[T](float sim) {
+							return plots::IntensityColorBW(2.0f*T - sim, 0, 2.0f*T);
+						});
+					for(int i=0; i<clustering_.points.size(); i++) {
+						if(!clustering_.points[i].is_valid) {
+							vis_img[i] = slimage::Pixel3ub{{0,0,0}};
+						}
+					}
+					break;
+				}
+				case 6: { // ucm
+					vis_img.fill({{255,255,255}});
+					const float T = clustering_.opt.segment_threshold;
+					for(auto eid : as_range(boost::edges(dasp_segment_graph))) {
+						int i = boost::source(eid, dasp_segment_graph);
+						int j = boost::target(eid, dasp_segment_graph);
+						float q = dasp_segment_graph[eid] /(2.0f*T);
+						unsigned char g = static_cast<unsigned char>(255.0f*(1.0f - q));
+						slimage::Pixel3ub color{{g,g,g}};
+						dasp::NeighbourhoodGraph::edge_descriptor e = boost::edge(i, j, Gnb).first;
+						for(int k : Gnb[e].border_pixel_ids) { 
+							vis_img[k] = color;
+						}
+					}
+					for(int i=0; i<clustering_.points.size(); i++) {
+						if(!clustering_.points[i].is_valid) {
+							vis_img[i] = slimage::Pixel3ub{{0,0,0}};
+						}
+					}
 					break;
 				}
 			}

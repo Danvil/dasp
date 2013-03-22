@@ -74,6 +74,13 @@ inline slimage::Pixel3ub IntensityColor(float x, float min=0.0f, float max=1.0f)
 	return slimage::Pixel3ub{{color.r,color.g,color.b}};
 }
 
+inline slimage::Pixel3ub IntensityColorBW(float x, float min=0.0f, float max=1.0f)
+{
+	float q = std::max(0.0f, std::min(1.0f, (x - min) / (max - min)));
+	unsigned char g = static_cast<unsigned char>(255.0f * q);
+	return slimage::Pixel3ub{{ g, g, g }};
+}
+
 inline slimage::Pixel3ub DistanceColor(float x, float min=0.0f, float max=2.0f)
 {
 	return IntensityColor((max - x)/(max - min));

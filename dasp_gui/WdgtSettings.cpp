@@ -12,6 +12,8 @@ WdgtSettings::WdgtSettings(const boost::shared_ptr<DaspProcessing>& dasp_process
 	ui.comboBoxPlotGraphWeights->addItem("DASP metric", 2);
 	ui.comboBoxPlotGraphWeights->addItem("Spectral metric", 3);
 	ui.comboBoxPlotGraphWeights->addItem("Spectral result", 4);
+	ui.comboBoxPlotGraphWeights->addItem("UCM (graph)", 5);
+	ui.comboBoxPlotGraphWeights->addItem("UCM (pixels)", 6);
 	ui.comboBoxPlotGraphWeights->setCurrentIndex(2);
 
 	ui.comboBoxPlotPointsColor->addItem("Color", dasp::plots::Color);
