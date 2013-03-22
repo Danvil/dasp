@@ -68,10 +68,15 @@ inline slimage::Pixel3ub DepthColor(float d)
 /** Color visualization of intensity */
 inline slimage::Pixel3ub IntensityColor(float x, float min=0.0f, float max=1.0f)
 {
-	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Black_Blue_Red_Yellow_White();
+	static auto cm = Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor_Blue_Red_Yellow_White();
 	cm.setRange(min, max);
 	Danvil::Colorub color = cm(x);
 	return slimage::Pixel3ub{{color.r,color.g,color.b}};
+}
+
+inline slimage::Pixel3ub DistanceColor(float x, float min=0.0f, float max=2.0f)
+{
+	return IntensityColor((max - x)/(max - min));
 }
 
 /** Color visualization of intensity */

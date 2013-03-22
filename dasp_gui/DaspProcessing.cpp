@@ -134,10 +134,12 @@ void DaspProcessing::performSegmentationStep()
 		similarity_graph = ComputeEdgeWeights(clustering_, Gnb,
 				ClassicSpectralAffinity<true>(
 					clustering_.clusterCount(), clustering_.opt.base_radius,
-					1.0f, 1.0f, 3.0f));
+					1.0f, 2.0f, 3.0f));
+		if(plot_segments_ || show_graph_weights_ == 4) {
 //					clustering_.opt.weight_spatial, clustering_.opt.weight_color, clustering_.opt.weight_normal));
-		dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
-		dasp_segment_labeling = graphseg::ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
+			dasp_segment_graph = SpectralSegmentation(similarity_graph, boost::get(boost::edge_weight, similarity_graph));
+			dasp_segment_labeling = graphseg::ComputeSegmentLabels(dasp_segment_graph, clustering_.opt.segment_threshold);
+		}
 	}
 	DANVIL_BENCHMARK_STOP(segmentation)
 
@@ -186,21 +188,20 @@ void DaspProcessing::performSegmentationStep()
 				case 2: // dasp metric
 					plots::PlotWeightedGraphLines(vis_img, clustering_, Gnb_weighted,
 						[](float weight) {
-							float s = std::exp(-0.1f*weight);
-							return plots::IntensityColor(s, 0, 1);
+							return plots::DistanceColor(weight, 0, 10);
 						});
 					break;
 				case 3: // spectral metric
 					plots::PlotWeightedGraphLines(vis_img, clustering_, similarity_graph,
-						[](float weight) {
-							return plots::IntensityColor(weight, 0, 1);
+						[](float sim) {
+							return plots::IntensityColor(sim, 0, 1);
 						});
 					break;
 				case 4: { // spectral result
 					const float T = clustering_.opt.segment_threshold;
 					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
-						[T](float weight) {
-							float q = std::max(0.0f, 2.0f*T - weight);
+						[T](float sim) {
+							float q = std::max(0.0f, 2.0f*T - sim);
 							return plots::IntensityColor(q, 0, 2.0f*T);
 						});
 					break;
