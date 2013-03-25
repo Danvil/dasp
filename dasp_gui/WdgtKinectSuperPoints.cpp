@@ -228,7 +228,7 @@ void WdgtKinectSuperPoints::OnLoadOne()
 	// user shall select rgbd image base name
 	// NOTE: Images are required to have the form BASE_color.png and BASE_depth.pgm,
 	// NOTE: where BASE is the path and string selected in the dialog.
-	QString fn = QFileDialog::getSaveFileName(this, "Open Color/Depth files", "/home/david");
+	QString fn = QFileDialog::getSaveFileName(this, "Open Color/Depth files");
 	if(fn.isEmpty()) {
 		return;
 	}
