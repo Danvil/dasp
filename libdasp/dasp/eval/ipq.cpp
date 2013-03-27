@@ -96,9 +96,11 @@ std::pair<float,std::vector<float>> IsoperimetricQuotient(const Superpixels& u)
 		if(label == -1) {
 			continue;
 		}
-		ipq_els[label].first ++;	
 		if(boundary[i] == 1) {
 			ipq_els[label].second ++;
+		}
+		else {
+			ipq_els[label].first ++;	
 		}
 	}
 	// finalize
@@ -122,8 +124,9 @@ std::pair<float,std::vector<float>> IsoperimetricQuotient3D(const Superpixels& u
 		// 3D 
 		const Point& p = u.points[i];
 		float size_of_a_px = p.depth() / u.opt.camera.focal;
-		float px_area = size_of_a_px*size_of_a_px / p.computeCircularity();
-		float px_len = 0.5f * size_of_a_px * (1.0f + 1.0f / p.computeCircularity());
+		float gamma = p.computeCircularity();
+		float px_area = size_of_a_px*size_of_a_px / gamma;
+		float px_len = (1.571 - 0.571 * gamma) * size_of_a_px;
 		// compute pixel area
 		ipq_els[label].first += px_area;
 		// compute pixel diameter
