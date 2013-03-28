@@ -39,6 +39,14 @@ Eigen::MatrixXf CombineMipmaps(const std::vector<Eigen::MatrixXf>& mm)
 	return r;
 }
 
+void DebugShowMatrix(const Eigen::MatrixXf& mat, const std::string& tag)
+{
+	const float range = 5000.0f / static_cast<float>((640*480)/25);
+	sDebugImages[tag] = slimage::Ptr(
+			common::MatrixToImage(mat,
+	 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
+}
+
 template<unsigned int Q>
 void DebugMipmap(const std::vector<Eigen::MatrixXf>& mipmaps, const std::string& tag)
 {
@@ -50,10 +58,7 @@ void DebugMipmap(const std::vector<Eigen::MatrixXf>& mipmaps, const std::string&
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
 	// }
-	const float range = 5000.0f / static_cast<float>((640*480)/25);
-	sDebugImages[tag] = slimage::Ptr(
-	 		common::MatrixToImage(CombineMipmaps<Q>(mipmaps),
-	 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
+	DebugShowMatrix(CombineMipmaps<Q>(mipmaps), tag);
 }
 
 template<unsigned int Q>
@@ -364,9 +369,13 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::M
 {
 	// compute mipmaps
 	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
-// #ifdef CREATE_DEBUG_IMAGES
-// 	DebugMipmap<2>(mipmaps, "mm");
-// #endif
+#ifdef CREATE_DEBUG_IMAGES
+	//DebugMipmap<2>(mipmaps, "mm");
+	for(unsigned int i=0; i<mipmaps.size(); i++) {
+		std::string tag = (boost::format("mm_%1d") % i).str();
+		DebugShowMatrix(mipmaps[i], tag);
+	}
+#endif
 	// now create pixel seeds
 	std::vector<Seed> seeds;
 	FindSeedsDepthMipmap_Walk<2>(points, seeds, mipmaps, mipmaps.size() - 1, 0, 0);
@@ -379,6 +388,10 @@ std::vector<Seed> FindSeedsDepthMipmap640(const ImagePoints& points, const Eigen
 	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps640x480(density);
 #ifdef CREATE_DEBUG_IMAGES
 	DebugMipmap<5>(mipmaps, "mm640");
+	for(unsigned int i=0; i<mipmaps.size(); i++) {
+		std::string tag = (boost::format("mm640_%1d") % i).str();
+		DebugShowMatrix(mipmaps[i], tag);
+	}
 #endif
 	// now create pixel seeds
 	std::vector<Seed> seeds;
