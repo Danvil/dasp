@@ -302,7 +302,6 @@ void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 		capture_next_ = false;
 	}
 	// process image
-	dasp::SetRandomNumberSeed(0);
 	dasp_processing_->step(rgbd.depth, rgbd.color);
 	if(mode_ == LiveMode) {
 		frame_counter_ ++;

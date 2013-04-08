@@ -35,6 +35,8 @@ public Q_SLOTS:
 	void ChangeDaspDensityMode(int selection);
 	void ChangeSuperpixelWeightNormal(double val);
 	void ChangeSuperConquerEnclaves(int val);
+	void ChangeRandomSeed(int val);
+	void CreateRandomSeed();
 	void ChangeSuperpixelCoverage(double val);
 	void ChangeClipEnable(int state);
 	void ChangeClipXMin(double val);

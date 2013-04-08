@@ -1,4 +1,5 @@
 #include "WdgtDaspParameters.h"
+#include <stdlib.h>
 
 WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>& dasp_opt, QWidget *parent)
     : QWidget(parent)
@@ -60,6 +61,8 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	QObject::connect(ui.comboBoxDensityMode, SIGNAL(currentIndexChanged(int)), this, SLOT(ChangeDaspDensityMode(int)));
 	QObject::connect(ui.doubleSpinBoxCoverage, SIGNAL(valueChanged(double)), this, SLOT(ChangeSuperpixelCoverage(double)));
 	QObject::connect(ui.checkBoxDaspConquerEnclaves, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperConquerEnclaves(int)));
+	QObject::connect(ui.spinBoxRandomSeed, SIGNAL(valueChanged(int)), this, SLOT(ChangeRandomSeed(int)));
+	QObject::connect(ui.pushButtonRandomSeed, SIGNAL(clicked()), this, SLOT(CreateRandomSeed()));
 
 	QObject::connect(ui.checkBoxClipEnable, SIGNAL(stateChanged(int)), this, SLOT(ChangeClipEnable(int)));
 	QObject::connect(ui.doubleSpinBoxClipXMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipXMin(double)));
@@ -84,6 +87,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	dasp_opt_->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(ui.comboBoxDaspColorSpace->currentIndex()).toInt());
 	dasp_opt_->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_opt_->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
+	dasp_opt_->random_seed = 0;
 
 	dasp_opt_->enable_clipping = ui.checkBoxClipEnable->isChecked();
 	dasp_opt_->clip_x_min = ui.doubleSpinBoxClipXMin->value();
@@ -93,6 +97,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	dasp_opt_->clip_y_max = ui.doubleSpinBoxClipYMax->value();
 	dasp_opt_->clip_z_max = ui.doubleSpinBoxClipZMax->value();
 
+	srand(time(0));
 }
 
 WdgtDaspParameters::~WdgtDaspParameters()
@@ -206,6 +211,19 @@ void WdgtDaspParameters::ChangeSuperpixelWeightNormal(double val)
 void WdgtDaspParameters::ChangeSuperConquerEnclaves(int val)
 {
 	dasp_opt_->is_conquer_enclaves = val;
+	*reload = true;
+}
+
+void WdgtDaspParameters::ChangeRandomSeed(int val)
+{
+	dasp_opt_->random_seed = val;
+	*reload = true;
+}
+
+void WdgtDaspParameters::CreateRandomSeed()
+{
+	int r = rand();
+	ui.spinBoxRandomSeed->setValue(r);
 	*reload = true;
 }
 

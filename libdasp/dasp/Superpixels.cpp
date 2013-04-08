@@ -417,6 +417,9 @@ label_pixel_invalid_omg:
 
 void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
+
+	SetRandomNumberSeed(opt.random_seed);
+
 	CreateClusters(seeds);
 
 //	std::cout << std::endl << " 0: n=" << cluster.size() << std::endl;

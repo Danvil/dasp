@@ -14,11 +14,15 @@
 #include <Slimage/Paint.hpp>
 #include <functional>
 #include <boost/random.hpp>
-#include <boost/format.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <cmath>
 
-//#define CREATE_DEBUG_IMAGES
+#define CREATE_DEBUG_IMAGES
+
+#ifdef CREATE_DEBUG_IMAGES
+	#include <fstream>
+	#include <boost/format.hpp>
+#endif
 
 //------------------------------------------------------------------------------
 namespace dasp {
@@ -45,6 +49,22 @@ void DebugShowMatrix(const Eigen::MatrixXf& mat, const std::string& tag)
 	sDebugImages[tag] = slimage::Ptr(
 			common::MatrixToImage(mat,
 	 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
+}
+
+void DebugWriteMatrix(const Eigen::MatrixXf& mat, const std::string& tag)
+{
+	std::ofstream ofs(tag);
+	for(int i=0; i<mat.rows(); i++) {
+		for(int j=0; j<mat.cols(); j++) {
+			ofs << mat(i,j);
+			if(j+1 != mat.cols()) {
+				ofs << "\t";
+			}
+		}
+		if(i+1 != mat.rows()) {
+			ofs << "\n";
+		}
+	}
 }
 
 template<unsigned int Q>
@@ -374,6 +394,7 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::M
 	for(unsigned int i=0; i<mipmaps.size(); i++) {
 		std::string tag = (boost::format("mm_%1d") % i).str();
 		DebugShowMatrix(mipmaps[i], tag);
+		DebugWriteMatrix(mipmaps[i], tag);
 	}
 #endif
 	// now create pixel seeds
@@ -391,6 +412,7 @@ std::vector<Seed> FindSeedsDepthMipmap640(const ImagePoints& points, const Eigen
 	for(unsigned int i=0; i<mipmaps.size(); i++) {
 		std::string tag = (boost::format("mm640_%1d") % i).str();
 		DebugShowMatrix(mipmaps[i], tag);
+		DebugWriteMatrix(mipmaps[i], tag);
 	}
 #endif
 	// now create pixel seeds

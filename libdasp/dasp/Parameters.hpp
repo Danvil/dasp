@@ -53,6 +53,8 @@ namespace dasp
 	{
 		Parameters();
 
+		unsigned int random_seed;
+
 		/** camera parameters */
 		Camera camera;
 
