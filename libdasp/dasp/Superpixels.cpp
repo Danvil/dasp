@@ -674,9 +674,9 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return CreateSeedPoints(points,
 			pds::SimplifiedPoissonDiscSamplingOld(density));
 	case SeedModes::DepthMipmapFS:
-		return FindSeedsDepthMipmapFS(points, density);
 	case SeedModes::DepthMipmapFS640:
-		return FindSeedsDepthMipmapFS640(points, density);
+		return CreateSeedPoints(points,
+			pds::MultiLayerFloydSteinberg(density));
 	case SeedModes::DepthBlueNoise:
 		return CreateSeedPoints(points,
 			pds::Fattal(density));
