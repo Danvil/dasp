@@ -96,7 +96,6 @@ namespace pds
 			}
 			// scale points with base constant
 			impl::ScalePoints(seeds, 5.f);
-			std::cout << seeds.size() << std::endl;
 			return seeds;
 		}
 	}
