@@ -21,7 +21,7 @@ Eigen::MatrixXf TestDensity(unsigned size, unsigned num)
 		float y = static_cast<float>(i) / static_cast<float>(size-1);
 		for(unsigned j=0; j<size; j++) {
 			float x = static_cast<float>(j) / static_cast<float>(size-1);
-			rho(i,j) = TestFunction(x,y);
+			rho(j,i) = TestFunction(x,y);
 		}
 	}
 	float scl = static_cast<float>(num) / rho.sum();

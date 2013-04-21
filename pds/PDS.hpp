@@ -7,6 +7,8 @@
 namespace pds
 {
 
+	std::vector<Eigen::Vector2f> Random(const Eigen::MatrixXf& density);
+
 	std::vector<Eigen::Vector2f> RectGrid(const Eigen::MatrixXf& density);
 
 	std::vector<Eigen::Vector2f> HexGrid(const Eigen::MatrixXf& density);
@@ -27,6 +29,7 @@ namespace pds
 
 	inline std::vector<Eigen::Vector2f> PoissonDiscSampling(const std::string& name, const Eigen::MatrixXf& density)
 	{
+		if(name == "rnd") return Random(density);
 		if(name == "rect") return RectGrid(density);
 		if(name == "spds") return SimplifiedPDS(density);
 		if(name == "fattal") return Fattal(density);

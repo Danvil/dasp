@@ -1,8 +1,26 @@
 
 #include "PDS.hpp"
+#include "Tools.hpp"
 #include <iostream>
 
 namespace pds {
+
+std::vector<Eigen::Vector2f> Random(const Eigen::MatrixXf& density)
+{
+	boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > die(
+		impl::Rnd(),
+		boost::uniform_real<float>(0.0f, 1.0f));
+
+	std::vector<Eigen::Vector2f> seeds;
+	for(unsigned int iy=0; iy<density.cols(); iy++) {
+		for(unsigned int ix=0; ix<density.rows(); ix++) {
+			if(die() < density(ix,iy))
+				seeds.push_back(Eigen::Vector2f(ix, iy));
+		}
+	}
+
+	return seeds;
+}
 
 std::vector<Eigen::Vector2f> RectGrid(const Eigen::MatrixXf& density)
 {
