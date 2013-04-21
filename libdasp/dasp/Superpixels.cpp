@@ -683,9 +683,11 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return CreateSeedPoints(points,
 			pds::Fattal(density));
 	case SeedModes::DepthFloyd:
-		return FindSeedsDepthFloyd(points, density);
+		return CreateSeedPoints(points,
+			pds::FloydSteinberg(density));
 	case SeedModes::DepthFloydExpo:
-		return FindSeedsDepthFloydExpo(points, density);
+		return CreateSeedPoints(points,
+			pds::FloydSteinbergExpo(density));
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};

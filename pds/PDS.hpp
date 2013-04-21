@@ -15,6 +15,10 @@ namespace pds
 
 	std::vector<Eigen::Vector2f> SimplifiedPoissonDiscSampling(const Eigen::MatrixXf& density);
 
+	std::vector<Eigen::Vector2f> FloydSteinberg(const Eigen::MatrixXf& density);
+
+	std::vector<Eigen::Vector2f> FloydSteinbergExpo(const Eigen::MatrixXf& density);
+
 	std::vector<Eigen::Vector2f> MultiLayerFloydSteinberg(const Eigen::MatrixXf& density);
 
 	std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int max_steps=0);
