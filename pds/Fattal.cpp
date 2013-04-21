@@ -5,7 +5,7 @@
  *      Author: david
  */
 
-#include "BlueNoise.hpp"
+#include "Fattal.hpp"
 #include "Mipmaps.hpp"
 #include <boost/random.hpp>
 //----------------------------------------------------------------------------//

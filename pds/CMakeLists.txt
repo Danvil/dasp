@@ -1,5 +1,5 @@
 add_library(pds SHARED
-	BlueNoise.cpp
+	Fattal.cpp
 	FloydSteinberg.cpp
 	FloydSteinbergMultiLayer.cpp
 	Grid.cpp

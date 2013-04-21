@@ -9,7 +9,7 @@
 #include <common/color.hpp>
 #include "Sampling.hpp"
 #include "../Superpixels.hpp"
-#include <pds/BlueNoise.hpp>
+#include <pds/Fattal.hpp>
 #include <pds/Mipmaps.hpp>
 #include <Slimage/Paint.hpp>
 #include <functional>
