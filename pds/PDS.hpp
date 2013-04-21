@@ -25,6 +25,14 @@ namespace pds
 
 	std::vector<Eigen::Vector2f> DeltaDensitySampling(const std::vector<Eigen::Vector2f>& old_seeds, const Eigen::MatrixXf& density_new);
 
+	inline std::vector<Eigen::Vector2f> PoissonDiscSampling(const std::string& name, const Eigen::MatrixXf& density)
+	{
+		if(name == "rect") return RectGrid(density);
+		if(name == "spds") return SimplifiedPDS(density);
+		if(name == "fattal") return Fattal(density);
+		throw 0;
+	}
+
 }
 
 #endif
