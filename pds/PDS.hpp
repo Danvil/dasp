@@ -2,23 +2,10 @@
 #define INCLUDED_PDS_PDS_HPP
 
 #include <Eigen/Dense>
-#include <boost/random.hpp>
 #include <vector>
 
 namespace pds
 {
-
-	namespace impl
-	{
-		inline boost::mt19937& Rnd() {
-			static boost::mt19937 rnd;
-			return rnd;
-		}
-
-		inline void RndSeed(unsigned int x) {
-			Rnd().seed(x);
-		}
-	}
 
 	std::vector<Eigen::Vector2f> RectGrid(const Eigen::MatrixXf& density);
 
