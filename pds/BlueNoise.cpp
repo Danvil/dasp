@@ -313,7 +313,8 @@ std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int
 	std::vector<Eigen::Vector2f> v(pnts.size());
 	std::transform(pnts.begin(), pnts.end(), v.begin(),
 		[](const fattal::Point& p) {
-			return Eigen::Vector2f(p.x, p.y);
+			return Eigen::Vector2f(
+				2.0f*static_cast<float>(p.x), 2.0f*static_cast<float>(p.y));
 		});
 	return v;
 }

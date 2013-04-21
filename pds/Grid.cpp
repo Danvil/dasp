@@ -6,8 +6,8 @@ namespace pds {
 
 std::vector<Eigen::Vector2f> RectGrid(const Eigen::MatrixXf& density)
 {
-	const float width = static_cast<float>(density.cols());
-	const float height = static_cast<float>(density.rows());
+	const float width = static_cast<float>(density.rows());
+	const float height = static_cast<float>(density.cols());
 	const float numf = density.sum();
 	const float d = std::sqrt(float(width*height) / numf);
 	const unsigned int Nx = static_cast<unsigned int>(std::ceil(width / d));

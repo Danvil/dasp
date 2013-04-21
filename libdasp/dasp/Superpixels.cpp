@@ -650,8 +650,8 @@ std::vector<Seed> CreateSeedPoints(const ImagePoints& img, const std::vector<Eig
 	std::vector<Seed> v;
 	v.reserve(pnts.size());
 	for(const Eigen::Vector2f& p : pnts) {
-		int x = static_cast<int>(std::round(p[1])); // HACK
-		int y = static_cast<int>(std::round(p[0])); // HACK
+		int x = static_cast<int>(std::round(p[0]));
+		int y = static_cast<int>(std::round(p[1]));
 		if(0 <= x && x < static_cast<int>(img.width())
 			&& 0 <= y && y < static_cast<int>(img.height())
 			&& img(x,y).is_valid
