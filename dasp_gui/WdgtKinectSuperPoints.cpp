@@ -8,7 +8,7 @@
 #include <QtGui/QFileDialog>
 #include <boost/format.hpp>
 
-WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
+WdgtKinectSuperPoints::WdgtKinectSuperPoints(bool no3d, QWidget *parent)
     : QMainWindow(parent)
 {
 	ui.setupUi(this);
@@ -63,29 +63,31 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(QWidget *parent)
 	gui_about_->setAttribute(Qt::WA_DeleteOnClose, false);
 
 #if defined DASP_HAS_CANDY
-	std::cout << "Creating OpenGL Widget ..." << std::endl;
+	if(!no3d) {
+		std::cout << "Creating OpenGL Widget ..." << std::endl;
 
-	view_ = Candy::View::FactorDefaultPerspectiveView();
-	scene_ = view_->getScene();
+		view_ = Candy::View::FactorDefaultPerspectiveView();
+		scene_ = view_->getScene();
 
-	boost::shared_ptr<Candy::DirectionalLight> light1(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
-	light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
-	scene_->addLight(light1);
-	boost::shared_ptr<Candy::DirectionalLight> light2(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
-	light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
-	scene_->addLight(light2);
+		boost::shared_ptr<Candy::DirectionalLight> light1(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
+		light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+		scene_->addLight(light1);
+		boost::shared_ptr<Candy::DirectionalLight> light2(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
+		light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+		scene_->addLight(light2);
 
-	engine_.reset(new Candy::Engine(view_));
-	engine_->setClearColor(Danvil::Color::Grey);
+		engine_.reset(new Candy::Engine(view_));
+		engine_->setClearColor(Danvil::Color::Grey);
 
-	scene_->setShowCoordinateCross(false);
+		scene_->setShowCoordinateCross(false);
 
-	gl_wdgt_ = new Candy::GLSystemQtWindow(0, engine_);
-	ui.tabs->addTab(gl_wdgt_, "3D");
+		gl_wdgt_ = new Candy::GLSystemQtWindow(0, engine_);
+		ui.tabs->addTab(gl_wdgt_, "3D");
 
-	boost::shared_ptr<Candy::IRenderable> dasp_renderling(
-			new Candy::ObjectRenderling([this](){ dasp_processing_->Render(); }));
-	scene_->addItem(dasp_renderling);
+		boost::shared_ptr<Candy::IRenderable> dasp_renderling(
+				new Candy::ObjectRenderling([this](){ dasp_processing_->Render(); }));
+		scene_->addItem(dasp_renderling);
+	}
 #endif
 
 	QObject::connect(&timer_, SIGNAL(timeout()), this, SLOT(OnUpdateImages()));

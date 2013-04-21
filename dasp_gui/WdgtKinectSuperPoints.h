@@ -23,7 +23,7 @@ class WdgtKinectSuperPoints : public QMainWindow
     Q_OBJECT
 
 public:
-	WdgtKinectSuperPoints(QWidget *parent = 0);
+	WdgtKinectSuperPoints(bool no3d, QWidget *parent = 0);
 	~WdgtKinectSuperPoints();
 
 	void ShowLive();
