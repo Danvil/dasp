@@ -8,6 +8,7 @@
 #include "Superpixels.hpp"
 #include "impl/RepairDepth.hpp"
 #include "impl/Sampling.hpp"
+#include <pds/PDS.hpp>
 #include "impl/Clustering.hpp"
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
@@ -644,11 +645,30 @@ void Superpixels::ConquerMiniEnclaves()
 	}
 }
 
+std::vector<Seed> CreateSeedPoints(const ImagePoints& img, const std::vector<Eigen::Vector2f>& pnts)
+{
+	std::vector<Seed> v;
+	v.reserve(pnts.size());
+	for(const Eigen::Vector2f& p : pnts) {
+		int x = static_cast<int>(std::round(p[1])); // HACK
+		int y = static_cast<int>(std::round(p[0])); // HACK
+		if(0 <= x && x < static_cast<int>(img.width())
+			&& 0 <= y && y < static_cast<int>(img.height())
+			&& img(x,y).is_valid
+		) {
+			v.push_back(
+				Seed::Dynamic(x, y, img(x,y).cluster_radius_px));
+		}
+	}
+	return v;
+}
+
 std::vector<Seed> Superpixels::FindSeeds()
 {
 	switch(opt.seed_mode) {
 	case SeedModes::Grid:
-		return FindSeedsGrid(points, opt);
+		return CreateSeedPoints(points,
+			pds::RectGrid(density));
 	case SeedModes::DepthMipmap:
 		return FindSeedsDepthMipmap(points, density);
 	case SeedModes::DepthMipmap640:
@@ -658,7 +678,8 @@ std::vector<Seed> Superpixels::FindSeeds()
 	case SeedModes::DepthMipmapFS640:
 		return FindSeedsDepthMipmapFS640(points, density);
 	case SeedModes::DepthBlueNoise:
-		return FindSeedsDepthBlue(points, density);
+		return CreateSeedPoints(points,
+			pds::Fattal(density));
 	case SeedModes::DepthFloyd:
 		return FindSeedsDepthFloyd(points, density);
 	case SeedModes::DepthFloydExpo:

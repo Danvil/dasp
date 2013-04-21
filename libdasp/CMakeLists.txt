@@ -1,6 +1,4 @@
 add_library(libdasp SHARED
-	dasp/impl/BlueNoise.cpp
-	dasp/impl/Mipmaps.cpp
 	dasp/impl/RepairDepth.cpp
 	dasp/impl/Sampling.cpp
 	dasp/eval/Recall.cpp
@@ -24,6 +22,7 @@ include_directories(
 )
 
 target_link_libraries(libdasp
+	pds
 	graphseg
 	boost_thread
 )

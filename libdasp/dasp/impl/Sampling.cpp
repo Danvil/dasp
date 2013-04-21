@@ -7,10 +7,10 @@
 
 //------------------------------------------------------------------------------
 #include <common/color.hpp>
-#include "../Superpixels.hpp"
 #include "Sampling.hpp"
-#include "BlueNoise.hpp"
-#include "Mipmaps.hpp"
+#include "../Superpixels.hpp"
+#include <pds/BlueNoise.hpp>
+#include <pds/Mipmaps.hpp>
 #include <Slimage/Paint.hpp>
 #include <functional>
 #include <boost/random.hpp>
@@ -34,10 +34,10 @@ template<unsigned int Q>
 Eigen::MatrixXf CombineMipmaps(const std::vector<Eigen::MatrixXf>& mm)
 {
 	Eigen::MatrixXf r = Eigen::MatrixXf::Zero(Q*3*mm[0].rows()/2, Q*mm[0].cols());
-	r.block(0, 0, Q*mm[0].rows(), Q*mm[0].cols()) = Mipmaps::ScaleUp(mm[0], Q);
+	r.block(0, 0, Q*mm[0].rows(), Q*mm[0].cols()) = pds::tools::ScaleUp(mm[0], Q);
 	unsigned int y = 0;
 	for(unsigned int i=1; i<mm.size(); ++i) {
-		r.block(Q*mm[0].rows(), y, Q*mm[i].rows(), Q*mm[i].cols()) = Mipmaps::ScaleUp(mm[i], Q);
+		r.block(Q*mm[0].rows(), y, Q*mm[i].rows(), Q*mm[i].cols()) = pds::tools::ScaleUp(mm[i], Q);
 		y += Q*mm[i].cols();
 	}
 	return r;
@@ -73,7 +73,7 @@ void DebugMipmap(const std::vector<Eigen::MatrixXf>& mipmaps, const std::string&
 	// boost::format fmt(tag + "_%2d");
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
-	// 	Eigen::MatrixXf scl = Mipmaps::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
+	// 	Eigen::MatrixXf scl = pds::tools::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
 	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
@@ -87,7 +87,7 @@ void DebugMipmapDelta(const std::vector<Eigen::MatrixXf>& mipmaps, const std::st
 	// boost::format fmt(tag + "_%2d");
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
-	// 	Eigen::MatrixXf scl = Mipmaps::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
+	// 	Eigen::MatrixXf scl = pds::tools::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
 	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::PlusMinusColor, std::placeholders::_1, range)));
@@ -131,7 +131,7 @@ Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, c
 {
 	const int RHO_R = 3;
 	// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
-	constexpr float cRange = 1.21f; // BlueNoise::KernelFunctorInverse(0.01f);
+	constexpr float cRange = 1.21f; // pds::fattal::KernelFunctorInverse(0.01f);
 	constexpr float cMagicSoftener = 0.62f;
 	Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 	for(const T& s : seeds) {
@@ -172,7 +172,7 @@ Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, c
 		for(int yi=ymin; yi<=ymax; yi++) {
 			for(int xi=xmin; xi<=xmax; xi++) {
 				float d2 = Square(static_cast<float>(xi) - sxf) + Square(static_cast<float>(yi) - syf);
-				float delta = rho * BlueNoise::KernelFunctorSquare(rho*d2);
+				float delta = rho * pds::fattal::KernelFunctorSquare(rho*d2);
 				density(xi, yi) += delta;
 			}
 		}
@@ -283,43 +283,6 @@ void SetRandomNumberSeed(unsigned int x)
 	cGlobalRndRng.seed(x);
 }
 
-std::vector<Seed> FindSeedsGrid(const ImagePoints& points, const Parameters& opt)
-{
-	unsigned int width = points.width();
-	unsigned int height = points.height();
-	const float d = std::sqrt(float(width*height) / float(opt.count));
-	const unsigned int Nx = (unsigned int)std::ceil(float(width) / d);
-	const unsigned int Ny = (unsigned int)std::ceil(float(height) / d);
-	const unsigned int Dx = (unsigned int)std::floor(float(width) / float(Nx));
-	const unsigned int Dy = (unsigned int)std::floor(float(height) / float(Ny));
-	const unsigned int Hx = Dx/2;
-	const unsigned int Hy = Dy/2;
-	const float S = float(std::max(Dx, Dy));
-
-//	// assume that everything has a distance of 1.5 meters
-//	const float cAssumedDistance = 1.5f;
-//	unsigned int R = opt.camera.focal / cAssumedDistance * opt.base_radius;
-//	unsigned int Dx = R;
-//	unsigned int Dy = R;
-//	unsigned int Hx = Dx/2;
-//	unsigned int Hy = Dy/2;
-//	unsigned int Nx = points.width() / Dx;
-//	unsigned int Ny = points.height() / Dy;
-
-	// space seeds evently
-	std::vector<Seed> seeds;
-	seeds.reserve(Nx*Ny);
-	for(unsigned int iy=0; iy<Ny; iy++) {
-		unsigned int y = Hy + Dy * iy;
-		for(unsigned int ix=0; ix<Nx; ix++) {
-			unsigned int x = Hx + Dx * ix;
-			seeds.push_back(Seed::Dynamic(x, y, S));
-		}
-	}
-
-	return seeds;
-}
-
 bool FindValidSeedPoint(const ImagePoints& points, int& sx0, int& sy0, int range)
 {
 	if(range == 0) {
@@ -388,7 +351,7 @@ void FindSeedsDepthMipmap_Walk(
 std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
+	std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps(density, 1);
 #ifdef CREATE_DEBUG_IMAGES
 	//DebugMipmap<2>(mipmaps, "mm");
 	for(unsigned int i=0; i<mipmaps.size(); i++) {
@@ -406,7 +369,7 @@ std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::M
 std::vector<Seed> FindSeedsDepthMipmap640(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps640x480(density);
+	std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps640x480(density);
 #ifdef CREATE_DEBUG_IMAGES
 	DebugMipmap<5>(mipmaps, "mm640");
 	for(unsigned int i=0; i<mipmaps.size(); i++) {
@@ -502,7 +465,7 @@ void FindSeedsDepthMipmapFS_Walk(
 std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 1);
+	std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps(density, 1);
 // #ifdef CREATE_DEBUG_IMAGES
 // 	DebugMipmap<2>(mipmaps, "mmfs");
 // #endif
@@ -515,7 +478,7 @@ std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen:
 std::vector<Seed> FindSeedsDepthMipmapFS640(const ImagePoints& points, const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps640x480(density);
+	std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps640x480(density);
 #ifdef CREATE_DEBUG_IMAGES
 	DebugMipmap<5>(mipmaps, "mmfs640");
 #endif
@@ -525,23 +488,6 @@ std::vector<Seed> FindSeedsDepthMipmapFS640(const ImagePoints& points, const Eig
 	for(unsigned int y=0; y<mipmaps[l0].cols(); ++y) {
 		for(unsigned int x=0; x<mipmaps[l0].rows(); x++) {
 			FindSeedsDepthMipmapFS_Walk<5>(points, seeds, mipmaps, l0, x, y);
-		}
-	}
-	return seeds;
-}
-
-std::vector<Seed> FindSeedsDepthBlue(const ImagePoints& points, const Eigen::MatrixXf& density)
-{
-	// compute blue noise points
-	std::vector<BlueNoise::Point> pnts = BlueNoise::Compute(density);
-	// convert to seeds
-	std::vector<Seed> seeds;
-	seeds.reserve(pnts.size());
-	for(unsigned int i=0; i<pnts.size(); i++) {
-		int x = std::round(pnts[i].x);
-		int y = std::round(pnts[i].y);
-		if(0 <= x && x < int(points.width()) && 0 <= y && y < int(points.height())) {
-			seeds.push_back(Seed::Dynamic(x, y, points(x, y).cluster_radius_px));
 		}
 	}
 	return seeds;
@@ -806,9 +752,9 @@ std::vector<Seed> FindSeedsDelta(const ImagePoints& points, const std::vector<Se
 	// difference
 	Eigen::MatrixXf density_delta = density_new - density_old;
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mm_v = Mipmaps::ComputeMipmaps640x480(density_new);
-	std::vector<Eigen::MatrixXf> mm_dv = Mipmaps::ComputeMipmaps640x480(density_delta);
-	std::vector<Eigen::MatrixXf> mm_da = Mipmaps::ComputeMipmaps640x480(density_delta.cwiseAbs());
+	std::vector<Eigen::MatrixXf> mm_v = pds::tools::ComputeMipmaps640x480(density_new);
+	std::vector<Eigen::MatrixXf> mm_dv = pds::tools::ComputeMipmaps640x480(density_delta);
+	std::vector<Eigen::MatrixXf> mm_da = pds::tools::ComputeMipmaps640x480(density_delta.cwiseAbs());
 #ifdef CREATE_DEBUG_IMAGES
 	DebugMipmap<5>(mm_v, "mm_v");
 	DebugMipmapDelta<5>(mm_dv, "mm_dv");

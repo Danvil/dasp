@@ -10,8 +10,8 @@
 #include <boost/assert.hpp>
 #include <iostream>
 //----------------------------------------------------------------------------//
-namespace dasp {
-namespace Mipmaps {
+namespace pds {
+namespace tools {
 //----------------------------------------------------------------------------//
 
 Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big)

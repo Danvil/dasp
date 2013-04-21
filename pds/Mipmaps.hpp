@@ -5,8 +5,8 @@
  *      Author: david
  */
 
-#ifndef SUPERPOINTS_MIPMAPS_HPP_
-#define SUPERPOINTS_MIPMAPS_HPP_
+#ifndef INCLUDED_PDS_MIPMAPS_HPP_
+#define INCLUDED_PDS_MIPMAPS_HPP_
 
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
@@ -15,8 +15,8 @@
 #include <tuple>
 #include <cassert>
 
-namespace dasp {
-namespace Mipmaps {
+namespace pds {
+namespace tools {
 
 Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big);
 

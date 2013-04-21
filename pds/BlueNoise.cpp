@@ -9,8 +9,8 @@
 #include "Mipmaps.hpp"
 #include <boost/random.hpp>
 //----------------------------------------------------------------------------//
-namespace dasp {
-namespace BlueNoise {
+namespace pds {
+namespace fattal {
 //----------------------------------------------------------------------------//
 
 float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
@@ -234,7 +234,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_steps)
 {
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = Mipmaps::ComputeMipmaps(density, 16);
+	std::vector<Eigen::MatrixXf> mipmaps = tools::ComputeMipmaps(density, 16);
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
@@ -303,6 +303,21 @@ void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, 
 	PlotPoints(points, img, color, plot_1px);
 }
 
+}
+
 //----------------------------------------------------------------------------//
-}}
+
+std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int max_steps)
+{
+	std::vector<fattal::Point> pnts = fattal::Compute(density, max_steps);
+	std::vector<Eigen::Vector2f> v(pnts.size());
+	std::transform(pnts.begin(), pnts.end(), v.begin(),
+		[](const fattal::Point& p) {
+			return Eigen::Vector2f(p.x, p.y);
+		});
+	return v;
+}
+
+//----------------------------------------------------------------------------//
+}
 //----------------------------------------------------------------------------//

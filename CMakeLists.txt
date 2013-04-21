@@ -34,6 +34,7 @@ include_directories(
 project(dasp)
 
 add_subdirectory(graphseg)
+add_subdirectory(pds)
 add_subdirectory(rgbd)
 add_subdirectory(libdasp)
 add_subdirectory(dasp_cmd)

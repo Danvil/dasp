@@ -15,10 +15,10 @@
 #include <algorithm>
 #include <cmath>
 //----------------------------------------------------------------------------//
-namespace dasp {
+namespace pds {
 //----------------------------------------------------------------------------//
 
-namespace BlueNoise
+namespace fattal
 {
 	// need to change some other functions too!!!
 	constexpr unsigned int D = 2;
@@ -110,6 +110,8 @@ namespace BlueNoise
 	void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, bool plot_1px=true);
 
 }
+
+std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int max_steps=0);
 
 //----------------------------------------------------------------------------//
 }
