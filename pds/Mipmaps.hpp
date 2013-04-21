@@ -52,9 +52,6 @@ Eigen::MatrixXf SumMipMap(const Eigen::MatrixXf& img_big)
 
 Eigen::MatrixXf ScaleUp(const Eigen::MatrixXf& img_small, unsigned int S);
 
-// template<>
-// Eigen::MatrixXf SumMipMap<2>(const Eigen::MatrixXf& img_big);
-
 std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned int min_size);
 
 std::vector<Eigen::MatrixXf> ComputeMipmaps640x480(const Eigen::MatrixXf& img);

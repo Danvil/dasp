@@ -53,28 +53,6 @@ Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big)
 	return img_small;
 }
 
-// template<>
-// Eigen::MatrixXf SumMipMap<2>(const Eigen::MatrixXf& img_big)
-// {
-// 	size_t w_big = img_big.rows();
-// 	size_t h_big = img_big.cols();
-// 	// the computed mipmap will have 2^i size
-// 	size_t size = Danvil::MoreMath::P2Ceil(std::max(w_big, h_big));
-// 	BOOST_ASSERT(size == w_big && size == h_big && "SumMipMap: Size must be 2^i!");
-// 	size /= 2;
-// 	Eigen::MatrixXf img_small(size, size);
-// 	for(size_t y = 0; y < size; y++) {
-// 		size_t y_big = y * 2;
-// 		for(size_t x = 0; x < size; x++) {
-// 			size_t x_big = x * 2;
-// 			// We sum over all four corresponding pixels in the big image.
-// 			const float* p_big = &img_big(x_big, y_big);
-// 			img_small(x, y) = *(p_big) + *(p_big + 1) + *(p_big + h_big) + *(p_big + h_big + 1);
-// 		}
-// 	}
-// 	return img_small;
-// }
-
 Eigen::MatrixXf ScaleUp(const Eigen::MatrixXf& img_small, const unsigned int S)
 {
 	if(S == 0) {
