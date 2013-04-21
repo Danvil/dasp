@@ -670,9 +670,9 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return CreateSeedPoints(points,
 			pds::RectGrid(density));
 	case SeedModes::DepthMipmap:
-		return FindSeedsDepthMipmap(points, density);
 	case SeedModes::DepthMipmap640:
-		return FindSeedsDepthMipmap640(points, density);
+		return CreateSeedPoints(points,
+			pds::SimplifiedPoissonDiscSamplingOld(density));
 	case SeedModes::DepthMipmapFS:
 		return FindSeedsDepthMipmapFS(points, density);
 	case SeedModes::DepthMipmapFS640:

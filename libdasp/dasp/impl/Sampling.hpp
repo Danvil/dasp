@@ -25,10 +25,6 @@ namespace dasp
 
 	void AdaptClusterRadiusBySaliency(ImagePoints& points, const Eigen::MatrixXf& saliency, const Parameters& opt);
 
-	std::vector<Seed> FindSeedsDepthMipmap(const ImagePoints& points, const Eigen::MatrixXf& density);
-
-	std::vector<Seed> FindSeedsDepthMipmap640(const ImagePoints& points, const Eigen::MatrixXf& density);
-
 	std::vector<Seed> FindSeedsDepthMipmapFS(const ImagePoints& points, const Eigen::MatrixXf& density);
 
 	std::vector<Seed> FindSeedsDepthMipmapFS640(const ImagePoints& points, const Eigen::MatrixXf& density);
