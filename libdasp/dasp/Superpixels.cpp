@@ -696,7 +696,12 @@ std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
 {
 	if(opt.seed_mode == SeedModes::Delta) {
 		seeds_previous = getClusterCentersAsSeeds();
-		return dasp::FindSeedsDelta(points, seeds_previous, old_points, density);
+		std::vector<Eigen::Vector2f> pnts_prev(seeds_previous.size());
+		for(unsigned int i=0; i<pnts_prev.size(); i++) {
+			pnts_prev[i] = Eigen::Vector2f(seeds_previous[i].x, seeds_previous[i].y);
+		}
+		return CreateSeedPoints(points,
+			pds::DeltaDensitySampling(pnts_prev, density));
 	}
 	else {
 		return FindSeeds();

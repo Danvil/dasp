@@ -307,9 +307,9 @@ void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, 
 
 //----------------------------------------------------------------------------//
 
-std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int max_steps)
+std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density)
 {
-	std::vector<fattal::Point> pnts = fattal::Compute(density, max_steps);
+	std::vector<fattal::Point> pnts = fattal::Compute(density, 0);
 	std::vector<Eigen::Vector2f> v(pnts.size());
 	std::transform(pnts.begin(), pnts.end(), v.begin(),
 		[](const fattal::Point& p) {

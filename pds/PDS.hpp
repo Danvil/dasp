@@ -21,7 +21,9 @@ namespace pds
 
 	std::vector<Eigen::Vector2f> FloydSteinbergMultiLayer(const Eigen::MatrixXf& density);
 
-	std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density, unsigned int max_steps=0);
+	std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density);
+
+	std::vector<Eigen::Vector2f> DeltaDensitySampling(const std::vector<Eigen::Vector2f>& old_seeds, const Eigen::MatrixXf& density_new);
 
 }
 
