@@ -18,13 +18,12 @@ namespace dasp
 	{
 		enum Type {
 			Grid,
-			DepthMipmap,
-			DepthMipmap640,
-			DepthMipmapFS,
-			DepthMipmapFS640,
-			DepthBlueNoise,
-			DepthFloyd,
-			DepthFloydExpo,
+			SimplifiedPDS_Old,
+			SimplifiedPDS,
+			FloydSteinberg,
+			FloydSteinbergExpo,
+			FloydSteinbergMultiLayer,
+			Fattal,
 			Delta
 		};
 	}

@@ -110,7 +110,7 @@ namespace pds
 
 	}
 
-	std::vector<Eigen::Vector2f> MultiLayerFloydSteinberg(const Eigen::MatrixXf& density)
+	std::vector<Eigen::Vector2f> FloydSteinbergMultiLayer(const Eigen::MatrixXf& density)
 	{
 		if(density.rows() == 640 && density.cols() == 480) {
 			return mlfs::FindSeedsDepthMipmapFS640(density);

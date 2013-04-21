@@ -29,7 +29,7 @@ DaspProcessing::DaspProcessing()
 {
 	dasp_params.reset(new dasp::Parameters());
 	dasp_params->camera = Camera{318.39f, 271.99f, 528.01f, 0.001f};
-	dasp_params->seed_mode = dasp::SeedModes::DepthMipmap;
+	dasp_params->seed_mode = dasp::SeedModes::SimplifiedPDS;
 	dasp_params->base_radius = 0.02f;
 	dasp_params->gradient_adaptive_density = true;
 

@@ -46,7 +46,7 @@ Parameters::Parameters()
 	coverage = 1.7f;
 	base_radius = 0.02f;
 	count = 0;
-	seed_mode = SeedModes::DepthMipmap;
+	seed_mode = SeedModes::SimplifiedPDS;
 	gradient_adaptive_density = true;
 	use_density_depth = true;
 	ignore_pixels_with_bad_visibility = false;
@@ -669,25 +669,24 @@ std::vector<Seed> Superpixels::FindSeeds()
 	case SeedModes::Grid:
 		return CreateSeedPoints(points,
 			pds::RectGrid(density));
-	case SeedModes::DepthMipmap:
+	case SeedModes::SimplifiedPDS_Old:
 		return CreateSeedPoints(points,
-			pds::SimplifiedPoissonDiscSamplingOld(density));
-	case SeedModes::DepthMipmap640:
+			pds::SimplifiedPDSOld(density));
+	case SeedModes::SimplifiedPDS:
 		return CreateSeedPoints(points,
-			pds::SimplifiedPoissonDiscSampling(density));
-	case SeedModes::DepthMipmapFS:
-	case SeedModes::DepthMipmapFS640:
-		return CreateSeedPoints(points,
-			pds::MultiLayerFloydSteinberg(density));
-	case SeedModes::DepthBlueNoise:
-		return CreateSeedPoints(points,
-			pds::Fattal(density));
-	case SeedModes::DepthFloyd:
+			pds::SimplifiedPDS(density));
+	case SeedModes::FloydSteinberg:
 		return CreateSeedPoints(points,
 			pds::FloydSteinberg(density));
-	case SeedModes::DepthFloydExpo:
+	case SeedModes::FloydSteinbergExpo:
 		return CreateSeedPoints(points,
 			pds::FloydSteinbergExpo(density));
+	case SeedModes::FloydSteinbergMultiLayer:
+		return CreateSeedPoints(points,
+			pds::FloydSteinbergMultiLayer(density));
+	case SeedModes::Fattal:
+		return CreateSeedPoints(points,
+			pds::Fattal(density));
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
 	};

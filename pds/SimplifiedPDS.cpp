@@ -100,7 +100,7 @@ namespace pds
 		}
 	}
 
-	std::vector<Eigen::Vector2f> SimplifiedPoissonDiscSampling(const Eigen::MatrixXf& density)
+	std::vector<Eigen::Vector2f> SimplifiedPDS(const Eigen::MatrixXf& density)
 	{
 		if(density.rows() == 640 && density.cols() == 480) {
 			return spds::spds_impl_640x480(density);

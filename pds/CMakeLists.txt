@@ -1,11 +1,11 @@
 add_library(pds SHARED
 	BlueNoise.cpp
 	FloydSteinberg.cpp
+	FloydSteinbergMultiLayer.cpp
 	Grid.cpp
 	Mipmaps.cpp
-	MultiLayerFloydSteinberg.cpp
-	SimplifiedPoissonDiskSampling.cpp
-	SimplifiedPoissonDiskSamplingOld.cpp
+	SimplifiedPDS.cpp
+	SimplifiedPDSOld.cpp
 )
 
 include_directories(

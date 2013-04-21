@@ -9,13 +9,12 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.setupUi(this);
 
 	ui.comboBoxSeedType->addItem("Grid", dasp::SeedModes::Grid);
-	ui.comboBoxSeedType->addItem("DepthMipmap", dasp::SeedModes::DepthMipmap);
-	ui.comboBoxSeedType->addItem("DepthMipmap640", dasp::SeedModes::DepthMipmap640);
-	ui.comboBoxSeedType->addItem("DepthMipmapFS", dasp::SeedModes::DepthMipmapFS);
-	ui.comboBoxSeedType->addItem("DepthMipmapFS640", dasp::SeedModes::DepthMipmapFS640);
-	ui.comboBoxSeedType->addItem("DepthBlueNoise", dasp::SeedModes::DepthBlueNoise);
-	ui.comboBoxSeedType->addItem("DepthFloyd", dasp::SeedModes::DepthFloyd);
-	ui.comboBoxSeedType->addItem("DepthFloydExpo", dasp::SeedModes::DepthFloydExpo);
+	ui.comboBoxSeedType->addItem("SimplifiedPDS_Old", dasp::SeedModes::SimplifiedPDS_Old);
+	ui.comboBoxSeedType->addItem("SimplifiedPDS", dasp::SeedModes::SimplifiedPDS);
+	ui.comboBoxSeedType->addItem("FloydSteinberg", dasp::SeedModes::FloydSteinberg);
+	ui.comboBoxSeedType->addItem("FloydSteinbergExpo", dasp::SeedModes::FloydSteinbergExpo);
+	ui.comboBoxSeedType->addItem("FloydSteinbergMultiLayer", dasp::SeedModes::FloydSteinbergMultiLayer);
+	ui.comboBoxSeedType->addItem("Fattal", dasp::SeedModes::Fattal);
 	ui.comboBoxSeedType->addItem("Delta", dasp::SeedModes::Delta);
 	ui.comboBoxSeedType->setCurrentIndex(dasp_opt_->seed_mode);
 

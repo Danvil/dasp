@@ -80,7 +80,7 @@ namespace pds
 		}
 	}
 
-	std::vector<Eigen::Vector2f> SimplifiedPoissonDiscSamplingOld(const Eigen::MatrixXf& density)
+	std::vector<Eigen::Vector2f> SimplifiedPDSOld(const Eigen::MatrixXf& density)
 	{
 		if(density.rows() == 640 && density.cols() == 480) {
 			return spds_old::FindSeedsDepthMipmap640(density);
