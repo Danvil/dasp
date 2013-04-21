@@ -3,7 +3,8 @@ add_library(pds SHARED
 	Grid.cpp
 	Mipmaps.cpp
 	MultiLayerFloydSteinberg.cpp
-	SPDS.cpp
+	SimplifiedPoissonDiskSampling.cpp
+	SimplifiedPoissonDiskSamplingOld.cpp
 )
 
 include_directories(
