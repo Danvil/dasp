@@ -99,7 +99,7 @@ namespace fattal
 
 	std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf& density, bool& result_added);
 
-	std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_steps=0);
+	std::vector<Point> Compute(const Eigen::MatrixXf& density);
 
 	struct Color {
 		unsigned char r,g,b;

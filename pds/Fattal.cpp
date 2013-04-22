@@ -13,6 +13,10 @@ namespace pds {
 namespace fattal {
 //----------------------------------------------------------------------------//
 
+constexpr unsigned MAX_DEPTH = 0;
+constexpr unsigned LANGEVIN_STEPS = 5;
+constexpr bool MH_TEST = true;
+
 float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 {
 	float sum = 0.0f;
@@ -163,29 +167,58 @@ void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned
 	static boost::normal_distribution<float> rnd(0.0f, 1.0f); // standard normal distribution
 	static boost::variate_generator<boost::mt19937&, boost::normal_distribution<float> > die(rng, rnd);
 	constexpr float dt = 0.2f;
-	constexpr float T = 0.2f;
-	float r_min = 1e9;
-	float r_max = 0;
+	constexpr float T = 1.2f;
+//	float r_min = 1e9;
+//	float r_max = 0;
 	for(unsigned int k=0; k<iterations; k++) {
 		for(unsigned int i=0; i<points.size(); i++) {
-			Point& p = points[i];
+			// random vector
+			float rndx = die();
+			float rndy = die();
+			// compute next position
+			Point p = points[i];
 			if(p.scale > cMaxRefinementScale) {
 				// omit low frequency kernels
 				continue;
 			}
-			// dx = -dt*s/2*dE + sqrt(T*s*dt)*R
+			// dx = -dt*s/2*dE + sqrt(T*s*dt)*rnd()
 			float c0 = dt * p.scale;
 			float cA = c0 * 0.5f;
 			float dx, dy;
 			float R = EnergyDerivative(points, density, i, dx, dy);
-			r_min = std::min(R, r_min);
-			r_max = std::max(R, r_max);
+//			r_min = std::min(R, r_min);
+//			r_max = std::max(R, r_max);
 			p.x -= cA * dx;
 			p.y -= cA * dy;
-			if(T > 0.0f) {
-				float cB = std::sqrt(T * c0);
-				p.x += cB * die();
-				p.y += cB * die();
+			float cB = std::sqrt(T * c0);
+			p.x += cB * rndx;
+			p.y += cB * rndy;
+			// check if we want to keep the point
+			if(MH_TEST) {
+				std::vector<Point> tmp = points;
+				tmp[i] = p; // replace point
+				float dxn, dyn;
+				EnergyDerivative(tmp, density, i, dxn, dyn);
+				float h = cB / (2.0f*T);
+				float hx = h*(dx + dxn) + rndx;
+				float hy = h*(dy + dyn) + rndy;
+				float g1 = std::exp(-0.5f*(hx*hx + hy*hy));
+				float g2 = std::exp(-0.5f*(rndx*rndx + rndy*rndy));
+				float E1 = Energy(tmp,density);
+				float E2 = Energy(points,density);
+	//			std::cout << E1 << " " << E2 << std::endl;
+				float P1 = std::exp(-E1/T);
+				float P2 = std::exp(-E2/T);
+	//			std::cout << P1 << " " << P2 << std::endl;
+				float P = P1*g1/(P2*g2);
+	//			std::cout << P << std::endl;
+				if(die() <= P) {
+					// accept
+					points[i] = p;
+				}
+			}
+			else {
+				points[i] = p;
 			}
 		}
 	}
@@ -231,7 +264,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 	return pnts_new;
 }
 
-std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_steps)
+std::vector<Point> Compute(const Eigen::MatrixXf& density)
 {
 	// compute mipmaps
 	std::vector<Eigen::MatrixXf> mipmaps = tools::ComputeMipmaps(density, 16);
@@ -251,10 +284,10 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density, unsigned int max_step
 		}
 		// refine points for new density map
 		if(need_refinement) {
-			Refine(pnts, mipmaps[i], 2);
+			Refine(pnts, mipmaps[i], LANGEVIN_STEPS);
 		}
 //		std::cout << pnts.size() << " points." << std::endl;
-		if(max_steps > 0 && p - i + 1 >= max_steps) {
+		if(MAX_DEPTH > 0 && p - i + 1 >= MAX_DEPTH) {
 			break;
 		}
 	}
@@ -309,7 +342,7 @@ void PlotPoints(const std::vector<Point>& points, const slimage::Image3ub& img, 
 
 std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density)
 {
-	std::vector<fattal::Point> pnts = fattal::Compute(density, 0);
+	std::vector<fattal::Point> pnts = fattal::Compute(density);
 	std::vector<Eigen::Vector2f> v(pnts.size());
 	std::transform(pnts.begin(), pnts.end(), v.begin(),
 		[](const fattal::Point& p) {
