@@ -5,17 +5,25 @@
  *      Author: david
  */
 
+//#define DEBUG_SAVE_POINTS
+
 #include "Fattal.hpp"
 #include "Mipmaps.hpp"
 #include <boost/random.hpp>
+#ifdef DEBUG_SAVE_POINTS
+	#include <boost/format.hpp>
+	#include <fstream>
+#endif
 //----------------------------------------------------------------------------//
 namespace pds {
 namespace fattal {
 //----------------------------------------------------------------------------//
 
 constexpr unsigned MAX_DEPTH = 0;
-constexpr unsigned LANGEVIN_STEPS = 5;
+constexpr unsigned LANGEVIN_STEPS = 30;
 constexpr bool MH_TEST = true;
+constexpr float STEPSIZE = 0.3f;
+constexpr float TEMPERATURE = 0.03f;
 
 float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 {
@@ -23,46 +31,80 @@ float EnergyApproximation(const std::vector<Point>& pnts, float x, float y)
 	for(const Point& p : pnts) {
 		float dx = p.x - x;
 		float dy = p.y - y;
-//			float d = std::sqrt(dx*dx + dy*dy);
-//			if(d < KernelRange * p.scale) {
-//				float k_val = KernelFunctor(d / p.scale);
 		float d2 = dx*dx + dy*dy;
-		float scl = p.scale*p.scale;
+		float scl = p.scale * p.scale;
 		if(d2 < KernelRange * KernelRange * scl) {
-			float k_val = KernelFunctorSquare(d2 / scl);
-			sum += p.weight * ScalePowerD(p.scale) * k_val;
+			sum += p.weight / scl * KernelFunctorSquare(d2 / scl);
 		}
 	}
 	return sum;
 }
 
-float Energy(const std::vector<Point>& pnts, const Eigen::MatrixXf& density)
+Eigen::MatrixXf EnergyApproximationMat(const std::vector<Point>& pnts, int rows, int cols)
 {
-	float error = 0.0f;
-	for(unsigned int y=0; y<density.cols(); y++) {
-		for(unsigned int x=0; x<density.rows(); x++) {
-			float px = float(x);
-			float py = float(y);
-			float a = EnergyApproximation(pnts, px, py);
-			float roh = density(x, y);
-			error += std::abs(a - roh);
+	Eigen::MatrixXf mat = Eigen::MatrixXf::Constant(rows, cols, 0.0f);
+	for(const Point& p : pnts) {
+		float px = p.x;
+		float py = p.y;
+		float pw = p.weight;
+		float ps = p.scale;
+		float scl = p.scale * p.scale;
+		constexpr float cMaxRange = 1.482837414f; // eps = 0.001
+		float radius = cMaxRange * ps;
+		float x_min = std::max(0, int(std::floor(px - radius)));
+		float x_max = std::min(int(mat.rows()) - 1, int(std::ceil(px + radius)));
+		float y_min = std::max(0, int(std::floor(py - radius)));
+		float y_max = std::min(int(mat.cols()) - 1, int(std::ceil(py + radius)));
+		// sum over window
+		for(unsigned int y=y_min; y<=y_max; y++) {
+			for(unsigned int x=x_min; x<=x_max; x++) {
+				float ux = float(x);
+				float uy = float(y);
+				float dx = ux - px;
+				float dy = uy - py;
+				float d2 = dx*dx + dy*dy;
+				mat(x,y) += pw / scl * KernelFunctorSquare(d2 / scl);
+			}
 		}
 	}
-	return error;
+	return mat;
+	// Eigen::MatrixXf mat(rows, cols);
+	// for(unsigned int y=0; y<cols; y++) {
+	// 	float py = float(y);
+	// 	for(unsigned int x=0; x<rows; x++) {
+	// 		float px = float(x);
+	// 		float a = EnergyApproximation(pnts, px, py);
+	// 		mat(x,y) = a;
+	// 	}
+	// }
+	// return mat;
+}
+
+float Energy(const std::vector<Point>& pnts, const Eigen::MatrixXf& density)
+{
+	return (EnergyApproximationMat(pnts, density.rows(), density.cols()) - density).cwiseAbs().sum();
+	// float error = 0.0f;
+	// for(unsigned int y=0; y<density.cols(); y++) {
+	// 	float py = float(y);
+	// 	for(unsigned int x=0; x<density.rows(); x++) {
+	// 		float px = float(x);
+	// 		float a = EnergyApproximation(pnts, px, py);
+	// 		float roh = density(x, y);
+	// 		error += std::abs(a - roh);
+	// 	}
+	// }
+	// return error;
 }
 
 float EnergyDerivative(const std::vector<Point>& pnts, const Eigen::MatrixXf& density, unsigned int i, float& result_dE_x, float& result_dE_y)
 {
-//	result_dE_x = 0.0f;
-//	result_dE_y = 0.0f;
-//	return;
-
 	float dE_x = 0.0f;
 	float dE_y = 0.0f;
-	float px = pnts[i].x;
-	float py = pnts[i].y;
-	float ps = pnts[i].scale;
-//		float ps_scl = 1.0f / ps;
+
+	const Point& pi = pnts[i];
+	float px = pi.x;
+	float py = pi.y;
+	float ps = pi.scale;
 	float ps_scl = 1.0f / (ps * ps);
 	// find window (points outside the window do not affect the kernel)
 	// range = sqrt(ln(1/eps)/pi)
@@ -108,23 +150,6 @@ std::vector<Point> PlacePoints(const Eigen::MatrixXf& density, unsigned int p)
 	}
 	std::random_shuffle(indices.begin(), indices.end());
 
-	/*std::cout << "{" << std::endl;
-	for(unsigned int y=0; y<density.height(); y++) {
-		std::cout << "{";
-		for(unsigned int x=0; x<density.width(); x++) {
-			std::cout << density(x,y);
-			if(x + 1 < density.width()) {
-				std::cout << ", ";
-			}
-		}
-		std::cout << "}";
-		if(y + 1 < density.height()) {
-			std::cout << ",";
-		}
-		std::cout << std::endl;
-	}
-	std::cout << "}" << std::endl;*/
-
 	// compute points
 	std::vector<Point> pnts;
 	pnts.reserve(indices.size());
@@ -158,6 +183,10 @@ std::vector<Point> PlacePoints(const Eigen::MatrixXf& density, unsigned int p)
 //			std::cout << u.x << " " << u.y << " " << u.weight << " " << error_new << std::endl;
 		}
 	}
+
+	std::cout << "Density total: " << density.sum() << std::endl;
+	std::cout << "Approx total:" << EnergyApproximationMat(pnts, density.rows(), density.cols()).sum() << std::endl;
+
 	return pnts;
 }
 
@@ -166,11 +195,14 @@ void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned
 	static boost::mt19937 rng;
 	static boost::normal_distribution<float> rnd(0.0f, 1.0f); // standard normal distribution
 	static boost::variate_generator<boost::mt19937&, boost::normal_distribution<float> > die(rng, rnd);
-	constexpr float dt = 0.2f;
-	constexpr float T = 1.2f;
 //	float r_min = 1e9;
 //	float r_max = 0;
 	for(unsigned int k=0; k<iterations; k++) {
+		float energy;
+		if(MH_TEST) {
+			energy = Energy(points, density);
+		}
+		std::cout << "\tit=" << k << ", e=" << energy << std::endl;
 		for(unsigned int i=0; i<points.size(); i++) {
 			// random vector
 			float rndx = die();
@@ -181,44 +213,51 @@ void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned
 				// omit low frequency kernels
 				continue;
 			}
-			// dx = -dt*s/2*dE + sqrt(T*s*dt)*rnd()
-			float c0 = dt * p.scale;
+			// dx = -STEPSIZE*s/2*dE + sqrt(TEMPERATURE*s*STEPSIZE)*rnd()
+			float c0 = STEPSIZE * p.scale;
 			float cA = c0 * 0.5f;
 			float dx, dy;
 			float R = EnergyDerivative(points, density, i, dx, dy);
+//			std::cout << i << ": (" << dx << "," << dy << "), s=" << p.scale << std::endl;
 //			r_min = std::min(R, r_min);
 //			r_max = std::max(R, r_max);
+//			std::cout << i << " p1: (" << p.x << "," << p.y << ")" << std::endl;
 			p.x -= cA * dx;
 			p.y -= cA * dy;
-			float cB = std::sqrt(T * c0);
+			float cB = std::sqrt(TEMPERATURE * c0);
 			p.x += cB * rndx;
 			p.y += cB * rndy;
-			// check if we want to keep the point
-			if(MH_TEST) {
-				std::vector<Point> tmp = points;
-				tmp[i] = p; // replace point
-				float dxn, dyn;
-				EnergyDerivative(tmp, density, i, dxn, dyn);
-				float h = cB / (2.0f*T);
-				float hx = h*(dx + dxn) + rndx;
-				float hy = h*(dy + dyn) + rndy;
-				float g1 = std::exp(-0.5f*(hx*hx + hy*hy));
-				float g2 = std::exp(-0.5f*(rndx*rndx + rndy*rndy));
-				float E1 = Energy(tmp,density);
-				float E2 = Energy(points,density);
-	//			std::cout << E1 << " " << E2 << std::endl;
-				float P1 = std::exp(-E1/T);
-				float P2 = std::exp(-E2/T);
-	//			std::cout << P1 << " " << P2 << std::endl;
-				float P = P1*g1/(P2*g2);
-	//			std::cout << P << std::endl;
-				if(die() <= P) {
-					// accept
-					points[i] = p;
-				}
+			float roh = ZeroBorderAccess(density, p.x, p.y);
+			if(roh > 0) {
+				p.scale = KernelScaleFunction(roh, p.weight);
 			}
 			else {
-				points[i] = p;
+				// reject
+				continue;
+			}
+//			std::cout << i << " p2: (" << p.x << "," << p.y << ")" << std::endl;
+			// check if we want to keep the point
+			points[i] = p;
+			if(MH_TEST) {
+				Point pold = p;
+				float dxn, dyn;
+				EnergyDerivative(points, density, i, dxn, dyn);
+				float h = cB / (2.0f*TEMPERATURE);
+				float hx = h*(dx + dxn) + rndx;
+				float hy = h*(dy + dyn) + rndy;
+				float g1 = -0.5f*(hx*hx + hy*hy);
+				float g2 = -0.5f*(rndx*rndx + rndy*rndy);
+				float energy_new = Energy(points,density);
+				float P = std::exp((energy-energy_new)/TEMPERATURE + g1 - g2);
+//				std::cout << energy << " -> " << energy_new << ", P=" << P << std::endl;
+				if(die() <= P) {
+					// accept
+					energy = energy_new;
+				}
+				else {
+					// reject
+					points[i] = pold;
+				}
 			}
 		}
 	}
@@ -235,7 +274,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 			u.x *= 2.0f;
 			u.y *= 2.0f;
 			u.weight /= float(1 << D);
-			constexpr float A = 0.70710678f;
+			constexpr float A = 0.3*0.70710678f;
 			constexpr float Delta[4][2] = {
 					{-A, -A}, {+A, -A}, {-A, +A}, {+A, +A}
 			};
@@ -243,7 +282,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 				Point ui = u;
 				ui.x += u.scale * Delta[i][0];
 				ui.y += u.scale * Delta[i][1];
-				float roh = ZeroBorderAccess(density, int(ui.x), int(ui.y));
+				float roh = ZeroBorderAccess(density, ui.x, ui.y);
 				if(roh > 0) {
 					ui.scale = KernelScaleFunction(roh, ui.weight);
 					pnts_new.push_back(ui);
@@ -254,7 +293,7 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 			u.x *= 2.0f;
 			u.y *= 2.0f;
 			u.weight = 1.0f;
-			float roh = ZeroBorderAccess(density, int(u.x), int(u.y));
+			float roh = ZeroBorderAccess(density, u.x, u.y);
 			if(roh > 0) {
 				u.scale = KernelScaleFunction(roh, u.weight);
 				pnts_new.push_back(u);
@@ -264,14 +303,27 @@ std::vector<Point> Split(const std::vector<Point>& points, const Eigen::MatrixXf
 	return pnts_new;
 }
 
+#ifdef DEBUG_SAVE_POINTS
+void SavePoints(const std::vector<Point>& pnt, const std::string& filename)
+{
+	std::ofstream ofs(filename);
+	for(const Point& p : pnt) {
+		ofs << p.x << "\t" << p.y << std::endl;
+	}
+}
+#endif
+
 std::vector<Point> Compute(const Eigen::MatrixXf& density)
 {
+#ifdef DEBUG_SAVE_POINTS
+	boost::format fn_fmt("pnt_%1%_%2%.tsv");
+#endif
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = tools::ComputeMipmaps(density, 16);
+	std::vector<Eigen::MatrixXf> mipmaps = tools::ComputeMipmaps(density, 8);
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
-//		std::cout << "Blue noise step " << i << "... " << std::flush;
+		std::cout << "Blue noise step " << i << "... " << std::flush;
 		bool need_refinement;
 		if(i == p) {
 			// place initial points
@@ -283,11 +335,23 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 			pnts = Split(pnts, mipmaps[i], need_refinement);
 		}
 		// refine points for new density map
-		if(need_refinement) {
+//		if(need_refinement) {
+#ifdef DEBUG_SAVE_POINTS
+			for(int k=0; k<(i+1)*LANGEVIN_STEPS; k++) {
+				Refine(pnts, mipmaps[i], 1);
+				SavePoints(pnts, (fn_fmt % i % k).str());
+			}
+#else
 			Refine(pnts, mipmaps[i], LANGEVIN_STEPS);
-		}
-//		std::cout << pnts.size() << " points." << std::endl;
+#endif
+//		}
+		std::cout << pnts.size() << " points." << std::endl;
 		if(MAX_DEPTH > 0 && p - i + 1 >= MAX_DEPTH) {
+			float scl = static_cast<float>(1 << i);
+			for(Point& p : pnts) {
+				p.x *= scl;
+				p.y *= scl;
+			}
 			break;
 		}
 	}

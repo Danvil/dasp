@@ -76,6 +76,11 @@ namespace fattal
 	}
 
 	inline
+	float ZeroBorderAccess(const Eigen::MatrixXf& density, float x, float y) {
+		return ZeroBorderAccess(density, (int)std::round(x), (int)std::round(y));
+	}
+
+	inline
 	float KernelScaleFunction(float roh, float weight) {
 //		return std::pow(roh / weight, -1.0f / float(D));
 		return 1.0f / std::sqrt(roh / weight);
