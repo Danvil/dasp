@@ -1,5 +1,6 @@
 #include <pds/PDS.hpp>
 #include <boost/program_options.hpp>
+#include <boost/timer/timer.hpp>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -57,7 +58,11 @@ int main(int argc, char** argv)
 	Eigen::MatrixXf rho = TestDensity(p_size, p_num);
 	std::cout << "Created density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 
-	std::vector<Eigen::Vector2f> pnts = pds::PoissonDiscSampling(p_mode, rho);
+	std::vector<Eigen::Vector2f> pnts;
+	{
+		boost::timer::auto_cpu_timer t;
+		pnts = pds::PoissonDiscSampling(p_mode, rho);
+	}
 	std::cout << "Generated " << pnts.size() << " points." << std::endl;
 
 	std::ofstream ofs(p_out);
