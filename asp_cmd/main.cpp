@@ -1,4 +1,5 @@
 #include <asp/asp.hpp>
+#include <pds/Density.hpp>
 #include <Slimage/Slimage.hpp>
 #define SLIMAGE_IO_OPENCV
 #include <Slimage/IO.hpp>
@@ -83,12 +84,32 @@ std::vector<Eigen::Vector3f> LoadFeatures(const std::string& fn, int& width, int
 	return features;
 }
 
+void WriteMatrix(const Eigen::MatrixXf& mat, const std::string& fn)
+{
+	const int rows = mat.rows();
+	std::ofstream ofs(fn);
+	for(int y=0; y<mat.cols(); y++) {
+		for(int x=0; x<rows; x++) {
+			ofs << mat(x,y);
+			if(x+1 != rows) {
+				ofs << "\t";
+			}
+			else {
+				ofs << std::endl;
+			}
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
 	std::string p_feature_img = "";
 	std::string p_density = "";
 	std::string p_out = "sp";
 	unsigned p_num = 250;
+
+	// parameters
+	asp::Parameters params = asp::parameters_default();
 
 	namespace po = boost::program_options;
 	po::options_description desc;
@@ -98,6 +119,11 @@ int main(int argc, char** argv)
 		("density", po::value(&p_density), "density function image (leave empty for test function)")
 		("out", po::value(&p_out), "filename of result file with samples points")
 		("num", po::value(&p_num), "number of points to sample")
+		("p_num_iterations", po::value(&params.num_iterations), "number of DALIC iterations")
+		("p_pds_mode", po::value(&params.pds_mode), "Poisson Disk Sampling method")
+		("p_seed_mean_radius_factor", po::value(&params.seed_mean_radius_factor), "size factor for initial cluster mean feature")
+		("p_coverage", po::value(&params.coverage), "DALIC cluster search factor")
+		("p_weight_compact", po::value(&params.weight_compact), "weight for compactness term")
 	;
 
 	po::variables_map vm;
@@ -147,9 +173,6 @@ int main(int argc, char** argv)
 	rho *= scl;
 
 
-	// parameters
-	asp::Parameters params = asp::parameters_default();
-
 	// asp
 	asp::Superpixels<Eigen::Vector3f> superpixels = asp::AdaptiveSuperpixelsRGB(
 		rho, features, params);
@@ -184,6 +207,19 @@ int main(int argc, char** argv)
 			}
 		}
 		std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
+	}
+
+	// resulting density
+	{
+		std::vector<Eigen::Vector2f> seeds(superpixels.clusters.size());
+		std::transform(superpixels.clusters.begin(), superpixels.clusters.end(), seeds.begin(),
+			[](const asp::Cluster<Eigen::Vector3f>& c) {
+				return Eigen::Vector2f{ c.x, c.y };
+			});
+		Eigen::MatrixXf approx = pds::PointDensity(seeds, rho);
+		std::string fn_point_density = p_out + "_point_density.tsv";
+		WriteMatrix(approx, fn_point_density);
+		std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
 	}
 
 	return 1;

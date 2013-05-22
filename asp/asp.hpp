@@ -199,7 +199,6 @@ namespace asp
 
 	Superpixels<Eigen::Vector3f> AdaptiveSuperpixelsRGB(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector3f>& features, const Parameters& p);
 
-
 }
 
 #endif
