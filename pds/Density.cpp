@@ -10,7 +10,7 @@ namespace pds
 		const int RHO_R = 3;
 		// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
 		constexpr float cRange = 1.21f; // pds::fattal::KernelFunctorInverse(0.01f);
-		constexpr float cMagicSoftener = 0.62f;
+		constexpr float cMagicSoftener = 0.5f;// 0.62f;
 		Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 		for(const T& s : seeds) {
 			int sx = fxi(s);
