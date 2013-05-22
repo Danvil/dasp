@@ -33,10 +33,13 @@ include_directories(
 
 project(dasp)
 
-add_subdirectory(graphseg)
-
 add_subdirectory(pds)
 add_subdirectory(pds_cmd)
+
+add_subdirectory(asp)
+add_subdirectory(asp_cmd)
+
+add_subdirectory(graphseg)
 
 add_subdirectory(rgbd)
 
