@@ -157,7 +157,9 @@ int main(int argc, char** argv)
 		std::cout << "Loaded density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 	if(is_features_null) {
-		features.resize(rho.rows()*rho.cols(), Eigen::Vector3f::Zero());
+		width = rho.rows();
+		height = rho.cols();
+		features.resize(width*height, Eigen::Vector3f{1,1,1});
 		std::cout << "Created uniform features dim=" << rho.rows() << "x" << rho.cols() << "." << std::endl;
 	}
 	if(is_density_null) {
@@ -191,7 +193,7 @@ int main(int argc, char** argv)
 		std::cout << "Wrote clusters to file '" << fn_clusters << "'." << std::endl;
 	}
 
-	// clusters
+	// labels
 	{
 		std::string fn_labels = p_out + "_labels.tsv";
 		std::ofstream ofs(fn_labels);
