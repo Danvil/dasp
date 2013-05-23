@@ -21,7 +21,7 @@ namespace fattal {
 
 constexpr unsigned MAX_DEPTH = 0;
 constexpr unsigned LANGEVIN_STEPS = 30;
-constexpr bool MH_TEST = true;
+constexpr bool MH_TEST = false;
 constexpr float STEPSIZE = 0.3f;
 constexpr float TEMPERATURE = 0.03f;
 
@@ -184,8 +184,8 @@ std::vector<Point> PlacePoints(const Eigen::MatrixXf& density, unsigned int p)
 		}
 	}
 
-	std::cout << "Density total: " << density.sum() << std::endl;
-	std::cout << "Approx total:" << EnergyApproximationMat(pnts, density.rows(), density.cols()).sum() << std::endl;
+	// std::cout << "Density total: " << density.sum() << std::endl;
+	// std::cout << "Approx total:" << EnergyApproximationMat(pnts, density.rows(), density.cols()).sum() << std::endl;
 
 	return pnts;
 }
@@ -202,7 +202,7 @@ void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned
 		if(MH_TEST) {
 			energy = Energy(points, density);
 		}
-		std::cout << "\tit=" << k << ", e=" << energy << std::endl;
+//		std::cout << "\tit=" << k << ", e=" << energy << std::endl;
 		for(unsigned int i=0; i<points.size(); i++) {
 			// random vector
 			float rndx = die();
@@ -323,7 +323,7 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
-		std::cout << "Blue noise step " << i << "... " << std::flush;
+//		std::cout << "Blue noise step " << i << "... " << std::flush;
 		bool need_refinement;
 		if(i == p) {
 			// place initial points
@@ -345,7 +345,7 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 			Refine(pnts, mipmaps[i], LANGEVIN_STEPS);
 #endif
 //		}
-		std::cout << pnts.size() << " points." << std::endl;
+//		std::cout << pnts.size() << " points." << std::endl;
 		if(MAX_DEPTH > 0 && p - i + 1 >= MAX_DEPTH) {
 			float scl = static_cast<float>(1 << i);
 			for(Point& p : pnts) {
