@@ -194,6 +194,13 @@ namespace asp
 				impl::coordinate_mean(sp.cluster_indices[i], width, c.x, c.y);
 			}
 		}
+		// write back new indices
+		std::fill(sp.labels.begin(), sp.labels.end(), -1);
+		for(int i=0; i<sp.cluster_indices.size(); i++) {
+			for(int j : sp.cluster_indices[i]) {
+				sp.labels[j] = i;
+			}
+		}
 		return sp;
 	}
 
