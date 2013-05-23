@@ -209,6 +209,13 @@ int main(int argc, char** argv)
 		std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
 	}
 
+	// commanded density
+	{
+		std::string fn_actual_density = p_out + "_actual_density.tsv";
+		WriteMatrix(rho, fn_actual_density);
+		std::cout << "Wrote actual density to file '" << fn_actual_density << "'." << std::endl;
+	}
+
 	// resulting density
 	{
 		std::vector<Eigen::Vector2f> seeds(superpixels.clusters.size());
