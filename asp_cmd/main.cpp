@@ -101,12 +101,25 @@ void WriteMatrix(const Eigen::MatrixXf& mat, const std::string& fn)
 	}
 }
 
+Eigen::MatrixXf ComputePointDensity(const asp::Superpixels<Eigen::Vector3f>& sp, const Eigen::MatrixXf& ref)
+{
+	std::vector<Eigen::Vector2f> seeds(sp.clusters.size());
+	std::transform(sp.clusters.begin(), sp.clusters.end(), seeds.begin(),
+		[](const asp::Cluster<Eigen::Vector3f>& c) {
+			return Eigen::Vector2f{ c.x, c.y };
+		});
+	return pds::PointDensity(seeds, ref);
+}
+
 int main(int argc, char** argv)
 {
 	std::string p_feature_img = "";
 	std::string p_density = "";
-	std::string p_out = "sp";
+	std::string p_out = "";
 	unsigned p_num = 250;
+	bool p_verbose = false;
+	unsigned p_repetitions = 1;
+	bool p_error = false;
 
 	// parameters
 	asp::Parameters params = asp::parameters_default();
@@ -124,6 +137,9 @@ int main(int argc, char** argv)
 		("p_seed_mean_radius_factor", po::value(&params.seed_mean_radius_factor), "size factor for initial cluster mean feature")
 		("p_coverage", po::value(&params.coverage), "DALIC cluster search factor")
 		("p_weight_compact", po::value(&params.weight_compact), "weight for compactness term")
+		("verbose", po::value(&p_verbose), "verbose")
+		("repetitions", po::value(&p_repetitions), "repetitions")
+		("error", po::value(&p_error), "error")
 	;
 
 	po::variables_map vm;
@@ -150,22 +166,22 @@ int main(int argc, char** argv)
 	}
 	if(!is_features_null) {
 		features = LoadFeatures(p_feature_img, width, height);
-		std::cout << "Loaded features dim=" << width << "x" << height << "." << std::endl;
+		if(p_verbose) std::cout << "Loaded features dim=" << width << "x" << height << "." << std::endl;
 	}
 	if(!is_density_null) {
 		rho = LoadDensity(p_density);
-		std::cout << "Loaded density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
+		if(p_verbose) std::cout << "Loaded density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 	if(is_features_null) {
 		width = rho.rows();
 		height = rho.cols();
 		features.resize(width*height, Eigen::Vector3f{1,1,1});
-		std::cout << "Created uniform features dim=" << rho.rows() << "x" << rho.cols() << "." << std::endl;
+		if(p_verbose) std::cout << "Created uniform features dim=" << rho.rows() << "x" << rho.cols() << "." << std::endl;
 	}
 	if(is_density_null) {
 		//rho = CreateDensity(p_size, p_size, [](float x, float y) { return TestDensityFunction(x,y); } );
 		rho = CreateDensity(width, height, [](float x, float y) { return 1.0f; } );
-		std::cout << "Created density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
+		if(p_verbose) std::cout << "Created density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 	assert(width == rho.rows());
 	assert(height == rho.cols());
@@ -176,59 +192,71 @@ int main(int argc, char** argv)
 
 
 	// asp
-	asp::Superpixels<Eigen::Vector3f> superpixels = asp::AdaptiveSuperpixelsRGB(
-		rho, features, params);
-	std::cout << "Generated " << superpixels.clusters.size() << " superpixels." << std::endl;
-
+	asp::Superpixels<Eigen::Vector3f> superpixels;
+	double total_time = 0.0;
+	double total_error = 0.0;
+	for(int k=0; k<p_repetitions; k++) {
+		{
+			boost::timer::cpu_timer t;
+			superpixels = asp::AdaptiveSuperpixelsRGB(rho, features, params);
+			auto dt = t.elapsed();
+			total_time += static_cast<double>(dt.user + dt.system) / 1000000000.0;
+		}
+		if(p_error) {
+			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
+			total_error += (approx - rho).norm();
+		}
+	}
+	total_time /= static_cast<double>(p_repetitions);
+	total_error /= static_cast<double>(p_repetitions);
+	if(p_verbose) std::cout << "Generated " << superpixels.clusters.size() << " superpixels." << std::endl;
+	std::cout << "T=" << total_time << std::endl;
+	std::cout << "E=" << total_error << std::endl;
 
 	// output
-
-	// clusters
-	{
-		std::string fn_clusters = p_out + "_clusters.tsv";
-		std::ofstream ofs(fn_clusters);
-		for(const auto& c : superpixels.clusters) {
-			ofs << c.x << "\t" << c.y << "\t" << c.f[0] << "\t" << c.f[1] << "\t" << c.f[2] << std::endl;
+	if(!p_out.empty()) {
+		// clusters
+		{
+			std::string fn_clusters = p_out + "_clusters.tsv";
+			std::ofstream ofs(fn_clusters);
+			for(const auto& c : superpixels.clusters) {
+				ofs << c.x << "\t" << c.y << "\t" << c.f[0] << "\t" << c.f[1] << "\t" << c.f[2] << std::endl;
+			}
+			if(p_verbose) std::cout << "Wrote clusters to file '" << fn_clusters << "'." << std::endl;
 		}
-		std::cout << "Wrote clusters to file '" << fn_clusters << "'." << std::endl;
-	}
 
-	// labels
-	{
-		std::string fn_labels = p_out + "_labels.tsv";
-		std::ofstream ofs(fn_labels);
-		for(int y=0; y<height; y++) {
-			for(int x=0; x<width; x++) {
-				ofs << superpixels.labels[x + y*width];
-				if(x+1 != width) {
-					ofs << "\t";
-				}
-				else {
-					ofs << std::endl;
+		// labels
+		{
+			std::string fn_labels = p_out + "_labels.tsv";
+			std::ofstream ofs(fn_labels);
+			for(int y=0; y<height; y++) {
+				for(int x=0; x<width; x++) {
+					ofs << superpixels.labels[x + y*width];
+					if(x+1 != width) {
+						ofs << "\t";
+					}
+					else {
+						ofs << std::endl;
+					}
 				}
 			}
+			if(p_verbose) std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
 		}
-		std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
-	}
 
-	// commanded density
-	{
-		std::string fn_actual_density = p_out + "_actual_density.tsv";
-		WriteMatrix(rho, fn_actual_density);
-		std::cout << "Wrote actual density to file '" << fn_actual_density << "'." << std::endl;
-	}
+		// commanded density
+		{
+			std::string fn_actual_density = p_out + "_actual_density.tsv";
+			WriteMatrix(rho, fn_actual_density);
+			if(p_verbose) std::cout << "Wrote actual density to file '" << fn_actual_density << "'." << std::endl;
+		}
 
-	// resulting density
-	{
-		std::vector<Eigen::Vector2f> seeds(superpixels.clusters.size());
-		std::transform(superpixels.clusters.begin(), superpixels.clusters.end(), seeds.begin(),
-			[](const asp::Cluster<Eigen::Vector3f>& c) {
-				return Eigen::Vector2f{ c.x, c.y };
-			});
-		Eigen::MatrixXf approx = pds::PointDensity(seeds, rho);
-		std::string fn_point_density = p_out + "_point_density.tsv";
-		WriteMatrix(approx, fn_point_density);
-		std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
+		// resulting density
+		{
+			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
+			std::string fn_point_density = p_out + "_point_density.tsv";
+			WriteMatrix(approx, fn_point_density);
+			if(p_verbose) std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
+		}
 	}
 
 	return 1;
