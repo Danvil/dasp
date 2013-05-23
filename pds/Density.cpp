@@ -7,18 +7,16 @@ namespace pds
 	template<typename T, typename Fxi, typename Fyi, typename Fx, typename Fy>
 	Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, const Eigen::MatrixXf& target, Fxi fxi, Fyi fyi, Fx fx, Fy fy)
 	{
-		const int RHO_R = 3;
-		// range R of kernel is s.t. phi(x) >= 0.01 * phi(0) for all x <= R
-		constexpr float cRange = 1.21f; // pds::fattal::KernelFunctorInverse(0.01f);
-		constexpr float cMagicSoftener = 0.5f;// 0.62f;
+		// radius of box in which to average cluster density
+		constexpr int RHO_R = 3;
+		// range of kernel s.t. 99.9% of mass is covered
+		constexpr float cRange = 3.0f*1.10794f;
+		constexpr float cMagicSoftener = 0.5f; // 0.62f;
 		Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 		for(const T& s : seeds) {
-			int sx = fxi(s);
-			int sy = fyi(s);
-			float sxf = fx(s);
-			float syf = fy(s);
-			// seed corresponds to a kernel at position (x,y) with sigma = rho(x,y)^(-1/2)
-			// const float rho = cMagicSoftener * target(sx, sy);
+			const int sx = fxi(s);
+			const int sy = fyi(s);
+			// compute point density as average over a box
 			float rho_sum = 0.0f;
 			unsigned int rho_num = 0;
 			for(int i=-RHO_R; i<=+RHO_R; ++i) {
@@ -36,11 +34,14 @@ namespace pds
 			if(rho_sum == 0.0f || rho_num == 0) {
 				continue;
 			}
-			const float rho = cMagicSoftener * rho_sum / static_cast<float>(rho_num);
-	//		if(s.x + 1 < int(target.width()) && s.y + 1 < int(target.height())) {
-	//			rho += target(s.x + 1, s.y) + target(s.x, s.y + 1) + target(s.x + 1, s.y + 1);
-	//			rho *= 0.25f;
-	//		}
+			const float rho = rho_sum / static_cast<float>(rho_num);
+			// seed corresponds to a kernel at position (x,y)
+			// with sigma = 1/sqrt(pi*rho)
+			// i.e. 1/sigma^2 = pi*rho
+			// factor pi is already compensated in kernel
+			const float sxf = fx(s);
+			const float syf = fy(s);
+			const float rho_soft = cMagicSoftener * rho;
 			// kernel influence range
 			const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho)));
 			const int xmin = std::max<int>(sx - R, 0);
@@ -52,7 +53,7 @@ namespace pds
 					float dx = static_cast<float>(xi) - sxf;
 					float dy = static_cast<float>(yi) - syf;
 					float d2 = dx*dx + dy*dy;
-					float delta = rho * pds::fattal::KernelFunctorSquare(rho*d2);
+					float delta = rho_soft * pds::fattal::KernelFunctorSquare(rho_soft*d2);
 					density(xi, yi) += delta;
 				}
 			}
