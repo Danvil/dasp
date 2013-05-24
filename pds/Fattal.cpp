@@ -14,13 +14,14 @@
 	#include <boost/format.hpp>
 	#include <fstream>
 #endif
+#define VERBOSE
 //----------------------------------------------------------------------------//
 namespace pds {
 namespace fattal {
 //----------------------------------------------------------------------------//
 
 constexpr unsigned MAX_DEPTH = 0;
-constexpr unsigned LANGEVIN_STEPS = 30;
+constexpr unsigned LANGEVIN_STEPS = 20;
 constexpr bool MH_TEST = false;
 constexpr float STEPSIZE = 0.3f;
 constexpr float TEMPERATURE = 0.03f;
@@ -202,7 +203,12 @@ void Refine(std::vector<Point>& points, const Eigen::MatrixXf& density, unsigned
 		if(MH_TEST) {
 			energy = Energy(points, density);
 		}
-//		std::cout << "\tit=" << k << ", e=" << energy << std::endl;
+#ifdef VERBOSE
+		if(!MH_TEST) {
+			energy = Energy(points, density);
+		}
+		std::cout << "\tit=" << k << ", e=" << energy << std::endl;
+#endif
 		for(unsigned int i=0; i<points.size(); i++) {
 			// random vector
 			float rndx = die();
@@ -323,7 +329,9 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {
-//		std::cout << "Blue noise step " << i << "... " << std::flush;
+#ifdef VERBOSE
+		std::cout << "Blue noise step " << i << "... " << std::flush;
+#endif
 		bool need_refinement;
 		if(i == p) {
 			// place initial points
@@ -345,7 +353,9 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 			Refine(pnts, mipmaps[i], LANGEVIN_STEPS);
 #endif
 //		}
-//		std::cout << pnts.size() << " points." << std::endl;
+#ifdef VERBOSE
+		std::cout << pnts.size() << " points." << std::endl;
+#endif
 		if(MAX_DEPTH > 0 && p - i + 1 >= MAX_DEPTH) {
 			float scl = static_cast<float>(1 << i);
 			for(Point& p : pnts) {

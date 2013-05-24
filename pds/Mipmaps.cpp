@@ -102,6 +102,23 @@ std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned
 	return mipmaps;
 }
 
+std::vector<Eigen::MatrixXf> ComputeMipmapsLevels(const Eigen::MatrixXf& img, unsigned int n_mipmaps)
+{
+	// find number of required mipmap level
+	unsigned int max_size = std::max(img.rows(), img.cols());
+	BOOST_ASSERT(n_mipmaps >= 1);
+	std::vector<Eigen::MatrixXf> mipmaps(n_mipmaps);
+	mipmaps[0] = SumMipMapWithBlackBorder(img);
+	// create remaining mipmaps
+	for(unsigned int i=1; i<n_mipmaps; i++) {
+		BOOST_ASSERT(mipmaps[i-1].rows() == mipmaps[i-1].cols());
+		BOOST_ASSERT(mipmaps[i-1].rows() >= 1);
+		mipmaps[i] = SumMipMap<2>(mipmaps[i - 1]);
+//		std::cout << std::accumulate(mipmaps[i].begin(), mipmaps[i].end(), 0.0f, [](float sum, float x) { return sum + x; }) << std::endl;
+	}
+	return mipmaps;
+}
+
 std::vector<Eigen::MatrixXf> ComputeMipmaps640x480(const Eigen::MatrixXf& img)
 {
 	// 640 = 4*32*5

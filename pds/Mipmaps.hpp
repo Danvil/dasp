@@ -54,6 +54,8 @@ Eigen::MatrixXf ScaleUp(const Eigen::MatrixXf& img_small, unsigned int S);
 
 std::vector<Eigen::MatrixXf> ComputeMipmaps(const Eigen::MatrixXf& img, unsigned int min_size);
 
+std::vector<Eigen::MatrixXf> ComputeMipmapsLevels(const Eigen::MatrixXf& img, unsigned int levels);
+
 std::vector<Eigen::MatrixXf> ComputeMipmaps640x480(const Eigen::MatrixXf& img);
 
 std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size);
