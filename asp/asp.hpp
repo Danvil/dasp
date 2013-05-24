@@ -55,7 +55,7 @@ namespace asp
 		 * ASSUME: density(x,y) == 0 <=> (x,y) invalid
 		 */
 		template<typename F, typename METRIC>
-		std::vector<int> dalic_step(const std::vector<Cluster<F>>& clusters, const Eigen::MatrixXf& density, const std::vector<F>& features, METRIC metric, float p_coverage, float p_weight_compact)
+		std::vector<int> cluster_pixels(const std::vector<Cluster<F>>& clusters, const Eigen::MatrixXf& density, const std::vector<F>& features, METRIC metric, float p_coverage, float p_weight_compact)
 		{
 			const int width = density.rows();
 			const int height = density.cols();
@@ -183,7 +183,7 @@ namespace asp
 		// dalic
 		for(int k=0; k<p.num_iterations; k++) {
 			// update pixel-cluster association
-			sp.labels = impl::dalic_step(sp.clusters, density, features, metric, p.coverage, p.weight_compact);
+			sp.labels = impl::cluster_pixels(sp.clusters, density, features, metric, p.coverage, p.weight_compact);
 			// update clusters
 			sp.cluster_indices = impl::clusters_from_labels(sp.labels, sp.clusters.size());
 			impl::remove_empty_clusters(sp.cluster_indices);
