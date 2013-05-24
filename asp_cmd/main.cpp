@@ -204,7 +204,12 @@ int main(int argc, char** argv)
 		}
 		if(p_error) {
 			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
-			total_error += (approx - rho).norm();
+			float error = 0.0;
+			for(int i=0; i<approx.size(); i++) {
+				error += std::abs(approx.data()[i] - rho.data()[i]);
+			}
+			error /= rho.sum();
+			total_error += error;
 		}
 	}
 	total_time /= static_cast<double>(p_repetitions);
