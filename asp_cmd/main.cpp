@@ -231,7 +231,7 @@ int main(int argc, char** argv)
 		}
 
 		// labels
-		{
+		if(!superpixels.labels.empty()) {
 			std::string fn_labels = p_out + "_labels.tsv";
 			std::ofstream ofs(fn_labels);
 			for(int y=0; y<height; y++) {
