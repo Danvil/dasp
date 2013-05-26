@@ -35,28 +35,59 @@ Eigen::MatrixXf CreateDensity(unsigned width, unsigned height, F f)
 
 Eigen::MatrixXf LoadDensity(const std::string& filename)
 {
-	slimage::ImagePtr ptr = slimage::Load(filename);
-	if(!ptr) {
-		std::cerr << "Could not load image!" << std::endl;
-		throw 0;
-	}
-	if(slimage::HasType<unsigned char, 3>(ptr)) {
-		slimage::Image3ub img = slimage::Ref<unsigned char, 3>(ptr);
-		Eigen::MatrixXf mat(img.width(), img.height());
-		for(int y=0; y<mat.cols(); y++) {
-			for(int x=0; x<mat.rows(); x++) {
-				slimage::Pixel3ub p = img(x,y);
-				mat(x,y) = static_cast<float>((int)p[0] + (int)p[1] + (int)p[2])/3.0f/255.0f;
-			}
+	bool is_image =
+		filename.substr(filename.size()-3, 3) == ".png" ||
+		filename.substr(filename.size()-3, 3) == ".jpg";
+	if(is_image) {
+		slimage::ImagePtr ptr = slimage::Load(filename);
+		if(!ptr) {
+			std::cerr << "Could not load image!" << std::endl;
+			throw 0;
 		}
-		return mat;
+		if(slimage::HasType<unsigned char, 3>(ptr)) {
+			slimage::Image3ub img = slimage::Ref<unsigned char, 3>(ptr);
+			Eigen::MatrixXf mat(img.width(), img.height());
+			for(int y=0; y<mat.cols(); y++) {
+				for(int x=0; x<mat.rows(); x++) {
+					slimage::Pixel3ub p = img(x,y);
+					mat(x,y) = static_cast<float>((int)p[0] + (int)p[1] + (int)p[2])/3.0f/255.0f;
+				}
+			}
+			return mat;
+		}
+		if(slimage::HasType<unsigned char, 1>(ptr)) {
+			slimage::Image1ub img = slimage::Ref<unsigned char, 1>(ptr);
+			Eigen::MatrixXf mat(img.width(), img.height());
+			for(int y=0; y<mat.cols(); y++) {
+				for(int x=0; x<mat.rows(); x++) {
+					mat(x,y) = static_cast<float>(img(x,y))/255.0f;
+				}
+			}
+			return mat;
+		}
 	}
-	if(slimage::HasType<unsigned char, 1>(ptr)) {
-		slimage::Image1ub img = slimage::Ref<unsigned char, 1>(ptr);
-		Eigen::MatrixXf mat(img.width(), img.height());
+	else {
+		// load matrix
+		std::ifstream ifs(filename);
+		if(!ifs.is_open()) {
+			std::cerr << "Error opening file '" << filename << "'" << std::endl;
+		}
+		std::string line;
+		std::vector<std::vector<float>> data;
+		while(getline(ifs, line)) {
+			std::istringstream ss(line);
+			std::vector<float> q;
+			while(!ss.eof()) {
+				float v;
+				ss >> v;
+				q.push_back(v);
+			}
+			data.push_back(q);
+		}
+		Eigen::MatrixXf mat(data.front().size(),data.size());
 		for(int y=0; y<mat.cols(); y++) {
 			for(int x=0; x<mat.rows(); x++) {
-				mat(x,y) = static_cast<float>(img(x,y))/255.0f;
+				mat(x,y) = data[y][x];
 			}
 		}
 		return mat;
@@ -195,15 +226,19 @@ int main(int argc, char** argv)
 	asp::Superpixels<Eigen::Vector3f> superpixels;
 	double total_time = 0.0;
 	double total_error = 0.0;
-	for(int k=0; k<p_repetitions; k++) {
-		{
-			boost::timer::cpu_timer t;
-			superpixels = asp::AdaptiveSuperpixelsRGB(rho, features, params);
-			auto dt = t.elapsed();
-			total_time += static_cast<double>(dt.user + dt.system) / 1000000000.0;
+	std::vector<asp::Superpixels<Eigen::Vector3f>> superpixels_v(p_repetitions);
+	{
+		boost::timer::cpu_timer t;
+		for(int k=0; k<p_repetitions; k++) {
+			superpixels_v[k] = asp::AdaptiveSuperpixelsRGB(rho, features, params);
 		}
-		if(p_error) {
-			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
+		auto dt = t.elapsed();
+		total_time = static_cast<double>(dt.user + dt.system) / 1000000000.0;
+		total_time /= static_cast<double>(p_repetitions);
+	}
+	if(p_error) {
+		for(int k=0; k<p_repetitions; k++) {
+			Eigen::MatrixXf approx = ComputePointDensity(superpixels_v[k], rho);
 			float error = 0.0;
 			for(int i=0; i<approx.size(); i++) {
 				error += std::abs(approx.data()[i] - rho.data()[i]);
@@ -211,9 +246,9 @@ int main(int argc, char** argv)
 			error /= rho.sum();
 			total_error += error;
 		}
+		total_error /= static_cast<double>(p_repetitions);
 	}
-	total_time /= static_cast<double>(p_repetitions);
-	total_error /= static_cast<double>(p_repetitions);
+	superpixels = superpixels_v.front();
 	if(p_verbose) std::cout << "Generated " << superpixels.clusters.size() << " superpixels." << std::endl;
 	std::cout << "T=" << total_time << std::endl;
 	std::cout << "E=" << total_error << std::endl;
