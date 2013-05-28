@@ -666,6 +666,9 @@ std::vector<Seed> CreateSeedPoints(const ImagePoints& img, const std::vector<Eig
 std::vector<Seed> Superpixels::FindSeeds()
 {
 	switch(opt.seed_mode) {
+	case SeedModes::Random:
+		return CreateSeedPoints(points,
+			pds::Random(density));
 	case SeedModes::Grid:
 		return CreateSeedPoints(points,
 			pds::RectGrid(density));

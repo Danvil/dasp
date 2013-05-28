@@ -17,6 +17,7 @@ namespace dasp
 	namespace SeedModes
 	{
 		enum Type {
+			Random,
 			Grid,
 			SimplifiedPDS_Old,
 			SimplifiedPDS,
