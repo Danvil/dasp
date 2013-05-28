@@ -8,8 +8,7 @@ add_executable(dasp_cmd main.cpp)
 
 target_link_libraries(dasp_cmd
 	libdasp
-	opencv_core
-	opencv_highgui
+	rgbd
 	boost_program_options
 )
 
