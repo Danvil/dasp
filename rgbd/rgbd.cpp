@@ -128,16 +128,27 @@ class RgbdStreamStatic : public RgbdStream
 {
 public:
 	RgbdStreamStatic(const std::string& fn) {
+		// is_first_ = true;
 		data_.color = slimage::Load3ub(fn + "_color.png");
 		data_.depth = slimage::Load1ui16(fn + "_depth.pgm");
 		if(data_.color.width() != data_.depth.width() || data_.color.height() != data_.depth.height()) {
 			std::cerr << "WARNING: Size of color and depth image do not match!" << std::endl;
 		}
 	}
-	bool grab() { return true; }
+	bool grab() {
+		// if(is_first_) {
+		// 	is_first_ = false;
+		// 	return true;
+		// }
+		// else {
+		// 	return false;
+		// }
+		return true;
+	}
 	Rgbd get() { return data_; }
 private:
 	Rgbd data_;
+	bool is_first_;
 };
 
 class RgbdStreamImages : public RandomAccessRgbdStream
