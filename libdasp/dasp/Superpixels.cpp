@@ -691,10 +691,10 @@ std::vector<Seed> Superpixels::FindSeeds()
 		return CreateSeedPoints(points,
 			pds::Fattal(density));
 	case SeedModes::Delta: {
-		seeds_previous = getClusterCentersAsSeeds();
-		std::vector<Eigen::Vector2f> pnts_prev(seeds_previous.size());
-		for(unsigned int i=0; i<pnts_prev.size(); i++) {
-			pnts_prev[i] = Eigen::Vector2f(seeds_previous[i].x, seeds_previous[i].y);
+		std::vector<Eigen::Vector2f> pnts_prev(cluster.size());
+		for(std::size_t i=0; i<cluster.size(); i++) {
+			const Cluster& c = cluster[i];
+			pnts_prev[i] = Eigen::Vector2f(c.center.px, c.center.py);
 		}
 		return CreateSeedPoints(points,
 			pds::DeltaDensitySampling(pnts_prev, density));
