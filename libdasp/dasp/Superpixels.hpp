@@ -103,8 +103,6 @@ namespace dasp
 
 		std::vector<Seed> FindSeeds();
 
-		std::vector<Seed> FindSeedsDelta(const ImagePoints& old_points);
-
 		slimage::Image1f ComputeEdges();
 
 		void ImproveSeeds(std::vector<Seed>& seeds, const slimage::Image1f& edges);

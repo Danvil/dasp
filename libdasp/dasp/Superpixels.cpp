@@ -690,14 +690,7 @@ std::vector<Seed> Superpixels::FindSeeds()
 	case SeedModes::Fattal:
 		return CreateSeedPoints(points,
 			pds::Fattal(density));
-	default:
-		assert(false && "FindSeeds: Unkown mode!");
-	};
-}
-
-std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
-{
-	if(opt.seed_mode == SeedModes::Delta) {
+	case SeedModes::Delta: {
 		seeds_previous = getClusterCentersAsSeeds();
 		std::vector<Eigen::Vector2f> pnts_prev(seeds_previous.size());
 		for(unsigned int i=0; i<pnts_prev.size(); i++) {
@@ -706,9 +699,9 @@ std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
 		return CreateSeedPoints(points,
 			pds::DeltaDensitySampling(pnts_prev, density));
 	}
-	else {
-		return FindSeeds();
-	}
+	default:
+		assert(false && "FindSeeds: Unkown mode!");
+	};
 }
 
 std::vector<int> Superpixels::ComputePixelLabels() const
@@ -1008,13 +1001,12 @@ void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image
 
 	// prepare super pixel points
 	DANVIL_BENCHMARK_START(dasp_points)
-	ImagePoints old_points = clustering.points;
 	clustering.CreatePoints(color, depth, normals);
 	DANVIL_BENCHMARK_STOP(dasp_points)
 
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(dasp_seeds)
-	clustering.seeds = clustering.FindSeedsDelta(old_points);
+	clustering.seeds = clustering.FindSeeds();
 //	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(dasp_seeds)
 
