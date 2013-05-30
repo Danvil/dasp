@@ -10,7 +10,7 @@ namespace pds
 		// radius of box in which to average cluster density
 		constexpr int RHO_R = 3;
 		// range of kernel s.t. 99.9% of mass is covered
-		constexpr float cRange = 3.0f*1.10794f;
+		constexpr float cRange = 2.0f*1.10794f;
 		constexpr float cMagicSoftener = 0.5f; // 0.62f;
 		Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 		for(const T& s : seeds) {

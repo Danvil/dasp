@@ -1006,6 +1006,7 @@ void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image
 
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(dasp_seeds)
+	clustering.seeds_previous = clustering.seeds;
 	clustering.seeds = clustering.FindSeeds();
 //	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(dasp_seeds)

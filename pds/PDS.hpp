@@ -13,9 +13,9 @@ namespace pds
 
 	std::vector<Eigen::Vector2f> HexGrid(const Eigen::MatrixXf& density);
 
-	std::vector<Eigen::Vector2f> SimplifiedPDSOld(const Eigen::MatrixXf& density);
-
 	std::vector<Eigen::Vector2f> SimplifiedPDS(const Eigen::MatrixXf& density);
+
+	std::vector<Eigen::Vector2f> SimplifiedPDSOld(const Eigen::MatrixXf& density);
 
 	std::vector<Eigen::Vector2f> FloydSteinberg(const Eigen::MatrixXf& density);
 
@@ -26,6 +26,8 @@ namespace pds
 	std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density);
 
 	std::vector<Eigen::Vector2f> DeltaDensitySampling(const std::vector<Eigen::Vector2f>& old_seeds, const Eigen::MatrixXf& density_new);
+
+	std::vector<Eigen::Vector2f> DeltaDensitySamplingOld(const std::vector<Eigen::Vector2f>& old_seeds, const Eigen::MatrixXf& density_new);
 
 	inline std::vector<Eigen::Vector2f> PoissonDiscSampling(const std::string& name, const Eigen::MatrixXf& density)
 	{
