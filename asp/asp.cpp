@@ -62,11 +62,11 @@ namespace asp
 		return p;
 	}
 
-	Superpixels<Eigen::Vector3f> AdaptiveSuperpixelsRGB(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector3f>& features, const Parameters& p)
+	Superpixels<Eigen::Vector3f> AdaptiveSuperpixelsRGB(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector2f>& seeds, const std::vector<Eigen::Vector3f>& features, const Parameters& p)
 	{
 		return AdaptiveSuperpixels(
 			// density
-			density,
+			density, seeds,
 			// feature
 			features,
 			// metric

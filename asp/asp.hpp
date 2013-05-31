@@ -167,12 +167,12 @@ namespace asp
 	 * @return pixel cluster index
 	 */
 	template<typename F, typename METRIC, typename MEAN>
-	Superpixels<F> AdaptiveSuperpixels(const Eigen::MatrixXf& density, const std::vector<F>& features, METRIC metric, MEAN mean, const Parameters& p)
+	Superpixels<F> AdaptiveSuperpixels(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector2f>& seeds, const std::vector<F>& features, METRIC metric, MEAN mean, const Parameters& p)
 	{
 		const int width = density.rows();
 		Superpixels<F> sp;
 		// seed clusters
-		std::vector<Eigen::Vector2f> pnts = pds::PoissonDiscSampling(p.pds_mode, density);
+		std::vector<Eigen::Vector2f> pnts = pds::PoissonDiscSampling(p.pds_mode, density, seeds);
 		sp.clusters.resize(pnts.size());
 		std::transform(pnts.begin(), pnts.end(), sp.clusters.begin(),
 			[&density, &features, mean, &p](const Eigen::Vector2f& pnt) {
@@ -207,7 +207,7 @@ namespace asp
 		return sp;
 	}
 
-	Superpixels<Eigen::Vector3f> AdaptiveSuperpixelsRGB(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector3f>& features, const Parameters& p);
+	Superpixels<Eigen::Vector3f> AdaptiveSuperpixelsRGB(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector2f>& seeds, const std::vector<Eigen::Vector3f>& features, const Parameters& p);
 
 }
 

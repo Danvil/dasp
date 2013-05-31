@@ -68,6 +68,7 @@ int main(int argc, char** argv)
 {
 	std::string p_feature_img = "";
 	std::string p_density = "";
+	std::string p_fn_points = "";
 	std::string p_out = "";
 	unsigned p_num = 250;
 	bool p_verbose = false;
@@ -83,6 +84,7 @@ int main(int argc, char** argv)
 		("help", "produce help message")
 		("features", po::value(&p_feature_img), "feature image (leave empty for uniform image)")
 		("density", po::value(&p_density), "density function image (leave empty for test function)")
+		("points", po::value(&p_fn_points), "file with points to use as seeds (for DDS)")
 		("out", po::value(&p_out), "filename of result file with samples points")
 		("num", po::value(&p_num), "number of points to sample")
 		("p_num_iterations", po::value(&params.num_iterations), "number of DALIC iterations")
@@ -139,6 +141,25 @@ int main(int argc, char** argv)
 	assert(width == rho.rows());
 	assert(height == rho.cols());
 
+	std::vector<Eigen::Vector2f> seed_points;
+	if(!p_fn_points.empty()) {
+		std::ifstream ifs(p_fn_points);
+		if(!ifs.is_open()) {
+			std::cerr << "Error opening file '" << p_fn_points << "'" << std::endl;
+		}
+		std::string line;
+		while(getline(ifs, line)) {
+			std::istringstream ss(line);
+			std::vector<float> q;
+			while(!ss.eof()) {
+				float v;
+				ss >> v;
+				q.push_back(v);
+			}
+			seed_points.push_back({q[0], q[1]});
+		}
+	}
+
 	// scale density
 	float scl = static_cast<float>(p_num) / rho.sum();
 	rho *= scl;
@@ -152,7 +173,7 @@ int main(int argc, char** argv)
 	{
 		boost::timer::cpu_timer t;
 		for(int k=0; k<p_repetitions; k++) {
-			superpixels_v[k] = asp::AdaptiveSuperpixelsRGB(rho, features, params);
+			superpixels_v[k] = asp::AdaptiveSuperpixelsRGB(rho, seed_points, features, params);
 		}
 		auto dt = t.elapsed();
 		total_time = static_cast<double>(dt.user + dt.system) / 1000000000.0;
