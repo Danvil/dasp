@@ -93,6 +93,9 @@ namespace asp
 					const float dy2 = dy*dy;
 					for(int x=xmin; x<=xmax; x++) {
 						const int pnt_index = pnt_index_0 + x;
+						if(density(x,y) == 0.0f) {
+							continue;
+						}
 						const float dx = static_cast<float>(x) - c.x;
 						const float dist = alpha*std::sqrt(dx*dx + dy2) + metric(features[pnt_index], c.f);
 						float& v_dist_best = v_dist[pnt_index];
