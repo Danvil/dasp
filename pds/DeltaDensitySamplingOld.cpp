@@ -162,7 +162,7 @@ namespace pds
 		}
 	}
 
-	std::vector<Eigen::Vector2f> DeltaDensitySamplingOld(const std::vector<Eigen::Vector2f>& old_seeds, const Eigen::MatrixXf& density_new)
+	std::vector<Eigen::Vector2f> DeltaDensitySamplingOld(const Eigen::MatrixXf& density_new, const std::vector<Eigen::Vector2f>& old_seeds)
 	{
 	#ifdef CREATE_DEBUG_IMAGES
 		slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});

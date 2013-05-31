@@ -10,7 +10,7 @@
 namespace pds
 {
 
-	std::vector<Eigen::Vector2f> DeltaDensitySampling(const std::vector<Eigen::Vector2f>& seeds_old, const Eigen::MatrixXf& dnew)
+	std::vector<Eigen::Vector2f> DeltaDensitySampling(const Eigen::MatrixXf& dnew, const std::vector<Eigen::Vector2f>& seeds_old)
 	{
 	#ifdef CREATE_DEBUG_IMAGES
 		slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});

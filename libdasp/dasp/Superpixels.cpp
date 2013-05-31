@@ -697,7 +697,7 @@ std::vector<Seed> Superpixels::FindSeeds()
 			pnts_prev[i] = Eigen::Vector2f(c.center.px, c.center.py);
 		}
 		return CreateSeedPoints(points,
-			pds::DeltaDensitySampling(pnts_prev, density));
+			pds::DeltaDensitySampling(density, pnts_prev));
 	}
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
