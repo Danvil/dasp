@@ -142,9 +142,9 @@ namespace pds
 			// difference
 			Eigen::MatrixXf density_delta = density_new - density_old;
 			// compute mipmaps
-			std::vector<Eigen::MatrixXf> mm_v = pds::tools::ComputeMipmaps640x480(density_new);
-			std::vector<Eigen::MatrixXf> mm_dv = pds::tools::ComputeMipmaps640x480(density_delta);
-			std::vector<Eigen::MatrixXf> mm_da = pds::tools::ComputeMipmaps640x480(density_delta.cwiseAbs());
+			std::vector<Eigen::MatrixXf> mm_v = density::ComputeMipmaps640x480(density_new);
+			std::vector<Eigen::MatrixXf> mm_dv = density::ComputeMipmaps640x480(density_delta);
+			std::vector<Eigen::MatrixXf> mm_da = density::ComputeMipmaps640x480(density_delta.cwiseAbs());
 		#ifdef CREATE_DEBUG_IMAGES
 			DebugMipmap<5>(mm_v, "mm_v");
 			DebugMipmapDelta<5>(mm_dv, "mm_dv");
@@ -169,7 +169,7 @@ namespace pds
 		sDebugImages["seeds_delta"] = slimage::Ptr(debug);
 	#endif
 		// compute old density
-		Eigen::MatrixXf density_old = PointDensity(old_seeds, density_new);
+		Eigen::MatrixXf density_old = density::PointDensity(old_seeds, density_new);
 		// use function
 		return dds::FindSeedsDelta(old_seeds, density_old, density_new);
 	}

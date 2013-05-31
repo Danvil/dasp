@@ -325,7 +325,7 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 	boost::format fn_fmt("pnt_%1%_%2%.tsv");
 #endif
 	// compute mipmaps
-	std::vector<Eigen::MatrixXf> mipmaps = tools::ComputeMipmaps(density, 8);
+	std::vector<Eigen::MatrixXf> mipmaps = density::ComputeMipmaps(density, 8);
 	int p = int(mipmaps.size()) - 1;
 	std::vector<Point> pnts;
 	for(int i=p; i>=0; i--) {

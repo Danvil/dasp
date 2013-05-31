@@ -78,7 +78,7 @@ namespace pds
 		std::vector<Eigen::Vector2f> FindSeedsDepthMipmapFS(const Eigen::MatrixXf& density)
 		{
 			// compute mipmaps
-			std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps(density, 1);
+			std::vector<Eigen::MatrixXf> mipmaps = density::ComputeMipmaps(density, 1);
 		// #ifdef CREATE_DEBUG_IMAGES
 		// 	DebugMipmap<2>(mipmaps, "mmfs");
 		// #endif
@@ -92,7 +92,7 @@ namespace pds
 		std::vector<Eigen::Vector2f> FindSeedsDepthMipmapFS640(const Eigen::MatrixXf& density)
 		{
 			// compute mipmaps
-			std::vector<Eigen::MatrixXf> mipmaps = pds::tools::ComputeMipmaps640x480(density);
+			std::vector<Eigen::MatrixXf> mipmaps = density::ComputeMipmaps640x480(density);
 		#ifdef CREATE_DEBUG_IMAGES
 			DebugMipmap<5>(mipmaps, "mmfs640");
 		#endif

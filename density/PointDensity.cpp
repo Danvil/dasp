@@ -2,10 +2,10 @@
 #include "PointDensity.hpp"
 #include <pds/Fattal.hpp>
 
-namespace pds
+namespace density
 {
-	template<typename T, typename Fxi, typename Fyi, typename Fx, typename Fy>
-	Eigen::MatrixXf ComputeDepthDensityFromSeeds_impl(const std::vector<T>& seeds, const Eigen::MatrixXf& target, Fxi fxi, Fyi fyi, Fx fx, Fy fy)
+	template<typename T, typename Fx, typename Fy>
+	Eigen::MatrixXf PointDensityImpl(const std::vector<T>& seeds, const Eigen::MatrixXf& target, Fx fx, Fy fy)
 	{
 		// radius of box in which to average cluster density
 		constexpr int RHO_R = 3;
@@ -14,8 +14,8 @@ namespace pds
 		constexpr float cMagicSoftener = 0.5f; // 0.62f;
 		Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 		for(const T& s : seeds) {
-			const int sx = fxi(s);
-			const int sy = fyi(s);
+			const int sx = std::round(fx(s));
+			const int sy = std::round(fy(s));
 			// compute point density as average over a box
 			float rho_sum = 0.0f;
 			unsigned int rho_num = 0;
@@ -63,11 +63,10 @@ namespace pds
 
 	Eigen::MatrixXf PointDensity(const std::vector<Eigen::Vector2f>& seeds, const Eigen::MatrixXf& target)
 	{
-		return ComputeDepthDensityFromSeeds_impl(seeds, target,
-				[](const Eigen::Vector2f& s) { return (int)std::round(s[0]); }, // round to nearest integer (assuming positive)
-				[](const Eigen::Vector2f& s) { return (int)std::round(s[1]); },
+		return PointDensityImpl(seeds, target,
 				[](const Eigen::Vector2f& s) { return s[0]; },
-				[](const Eigen::Vector2f& s) { return s[1]; });
+				[](const Eigen::Vector2f& s) { return s[1]; }
+		);
 	}
 
 }

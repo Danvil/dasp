@@ -4,9 +4,9 @@
 #include <Eigen/Dense>
 #include <vector>
 
-namespace pds
+namespace density
 {
-	Eigen::MatrixXf PointDensity(const std::vector<Eigen::Vector2f>& seeds, const Eigen::MatrixXf& target);
+	Eigen::MatrixXf PointDensity(const std::vector<Eigen::Vector2f>& points, const Eigen::MatrixXf& density);
 }
 
 #endif

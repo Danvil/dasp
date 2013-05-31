@@ -282,7 +282,7 @@ void DaspProcessing::performSegmentationStep()
 				for(unsigned int i=0; i<pnts_prev.size(); i++) {
 					pnts_prev[i] = Eigen::Vector2f(clustering_.seeds_previous[i].x, clustering_.seeds_previous[i].y);
 				}
-				Eigen::MatrixXf seed_density = pds::PointDensity(pnts_prev, density);
+				Eigen::MatrixXf seed_density = density::PointDensity(pnts_prev, density);
 				vis_seed_density.resize(density.rows(), density.cols());
 				for(unsigned int i=0; i<seed_density.size(); i++) {
 					//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);

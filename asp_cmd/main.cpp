@@ -139,7 +139,7 @@ Eigen::MatrixXf ComputePointDensity(const asp::Superpixels<Eigen::Vector3f>& sp,
 		[](const asp::Cluster<Eigen::Vector3f>& c) {
 			return Eigen::Vector2f{ c.x, c.y };
 		});
-	return pds::PointDensity(seeds, ref);
+	return density::PointDensity(seeds, ref);
 }
 
 int main(int argc, char** argv)

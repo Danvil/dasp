@@ -15,8 +15,7 @@
 #include <tuple>
 #include <cassert>
 
-namespace pds {
-namespace tools {
+namespace density {
 
 Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big);
 
@@ -60,6 +59,6 @@ std::vector<Eigen::MatrixXf> ComputeMipmaps640x480(const Eigen::MatrixXf& img);
 
 std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(const Eigen::MatrixXf& img, unsigned int min_size);
 
-}}
+}
 
 #endif

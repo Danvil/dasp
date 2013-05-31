@@ -3,8 +3,7 @@
 #include <boost/assert.hpp>
 #include <iostream>
 //----------------------------------------------------------------------------//
-namespace pds {
-namespace tools {
+namespace density {
 //----------------------------------------------------------------------------//
 
 Eigen::MatrixXf SumMipMapWithBlackBorder(const Eigen::MatrixXf& img_big)
@@ -150,5 +149,5 @@ std::vector<std::pair<Eigen::MatrixXf,Eigen::MatrixXf>> ComputeMipmapsWithAbs(co
 }
 
 //----------------------------------------------------------------------------//
-}}
+}
 //----------------------------------------------------------------------------//

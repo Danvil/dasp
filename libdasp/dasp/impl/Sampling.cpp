@@ -34,10 +34,10 @@ template<unsigned int Q>
 Eigen::MatrixXf CombineMipmaps(const std::vector<Eigen::MatrixXf>& mm)
 {
 	Eigen::MatrixXf r = Eigen::MatrixXf::Zero(Q*3*mm[0].rows()/2, Q*mm[0].cols());
-	r.block(0, 0, Q*mm[0].rows(), Q*mm[0].cols()) = pds::tools::ScaleUp(mm[0], Q);
+	r.block(0, 0, Q*mm[0].rows(), Q*mm[0].cols()) = density::ScaleUp(mm[0], Q);
 	unsigned int y = 0;
 	for(unsigned int i=1; i<mm.size(); ++i) {
-		r.block(Q*mm[0].rows(), y, Q*mm[i].rows(), Q*mm[i].cols()) = pds::tools::ScaleUp(mm[i], Q);
+		r.block(Q*mm[0].rows(), y, Q*mm[i].rows(), Q*mm[i].cols()) = density::ScaleUp(mm[i], Q);
 		y += Q*mm[i].cols();
 	}
 	return r;
@@ -73,7 +73,7 @@ void DebugMipmap(const std::vector<Eigen::MatrixXf>& mipmaps, const std::string&
 	// boost::format fmt(tag + "_%2d");
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
-	// 	Eigen::MatrixXf scl = pds::tools::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
+	// 	Eigen::MatrixXf scl = density::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
 	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
@@ -87,7 +87,7 @@ void DebugMipmapDelta(const std::vector<Eigen::MatrixXf>& mipmaps, const std::st
 	// boost::format fmt(tag + "_%2d");
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
-	// 	Eigen::MatrixXf scl = pds::tools::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
+	// 	Eigen::MatrixXf scl = density::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
 	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::PlusMinusColor, std::placeholders::_1, range)));
