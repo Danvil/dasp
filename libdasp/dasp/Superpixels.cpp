@@ -666,6 +666,9 @@ std::vector<Seed> CreateSeedPoints(const ImagePoints& img, const std::vector<Eig
 std::vector<Seed> Superpixels::FindSeeds()
 {
 	switch(opt.seed_mode) {
+	case SeedModes::Random:
+		return CreateSeedPoints(points,
+			pds::Random(density));
 	case SeedModes::Grid:
 		return CreateSeedPoints(points,
 			pds::RectGrid(density));
@@ -687,25 +690,18 @@ std::vector<Seed> Superpixels::FindSeeds()
 	case SeedModes::Fattal:
 		return CreateSeedPoints(points,
 			pds::Fattal(density));
-	default:
-		assert(false && "FindSeeds: Unkown mode!");
-	};
-}
-
-std::vector<Seed> Superpixels::FindSeedsDelta(const ImagePoints& old_points)
-{
-	if(opt.seed_mode == SeedModes::Delta) {
-		seeds_previous = getClusterCentersAsSeeds();
-		std::vector<Eigen::Vector2f> pnts_prev(seeds_previous.size());
-		for(unsigned int i=0; i<pnts_prev.size(); i++) {
-			pnts_prev[i] = Eigen::Vector2f(seeds_previous[i].x, seeds_previous[i].y);
+	case SeedModes::Delta: {
+		std::vector<Eigen::Vector2f> pnts_prev(cluster.size());
+		for(std::size_t i=0; i<cluster.size(); i++) {
+			const Cluster& c = cluster[i];
+			pnts_prev[i] = Eigen::Vector2f(c.center.px, c.center.py);
 		}
 		return CreateSeedPoints(points,
 			pds::DeltaDensitySampling(pnts_prev, density));
 	}
-	else {
-		return FindSeeds();
-	}
+	default:
+		assert(false && "FindSeeds: Unkown mode!");
+	};
 }
 
 std::vector<int> Superpixels::ComputePixelLabels() const
@@ -1005,13 +1001,13 @@ void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image
 
 	// prepare super pixel points
 	DANVIL_BENCHMARK_START(dasp_points)
-	ImagePoints old_points = clustering.points;
 	clustering.CreatePoints(color, depth, normals);
 	DANVIL_BENCHMARK_STOP(dasp_points)
 
 	// compute super pixel seeds
 	DANVIL_BENCHMARK_START(dasp_seeds)
-	clustering.seeds = clustering.FindSeedsDelta(old_points);
+	clustering.seeds_previous = clustering.seeds;
+	clustering.seeds = clustering.FindSeeds();
 //	std::cout << "Seeds: " << seeds.size() << std::endl;
 	DANVIL_BENCHMARK_STOP(dasp_seeds)
 

@@ -4,11 +4,12 @@ include_directories(
 	${dasp_SOURCE_DIR}/libdasp
 )
 
-add_executable(dasp_cmd main.cpp)
+add_executable(normals_cmd main.cpp)
 
-target_link_libraries(dasp_cmd
+target_link_libraries(normals_cmd
 	libdasp
-	rgbd
+	opencv_core
+	opencv_highgui
 	boost_program_options
 )
 

@@ -277,25 +277,23 @@ void DaspProcessing::performSegmentationStep()
 
 			// FIXME plot combined density
 
-			if(clustering_.opt.seed_mode == SeedModes::Delta) {
-				std::vector<Eigen::Vector2f> pnts_prev(clustering_.seeds_previous.size());
-				for(unsigned int i=0; i<pnts_prev.size(); i++) {
-					pnts_prev[i] = Eigen::Vector2f(clustering_.seeds_previous[i].x, clustering_.seeds_previous[i].y);
-				}
-				Eigen::MatrixXf seed_density = density::PointDensity(pnts_prev, density);
-				vis_seed_density.resize(density.rows(), density.cols());
-				for(unsigned int i=0; i<seed_density.size(); i++) {
-					//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
-					float d = seed_density.data()[i];
-					vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
-				}
+			std::vector<Eigen::Vector2f> pnts_prev(clustering_.seeds_previous.size());
+			for(unsigned int i=0; i<pnts_prev.size(); i++) {
+				pnts_prev[i] = Eigen::Vector2f(clustering_.seeds_previous[i].x, clustering_.seeds_previous[i].y);
+			}
+			Eigen::MatrixXf seed_density = density::PointDensity(pnts_prev, density);
+			vis_seed_density.resize(density.rows(), density.cols());
+			for(unsigned int i=0; i<seed_density.size(); i++) {
+				//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
+				float d = seed_density.data()[i];
+				vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
+			}
 //				slimage::conversion::Convert(seed_density, vis_seed_density);
 
-				vis_density_delta.resize(density.rows(), density.cols());
-				for(unsigned int i=0; i<density.size(); i++) {
-					float q = density.data()[i] - seed_density.data()[i];
-					vis_density_delta[i] = plots::PlusMinusColor(q, 0.010f);
-				}
+			vis_density_delta.resize(density.rows(), density.cols());
+			for(unsigned int i=0; i<density.size(); i++) {
+				float q = density.data()[i] - seed_density.data()[i];
+				vis_density_delta[i] = plots::PlusMinusColor(q, 0.010f);
 			}
 		}
 

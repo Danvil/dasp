@@ -1,5 +1,6 @@
 add_library(pds SHARED
 	DeltaDensitySampling.cpp
+	DeltaDensitySamplingOld.cpp
 	Fattal.cpp
 	FloydSteinberg.cpp
 	FloydSteinbergMultiLayer.cpp

@@ -8,6 +8,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 
 	ui.setupUi(this);
 
+	ui.comboBoxSeedType->addItem("Random", dasp::SeedModes::Random);
 	ui.comboBoxSeedType->addItem("Grid", dasp::SeedModes::Grid);
 	ui.comboBoxSeedType->addItem("SimplifiedPDS_Old", dasp::SeedModes::SimplifiedPDS_Old);
 	ui.comboBoxSeedType->addItem("SimplifiedPDS", dasp::SeedModes::SimplifiedPDS);
