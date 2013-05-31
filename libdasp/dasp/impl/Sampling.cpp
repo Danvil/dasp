@@ -10,7 +10,7 @@
 #include "Sampling.hpp"
 #include "../Superpixels.hpp"
 #include <pds/Tools.hpp>
-#include <pds/Mipmaps.hpp>
+#include <density/ScalePyramid.hpp>
 #include <Slimage/Paint.hpp>
 #include <functional>
 #include <boost/random.hpp>

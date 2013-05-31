@@ -11,7 +11,7 @@
 #include <dasp/Plots.hpp>
 #include <dasp/Metric.hpp>
 #include <dasp/impl/Sampling.hpp>
-#include <pds/Density.hpp>
+#include <density/PointDensity.hpp>
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>
 #define DANVIL_ENABLE_BENCHMARK

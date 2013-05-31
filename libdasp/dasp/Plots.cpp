@@ -220,6 +220,13 @@ namespace detail
 	}
 
 	template<>
+	slimage::Pixel3ub ComputePointColor<GradientNZ>(const Point& p) {
+		return p.is_valid
+			? IntensityColorBW(std::abs(p.normal[2]),0.0f,1.0f)
+			: slimage::Pixel3ub{{0,0,0}};
+	}
+
+	template<>
 	slimage::Pixel3ub ComputePointColor<ClusterRadius>(const Point& p) {
 		return p.is_valid
 			? IntensityColor(p.cluster_radius_px, 4.0f, 20.0f)
@@ -366,6 +373,7 @@ slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode cm)
 	PlotPoints_HELPER(Color)
 	PlotPoints_HELPER(Depth)
 	PlotPoints_HELPER(Gradient)
+	PlotPoints_HELPER(GradientNZ)
 	PlotPoints_HELPER(ClusterRadius)
 	PlotPoints_HELPER(Density)
 	default: detail::PlotPointsImpl<-1>(img, c); break;

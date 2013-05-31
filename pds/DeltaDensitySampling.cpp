@@ -1,8 +1,8 @@
 
 #include "PDS.hpp"
-#include "Mipmaps.hpp"
 #include "Tools.hpp"
-#include "Density.hpp"
+#include <density/ScalePyramid.hpp>
+#include <density/PointDensity.hpp>
 #include <iostream>
 
 namespace pds

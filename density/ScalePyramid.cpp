@@ -1,11 +1,4 @@
-/*
- * Mipmap.cpp
- *
- *  Created on: Feb 6, 2012
- *      Author: david
- */
-
-#include "Mipmaps.hpp"
+#include "ScalePyramid.hpp"
 #include <Danvil/Tools/MoreMath.h>
 #include <boost/assert.hpp>
 #include <iostream>

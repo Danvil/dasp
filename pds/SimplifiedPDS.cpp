@@ -1,7 +1,7 @@
 
 #include "PDS.hpp"
-#include "Mipmaps.hpp"
 #include "Tools.hpp"
+#include <density/ScalePyramid.hpp>
 #include <iostream>
 
 namespace pds

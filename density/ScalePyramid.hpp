@@ -5,8 +5,8 @@
  *      Author: david
  */
 
-#ifndef INCLUDED_PDS_MIPMAPS_HPP_
-#define INCLUDED_PDS_MIPMAPS_HPP_
+#ifndef INCLUDED_DENSITY_SCALEPYRAMID_HPP_
+#define INCLUDED_DENSITY_SCALEPYRAMID_HPP_
 
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>

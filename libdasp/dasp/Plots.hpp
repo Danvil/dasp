@@ -122,6 +122,7 @@ enum ColorMode {
 	Color,
 	Depth,
 	Gradient,
+	GradientNZ,
 	ClusterRadius,
 	Density,
 	Thickness,

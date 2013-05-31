@@ -1,6 +1,6 @@
 
-#include "Density.hpp"
-#include "Fattal.hpp"
+#include "PointDensity.hpp"
+#include <pds/Fattal.hpp>
 
 namespace pds
 {

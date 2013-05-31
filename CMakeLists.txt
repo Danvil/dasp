@@ -33,6 +33,8 @@ include_directories(
 
 project(dasp)
 
+add_subdirectory(density)
+
 add_subdirectory(pds)
 add_subdirectory(pds_cmd)
 

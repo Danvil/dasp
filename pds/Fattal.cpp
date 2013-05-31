@@ -8,7 +8,7 @@
 //#define DEBUG_SAVE_POINTS
 
 #include "Fattal.hpp"
-#include "Mipmaps.hpp"
+#include <density/ScalePyramid.hpp>
 #include <boost/random.hpp>
 #ifdef DEBUG_SAVE_POINTS
 	#include <boost/format.hpp>

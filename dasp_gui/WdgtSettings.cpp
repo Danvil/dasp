@@ -20,6 +20,7 @@ WdgtSettings::WdgtSettings(const boost::shared_ptr<DaspProcessing>& dasp_process
 	ui.comboBoxPlotPointsColor->addItem("Depth", dasp::plots::Depth);
 	ui.comboBoxPlotPointsColor->addItem("Valid", dasp::plots::Valid);
 	ui.comboBoxPlotPointsColor->addItem("Gradient", dasp::plots::Gradient);
+	ui.comboBoxPlotPointsColor->addItem("GradientNZ", dasp::plots::GradientNZ);
 	ui.comboBoxPlotPointsColor->addItem("ClusterRadius", dasp::plots::ClusterRadius);
 	ui.comboBoxPlotPointsColor->addItem("Density", dasp::plots::Density);
 	ui.comboBoxPlotPointsColor->setCurrentIndex(0);

@@ -1,5 +1,5 @@
 #include <asp/asp.hpp>
-#include <pds/Density.hpp>
+#include <density/PointDensity.hpp>
 #include <Slimage/Slimage.hpp>
 #define SLIMAGE_IO_OPENCV
 #include <Slimage/IO.hpp>
