@@ -1,4 +1,5 @@
 #include <pds/PDS.hpp>
+#include <density/PointDensity.hpp>
 #include <Slimage/Slimage.hpp>
 #define SLIMAGE_IO_OPENCV
 #include <Slimage/IO.hpp>
@@ -29,36 +30,6 @@ Eigen::MatrixXf TestDensity(unsigned size, unsigned num)
 		}
 	}
 	return rho;
-}
-
-Eigen::MatrixXf LoadDensity(const std::string& filename)
-{
-	slimage::ImagePtr ptr = slimage::Load(filename);
-	if(!ptr) {
-		std::cerr << "Could not load image!" << std::endl;
-		throw 0;
-	}
-	if(slimage::HasType<unsigned char, 3>(ptr)) {
-		slimage::Image3ub img = slimage::Ref<unsigned char, 3>(ptr);
-		Eigen::MatrixXf mat(img.width(), img.height());
-		for(int y=0; y<mat.cols(); y++) {
-			for(int x=0; x<mat.rows(); x++) {
-				slimage::Pixel3ub p = img(x,y);
-				mat(x,y) = static_cast<float>((int)p[0] + (int)p[1] + (int)p[2])/3.0f/255.0f;
-			}
-		}
-		return mat;
-	}
-	if(slimage::HasType<unsigned char, 1>(ptr)) {
-		slimage::Image1ub img = slimage::Ref<unsigned char, 1>(ptr);
-		Eigen::MatrixXf mat(img.width(), img.height());
-		for(int y=0; y<mat.cols(); y++) {
-			for(int x=0; x<mat.rows(); x++) {
-				mat(x,y) = static_cast<float>(img(x,y))/255.0f;
-			}
-		}
-		return mat;
-	}
 }
 
 int main(int argc, char** argv)
@@ -94,7 +65,7 @@ int main(int argc, char** argv)
 		std::cout << "Created density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 	else {
-		rho = LoadDensity(p_density);
+		rho = density::LoadDensity(p_density);
 		std::cout << "Loaded density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 

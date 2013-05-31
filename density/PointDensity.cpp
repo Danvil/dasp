@@ -1,18 +1,125 @@
-
 #include "PointDensity.hpp"
-#include <pds/Fattal.hpp>
+#include <Slimage/Slimage.hpp>
+#define SLIMAGE_IO_OPENCV
+#include <Slimage/IO.hpp>
+#include <iostream>
+#include <fstream>
 
 namespace density
 {
-	Eigen::MatrixXf DensityAdaptiveSmooth(const Eigen::MatrixXf& d)
+
+	Eigen::MatrixXf LoadDensity(const std::string& filename)
 	{
-		int w = d.rows();
-		int h = d.cols();
-		Eigen::MatrixXf result(w, h);
-		for(int i=0; i<h; i++) {
-			for(int j=0; j<w; j++) {
-				float pd = d(j,i);
-				result(j,i) = pd;
+		bool is_image =
+			filename.substr(filename.size()-3, 3) == ".png" ||
+			filename.substr(filename.size()-3, 3) == ".jpg";
+		if(is_image) {
+			slimage::ImagePtr ptr = slimage::Load(filename);
+			if(!ptr) {
+				std::cerr << "Could not load image!" << std::endl;
+				throw 0;
+			}
+			if(slimage::HasType<unsigned char, 3>(ptr)) {
+				slimage::Image3ub img = slimage::Ref<unsigned char, 3>(ptr);
+				Eigen::MatrixXf mat(img.width(), img.height());
+				for(int y=0; y<mat.cols(); y++) {
+					for(int x=0; x<mat.rows(); x++) {
+						slimage::Pixel3ub p = img(x,y);
+						mat(x,y) = static_cast<float>((int)p[0] + (int)p[1] + (int)p[2])/3.0f/255.0f;
+					}
+				}
+				return mat;
+			}
+			if(slimage::HasType<unsigned char, 1>(ptr)) {
+				slimage::Image1ub img = slimage::Ref<unsigned char, 1>(ptr);
+				Eigen::MatrixXf mat(img.width(), img.height());
+				for(int y=0; y<mat.cols(); y++) {
+					for(int x=0; x<mat.rows(); x++) {
+						mat(x,y) = static_cast<float>(img(x,y))/255.0f;
+					}
+				}
+				return mat;
+			}
+		}
+		else {
+			// load matrix
+			std::ifstream ifs(filename);
+			if(!ifs.is_open()) {
+				std::cerr << "Error opening file '" << filename << "'" << std::endl;
+			}
+			std::string line;
+			std::vector<std::vector<float>> data;
+			while(getline(ifs, line)) {
+				std::istringstream ss(line);
+				std::vector<float> q;
+				while(!ss.eof()) {
+					float v;
+					ss >> v;
+					q.push_back(v);
+				}
+				data.push_back(q);
+			}
+			Eigen::MatrixXf mat(data.front().size(),data.size());
+			for(int y=0; y<mat.cols(); y++) {
+				for(int x=0; x<mat.rows(); x++) {
+					mat(x,y) = data[y][x];
+				}
+			}
+			return mat;
+		}
+	}
+
+	void SaveDensity(const std::string& filename, const Eigen::MatrixXf& mat)
+	{
+		bool is_image =
+			filename.substr(filename.size()-3, 3) == ".png" ||
+			filename.substr(filename.size()-3, 3) == ".jpg";
+		if(is_image) {
+
+		}
+		else {
+			const int rows = mat.rows();
+			std::ofstream ofs(filename);
+			for(int y=0; y<mat.cols(); y++) {
+				for(int x=0; x<rows; x++) {
+					ofs << mat(x,y);
+					if(x+1 != rows) {
+						ofs << "\t";
+					}
+					else {
+						ofs << std::endl;
+					}
+				}
+			}
+		}
+	}
+
+	Eigen::MatrixXf DensityAdaptiveSmooth(const Eigen::MatrixXf& src)
+	{
+		const int width = src.rows();
+		const int height = src.cols();
+		Eigen::MatrixXf result(width, height);
+		for(int i=0; i<height; i++) {
+			for(int j=0; j<width; j++) {
+				const float rho = src(j,i);
+				const int R = static_cast<int>(std::ceil(KernelRange / std::sqrt(rho)));
+				const int xmin = std::max<int>(j - R, 0);
+				const int xmax = std::min<int>(j + R, width - 1);
+				const int ymin = std::max<int>(i - R, 0);
+				const int ymax = std::min<int>(i + R, height - 1);
+				float a_sum = 0.0f;
+				float w_sum = 0.0f;
+				for(int ki=ymin; ki<=ymax; ki++) {
+					for(int kj=xmin; kj<=xmax; kj++) {
+						int dx = kj - j;
+						int dy = ki - i;
+						int d2 = dx*dx + dy*dy;
+						float w = rho * KernelSquare(rho*static_cast<float>(d2));
+						a_sum += w * src(kj,ki);
+						w_sum += w;
+					}
+				}
+				result(j,i) = a_sum / w_sum;
 			}
 		}
 		return result;
@@ -23,9 +130,9 @@ namespace density
 	{
 		// radius of box in which to average cluster density
 		constexpr int RHO_R = 3;
-		// range of kernel s.t. 99.9% of mass is covered
-		constexpr float cRange = 2.0f*1.10794f;
 		constexpr float cMagicSoftener = 0.5f; // 0.62f;
+		constexpr float cRange = KernelRange*1.10794f;
+		// range of kernel s.t. 99.9% of mass is covered
 		Eigen::MatrixXf density = Eigen::MatrixXf::Zero(target.rows(), target.cols());
 		for(const T& s : seeds) {
 			const int sx = std::round(fx(s));
@@ -67,7 +174,7 @@ namespace density
 					float dx = static_cast<float>(xi) - sxf;
 					float dy = static_cast<float>(yi) - syf;
 					float d2 = dx*dx + dy*dy;
-					float delta = rho_soft * pds::fattal::KernelFunctorSquare(rho_soft*d2);
+					float delta = rho_soft * KernelSquare(rho_soft*d2);
 					density(xi, yi) += delta;
 				}
 			}

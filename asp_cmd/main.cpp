@@ -33,67 +33,6 @@ Eigen::MatrixXf CreateDensity(unsigned width, unsigned height, F f)
 	return rho;
 }
 
-Eigen::MatrixXf LoadDensity(const std::string& filename)
-{
-	bool is_image =
-		filename.substr(filename.size()-3, 3) == ".png" ||
-		filename.substr(filename.size()-3, 3) == ".jpg";
-	if(is_image) {
-		slimage::ImagePtr ptr = slimage::Load(filename);
-		if(!ptr) {
-			std::cerr << "Could not load image!" << std::endl;
-			throw 0;
-		}
-		if(slimage::HasType<unsigned char, 3>(ptr)) {
-			slimage::Image3ub img = slimage::Ref<unsigned char, 3>(ptr);
-			Eigen::MatrixXf mat(img.width(), img.height());
-			for(int y=0; y<mat.cols(); y++) {
-				for(int x=0; x<mat.rows(); x++) {
-					slimage::Pixel3ub p = img(x,y);
-					mat(x,y) = static_cast<float>((int)p[0] + (int)p[1] + (int)p[2])/3.0f/255.0f;
-				}
-			}
-			return mat;
-		}
-		if(slimage::HasType<unsigned char, 1>(ptr)) {
-			slimage::Image1ub img = slimage::Ref<unsigned char, 1>(ptr);
-			Eigen::MatrixXf mat(img.width(), img.height());
-			for(int y=0; y<mat.cols(); y++) {
-				for(int x=0; x<mat.rows(); x++) {
-					mat(x,y) = static_cast<float>(img(x,y))/255.0f;
-				}
-			}
-			return mat;
-		}
-	}
-	else {
-		// load matrix
-		std::ifstream ifs(filename);
-		if(!ifs.is_open()) {
-			std::cerr << "Error opening file '" << filename << "'" << std::endl;
-		}
-		std::string line;
-		std::vector<std::vector<float>> data;
-		while(getline(ifs, line)) {
-			std::istringstream ss(line);
-			std::vector<float> q;
-			while(!ss.eof()) {
-				float v;
-				ss >> v;
-				q.push_back(v);
-			}
-			data.push_back(q);
-		}
-		Eigen::MatrixXf mat(data.front().size(),data.size());
-		for(int y=0; y<mat.cols(); y++) {
-			for(int x=0; x<mat.rows(); x++) {
-				mat(x,y) = data[y][x];
-			}
-		}
-		return mat;
-	}
-}
-
 std::vector<Eigen::Vector3f> LoadFeatures(const std::string& fn, int& width, int& height)
 {
 	slimage::Image3ub img = slimage::Load3ub(fn);
@@ -113,23 +52,6 @@ std::vector<Eigen::Vector3f> LoadFeatures(const std::string& fn, int& width, int
 	width = img.width();
 	height = img.height();
 	return features;
-}
-
-void WriteMatrix(const Eigen::MatrixXf& mat, const std::string& fn)
-{
-	const int rows = mat.rows();
-	std::ofstream ofs(fn);
-	for(int y=0; y<mat.cols(); y++) {
-		for(int x=0; x<rows; x++) {
-			ofs << mat(x,y);
-			if(x+1 != rows) {
-				ofs << "\t";
-			}
-			else {
-				ofs << std::endl;
-			}
-		}
-	}
 }
 
 Eigen::MatrixXf ComputePointDensity(const asp::Superpixels<Eigen::Vector3f>& sp, const Eigen::MatrixXf& ref)
@@ -200,7 +122,7 @@ int main(int argc, char** argv)
 		if(p_verbose) std::cout << "Loaded features dim=" << width << "x" << height << "." << std::endl;
 	}
 	if(!is_density_null) {
-		rho = LoadDensity(p_density);
+		rho = density::LoadDensity(p_density);
 		if(p_verbose) std::cout << "Loaded density dim=" << rho.rows() << "x" << rho.cols() << ", sum=" << rho.sum() << "." << std::endl;
 	}
 	if(is_features_null) {
@@ -286,7 +208,7 @@ int main(int argc, char** argv)
 		// commanded density
 		{
 			std::string fn_actual_density = p_out + "_actual_density.tsv";
-			WriteMatrix(rho, fn_actual_density);
+			density::SaveDensity(fn_actual_density, rho);
 			if(p_verbose) std::cout << "Wrote actual density to file '" << fn_actual_density << "'." << std::endl;
 		}
 
@@ -294,7 +216,7 @@ int main(int argc, char** argv)
 		{
 			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
 			std::string fn_point_density = p_out + "_point_density.tsv";
-			WriteMatrix(approx, fn_point_density);
+			density::SaveDensity(fn_point_density, approx);
 			if(p_verbose) std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
 		}
 	}
