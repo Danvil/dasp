@@ -1,5 +1,5 @@
+#include <density/PointDensity.hpp>
 #include <dasp/Superpixels.hpp>
-#include <dasp/Plots.hpp>
 #include <dasp/Segmentation.hpp>
 #include <dasp/impl/Sampling.hpp>
 #include <Slimage/IO.hpp>
@@ -23,23 +23,6 @@ dasp::Superpixels ComputeClusteringDasp(slimage::Image3ub color, slimage::Image1
 	return clustering;
 }
 
-void WriteMatrix(const Eigen::MatrixXf& mat, const std::string& fn)
-{
-	const int rows = mat.rows();
-	std::ofstream ofs(fn);
-	for(int y=0; y<mat.cols(); y++) {
-		for(int x=0; x<rows; x++) {
-			ofs << mat(x,y);
-			if(x+1 != rows) {
-				ofs << "\t";
-			}
-			else {
-				ofs << std::endl;
-			}
-		}
-	}
-}
-
 int main(int argc, char** argv)
 {
 	std::string p_img_path;
@@ -51,7 +34,7 @@ int main(int argc, char** argv)
 	po::options_description desc;
 	desc.add_options()
 		("help", "produce help message")
-		("img_path", po::value<std::string>(&p_img_path)->required(), "path to image")
+		("img", po::value<std::string>(&p_img_path)->required(), "input RGBD image")
 		("result", po::value<std::string>(&p_result_path)->default_value("density.tsv"), "filename for result")
 		("radius", po::value<float>(&p_radius)->default_value(0.018f), "superpixel radius (meters)")
 		("count", po::value<unsigned int>(&p_count)->default_value(0), "number of superpixels (set to 0 to use radius)")
@@ -77,7 +60,7 @@ int main(int argc, char** argv)
 	Eigen::MatrixXf density = dasp::ComputeDepthDensity(superpixels.points, superpixels.opt);
 
 	std::cout << "Writing result to '" << p_result_path << "'" << std::endl;
-	WriteMatrix(density, p_result_path);
+	density::SaveDensity(p_result_path, density);
 
 	return 0;
 }
