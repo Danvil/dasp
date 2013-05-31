@@ -102,6 +102,10 @@ namespace density
 		for(int i=0; i<height; i++) {
 			for(int j=0; j<width; j++) {
 				const float rho = src(j,i);
+				if(rho == 0.0f) {
+					result(j,i) = 0.0f;
+					continue;
+				}
 				const int R = static_cast<int>(std::ceil(KernelRange / std::sqrt(rho)));
 				const int xmin = std::max<int>(j - R, 0);
 				const int xmax = std::min<int>(j + R, width - 1);
