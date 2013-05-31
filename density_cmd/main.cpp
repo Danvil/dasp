@@ -9,7 +9,7 @@
 int main(int argc, char** argv)
 {
 	std::string p_in = "";
-	std::string p_out = "pnts.tsv";
+	std::string p_out = "out.tsv";
 
 	namespace po = boost::program_options;
 	po::options_description desc;
