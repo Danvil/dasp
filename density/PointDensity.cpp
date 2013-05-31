@@ -4,6 +4,20 @@
 
 namespace density
 {
+	Eigen::MatrixXf DensityAdaptiveSmooth(const Eigen::MatrixXf& d)
+	{
+		int w = d.rows();
+		int h = d.cols();
+		Eigen::MatrixXf result(w, h);
+		for(int i=0; i<h; i++) {
+			for(int j=0; j<w; j++) {
+				float pd = d(j,i);
+				result(j,i) = pd;
+			}
+		}
+		return result;
+	}
+
 	template<typename T, typename Fx, typename Fy>
 	Eigen::MatrixXf PointDensityImpl(const std::vector<T>& seeds, const Eigen::MatrixXf& target, Fx fx, Fy fy)
 	{
