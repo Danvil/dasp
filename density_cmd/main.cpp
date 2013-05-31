@@ -15,8 +15,8 @@ int main(int argc, char** argv)
 	po::options_description desc;
 	desc.add_options()
 		("help", "produce help message")
-		("density", po::value(&p_in), "density function image (leave empty for test function)")
-		("out", po::value(&p_out), "filename of result file with samples points")
+		("density", po::value(&p_in), "filename for input density")
+		("out", po::value(&p_out), "filename for smoothed output density")
 	;
 
 	po::variables_map vm;
