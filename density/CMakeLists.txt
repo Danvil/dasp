@@ -3,6 +3,7 @@ ADD_DEFINITIONS(-DSLIMAGE_IO_OPENCV)
 add_library(density SHARED
 	PointDensity.cpp
 	ScalePyramid.cpp
+	Smooth.cpp
 )
 
 target_link_libraries(density

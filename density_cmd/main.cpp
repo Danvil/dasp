@@ -1,4 +1,5 @@
 #include <density/PointDensity.hpp>
+#include <density/Smooth.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
 #include <algorithm>
