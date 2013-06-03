@@ -261,25 +261,23 @@ void DaspProcessing::performSegmentationStep()
 		slimage::Image3ub vis_seed_density;
 		slimage::Image3ub vis_density_delta;
 		if(plot_density_) {
-			Eigen::MatrixXf density = ComputeDepthDensity(clustering_.points, clustering_.opt);
+			const Eigen::MatrixXf& density = clustering_.density;
 			vis_density = slimage::Image3ub(density.rows(), density.cols());
 			for(unsigned int i=0; i<vis_density.size(); i++) {
 				float d = density.data()[i];
 				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
 			}
 
-			Eigen::MatrixXf saliency = clustering_.saliency;
-			vis_saliency = slimage::Image3ub(saliency.rows(), saliency.cols());
-			for(unsigned int i=0; i<vis_saliency.size(); i++) {
-				float d = saliency.data()[i];
-				vis_saliency[i] = plots::PlusMinusColor(d, +1.0f);
-			}
+			// Eigen::MatrixXf saliency = clustering_.saliency;
+			// vis_saliency = slimage::Image3ub(saliency.rows(), saliency.cols());
+			// for(unsigned int i=0; i<vis_saliency.size(); i++) {
+			// 	float d = saliency.data()[i];
+			// 	vis_saliency[i] = plots::PlusMinusColor(d, +1.0f);
+			// }
 
-			// FIXME plot combined density
-
-			std::vector<Eigen::Vector2f> pnts_prev(clustering_.seeds_previous.size());
+			std::vector<Eigen::Vector2f> pnts_prev(clustering_.cluster.size());
 			for(unsigned int i=0; i<pnts_prev.size(); i++) {
-				pnts_prev[i] = Eigen::Vector2f(clustering_.seeds_previous[i].x, clustering_.seeds_previous[i].y);
+				pnts_prev[i] = Eigen::Vector2f(clustering_.cluster[i].center.px, clustering_.cluster[i].center.py);
 			}
 			Eigen::MatrixXf seed_density = density::PointDensity(pnts_prev, density);
 			vis_seed_density.resize(density.rows(), density.cols());
@@ -288,7 +286,6 @@ void DaspProcessing::performSegmentationStep()
 				float d = seed_density.data()[i];
 				vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
 			}
-//				slimage::conversion::Convert(seed_density, vis_seed_density);
 
 			vis_density_delta.resize(density.rows(), density.cols());
 			for(unsigned int i=0; i<density.size(); i++) {

@@ -96,6 +96,7 @@ namespace dasp
 
 		bool is_repair_depth;
 		bool is_smooth_depth;
+		bool is_smooth_density;
 		bool is_improve_seeds;
 
 		bool enable_clipping;

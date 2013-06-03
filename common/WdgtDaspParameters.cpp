@@ -45,9 +45,11 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.doubleSpinBoxClipXMax->setValue(dasp_opt_->clip_x_max);
 	ui.doubleSpinBoxClipYMax->setValue(dasp_opt_->clip_y_max);
 	ui.doubleSpinBoxClipZMax->setValue(dasp_opt_->clip_z_max);
+	ui.doubleSpinBoxCoverage->setValue(dasp_opt_->coverage);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
+	QObject::connect(ui.checkBoxDaspSmoothDensity, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDensity(int)));
 	QObject::connect(ui.comboBoxSeedType, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSuperSeedType(int)));
 	QObject::connect(ui.checkBoxGradientAdaptive, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperUseGradientDensity(int)));
 	QObject::connect(ui.checkBoxSkipBad, SIGNAL(stateChanged(int)), this, SLOT(ChangeSuperpixelSkipBad(int)));
@@ -74,6 +76,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 
 	// dasp_opt_->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
 	dasp_opt_->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
+	dasp_opt_->is_smooth_density = ui.checkBoxDaspSmoothDensity->isChecked();
 	dasp_opt_->seed_mode = (dasp::SeedMode)(ui.comboBoxSeedType->itemData(ui.comboBoxSeedType->currentIndex()).toInt());
 	dasp_opt_->gradient_adaptive_density = ui.checkBoxGradientAdaptive->isChecked();
 	dasp_opt_->ignore_pixels_with_bad_visibility = ui.checkBoxSkipBad->isChecked();
@@ -85,7 +88,7 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	// dasp_opt_->weight_normal = ui.doubleSpinBoxWeightNormal->value();
 	// dasp_opt_->weight_depth = ui.doubleSpinBoxWeightDepth->value();
 	dasp_opt_->color_space = (dasp::ColorSpace)(ui.comboBoxDaspColorSpace->itemData(ui.comboBoxDaspColorSpace->currentIndex()).toInt());
-	dasp_opt_->coverage = ui.doubleSpinBoxCoverage->value();
+	// dasp_opt_->coverage = ui.doubleSpinBoxCoverage->value();
 	dasp_opt_->is_conquer_enclaves = ui.checkBoxDaspConquerEnclaves->isChecked();
 	dasp_opt_->random_seed = 0;
 
@@ -138,6 +141,12 @@ void WdgtDaspParameters::ChangeDaspRepairDepth(int state)
 void WdgtDaspParameters::ChangeDaspSmoothDepth(int state)
 {
 	dasp_opt_->is_smooth_depth = state;
+	*reload = true;
+}
+
+void WdgtDaspParameters::ChangeDaspSmoothDensity(int state)
+{
+	dasp_opt_->is_smooth_density = state;
 	*reload = true;
 }
 

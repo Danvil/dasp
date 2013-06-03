@@ -8,8 +8,9 @@
 #include "Superpixels.hpp"
 #include "impl/RepairDepth.hpp"
 #include "impl/Sampling.hpp"
-#include <pds/PDS.hpp>
 #include "impl/Clustering.hpp"
+#include <density/Smooth.hpp>
+#include <pds/PDS.hpp>
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Tools/MoreMath.h>
@@ -43,8 +44,8 @@ Parameters::Parameters()
 	weight_spatial = 1.0f;
 	weight_normal = 3.0f;
 	iterations = 5;
-	coverage = 1.7f;
-	base_radius = 0.02f;
+	coverage = 2.5f;
+	base_radius = 0.024f;
 	count = 0;
 	seed_mode = SeedModes::SimplifiedPDS;
 	gradient_adaptive_density = true;
@@ -55,6 +56,7 @@ Parameters::Parameters()
 	is_repair_depth = false;
 	is_smooth_depth = false;
 	is_improve_seeds = false;
+	is_smooth_density = false;
 	enable_clipping = false;
 	clip_x_min = -3.0f; clip_x_max = +3.0f;
 	clip_y_min = -3.0f; clip_y_max = -3.0f;
@@ -339,7 +341,17 @@ label_pixel_invalid_omg:
 	else if(opt.density_mode == DensityModes::DASP) {
 		// compute density
 		density = ComputeDepthDensity(points, opt);
-		// cluster radius [px] computed earlier
+		// smooth density
+		if(opt.is_smooth_density) {
+			density = density::DensityAdaptiveSmooth(density);
+		}
+		// compute cluster radius from depth
+		for(unsigned int i=0; i<points.size(); i++) {
+			Point& p = points[i];
+			if(p.is_valid) {
+				p.cluster_radius_px = 1.0f / std::sqrt(3.1415f * density.data()[i]);
+			}
+		}
 	}
 	else {
 		std::cerr << "Invalid densiyt mode type" << std::endl;

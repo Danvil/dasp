@@ -235,8 +235,10 @@ namespace detail
 
 	template<>
 	slimage::Pixel3ub ComputePointColor<Density>(const Point& p) {
+		float r = p.cluster_radius_px;
+		float rho = 1.0f / (3.1415f*r*r);
 		return p.is_valid
-			? IntensityColor(p.computeDensity(), 0.0f, 0.025f)
+			? IntensityColor(rho, 0.0f, 0.025f)
 			: slimage::Pixel3ub{{128,128,128}};
 	}
 

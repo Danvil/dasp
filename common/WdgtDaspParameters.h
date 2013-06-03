@@ -21,8 +21,9 @@ public:
 	void SetActualRadius(float radius);
 
 public Q_SLOTS:
-	void ChangeDaspSmoothDepth(int state);
 	void ChangeDaspRepairDepth(int state);
+	void ChangeDaspSmoothDepth(int state);
+	void ChangeDaspSmoothDensity(int state);
 	void OnSuperSeedType(int selection);
 	void ChangeSuperUseGradientDensity(int state);
 	void ChangeSuperpixelSkipBad(int state);
