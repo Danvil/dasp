@@ -31,18 +31,18 @@ dasp::Superpixels ComputeClusteringDasp(slimage::Image3ub color, slimage::Image1
 int main(int argc, char** argv)
 {
 	std::string p_img_path;
-	std::string p_result_path;
-	float p_radius;
-	unsigned int p_count;
+	std::string p_result_path = "density.tsv";
+	float p_radius = 0.018f;
+	unsigned int p_count = 0;
 
 	namespace po = boost::program_options;
 	po::options_description desc;
 	desc.add_options()
 		("help", "produce help message")
-		("img", po::value<std::string>(&p_img_path)->required(), "input RGBD image")
-		("result", po::value<std::string>(&p_result_path)->default_value("density.tsv"), "filename for result")
-		("radius", po::value<float>(&p_radius)->default_value(0.018f), "superpixel radius (meters)")
-		("count", po::value<unsigned int>(&p_count)->default_value(0), "number of superpixels (set to 0 to use radius)")
+		("img", po::value<std::string>(&p_img_path), "input RGBD image")
+		("result", po::value<std::string>(&p_result_path), "filename for result")
+		("radius", po::value<float>(&p_radius), "superpixel radius (meters)")
+		("count", po::value<unsigned int>(&p_count), "number of superpixels (set to 0 to use radius)")
 	;
 
 	po::variables_map vm;
