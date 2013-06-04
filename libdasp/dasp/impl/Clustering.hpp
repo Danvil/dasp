@@ -13,6 +13,7 @@
 #include "../Metric.hpp"
 #include <Slimage/Slimage.hpp>
 #include <Eigen/Dense>
+#include <iostream>
 
 namespace dasp
 {
@@ -56,12 +57,12 @@ namespace dasp
 			const Cluster& c = clusters[j];
 			int cx = c.center.px;
 			int cy = c.center.py;
-			const int R = int(c.center.cluster_radius_px * opt.coverage);
+			int R = static_cast<int>(c.center.cluster_radius_px * opt.coverage + 0.5f);
+			R = std::max<int>(2,R);
 			const unsigned int xmin = std::max(0, cx - R);
 			const unsigned int xmax = std::min(int(points.width()-1), cx + R);
 			const unsigned int ymin = std::max(0, cy - R);
 			const unsigned int ymax = std::min(int(points.height()-1), cy + R);
-			//unsigned int pnt_index = points.index(xmin,ymin);
 			for(unsigned int y=ymin; y<=ymax; y++) {
 				for(unsigned int x=xmin; x<=xmax; x++/*, pnt_index++*/) {
 					unsigned int pnt_index = points.index(x, y);
@@ -77,8 +78,6 @@ namespace dasp
 						labels[pnt_index] = j;
 					}
 				}
-				//pnt_index -= (xmax - xmin + 1);
-				//pnt_index += points.width();
 			}
 		}
 		return labels;
