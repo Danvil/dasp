@@ -19,7 +19,12 @@ dasp::Superpixels ComputeClusteringDasp(slimage::Image3ub color, slimage::Image1
 	opt.base_radius = R;
 	opt.count = cnt;
 	dasp::Superpixels clustering = dasp::ComputeSuperpixels(color, depth, opt);
-	std::cout << " R=" << clustering.opt.base_radius << " n_seeds=" << clustering.seeds.size() << " n_final=" << clustering.cluster.size() << std::endl;
+	std::cout
+		<< " R=" << clustering.opt.base_radius
+		<< " n_seeds=" << clustering.seeds.size()
+		<< " n_final=" << clustering.cluster.size()
+		<< " density.sum()=" << clustering.density.sum()
+		<< std::endl;
 	return clustering;
 }
 
@@ -57,10 +62,8 @@ int main(int argc, char** argv)
 
 	dasp::Superpixels superpixels = ComputeClusteringDasp(img_color, img_depth, p_radius, p_count);
 
-	Eigen::MatrixXf density = dasp::ComputeDepthDensity(superpixels.points, superpixels.opt);
-
 	std::cout << "Writing result to '" << p_result_path << "'" << std::endl;
-	density::SaveDensity(p_result_path, density);
+	density::SaveDensity(p_result_path, superpixels.density);
 
 	return 0;
 }
