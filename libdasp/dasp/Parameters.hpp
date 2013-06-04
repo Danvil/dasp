@@ -33,10 +33,9 @@ namespace dasp
 	namespace DensityModes
 	{
 		enum Type {
-			ASP, // use given density
-			ASP_const, // constant density (similar to SLIC)
-			ASP_depth, // constant density, RGBxD metric
-			DASP // depth-adaptive density as used in DASP
+			ASP_RGB, // constant density, RGB feature, DA2-metric
+			ASP_RGBD, // constant density, RGBxD feature, DA2-metric
+			DASP // depth-adaptive density, RGB+Normal feature, DA3-metric
 		};
 	}
 	typedef DensityModes::Type DensityMode;

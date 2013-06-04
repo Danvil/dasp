@@ -80,8 +80,8 @@ void process(
 
 dasp::DensityMode StringToDensityMode(const std::string& dm)
 {
-	if(dm == "ASP_const") return dasp::DensityMode::ASP_const;
-	if(dm == "ASP_depth") return dasp::DensityMode::ASP_depth;
+	if(dm == "ASP_RGB" || dm == "ASP_const") return dasp::DensityMode::ASP_RGB;
+	if(dm == "ASP_RGBD" || dm == "ASP_depth") return dasp::DensityMode::ASP_RGBD;
 	if(dm == "DASP") return dasp::DensityMode::DASP;
 	exit(0);
 }

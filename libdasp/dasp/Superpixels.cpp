@@ -44,7 +44,7 @@ Parameters::Parameters()
 	weight_spatial = 1.0f;
 	weight_normal = 3.0f;
 	iterations = 5;
-	coverage = 2.5f;
+	coverage = 1.7f;
 	base_radius = 0.024f;
 	count = 0;
 	seed_mode = SeedModes::SimplifiedPDS;
@@ -319,56 +319,58 @@ label_pixel_invalid_omg:
 	}
 
 	DANVIL_BENCHMARK_START(density)
-	if(opt.density_mode == DensityModes::ASP) {
-		std::cerr << "ASP not supported" << std::endl;
-	// 	saliency = ComputeSaliency(points, opt);
-	// 	AdaptClusterRadiusBySaliency(points, saliency, opt);
-		density = ComputeDepthDensity(points, opt); // FIXME
-	}
-	else if(opt.density_mode == DensityModes::ASP_const || opt.density_mode == DensityModes::ASP_depth) {
-		// compute cluster radius [px]
-		constexpr float MM_TO_PX = 4.0f; // random constant to convert mm^2 to px^2
-		const float cluster_radius_px = opt.base_radius * MM_TO_PX;
-		// compute density
-		float A = cluster_radius_px*cluster_radius_px*boost::math::constants::pi<float>();
-		float rho = 1.0f / A;
+	if(opt.density_mode == DensityModes::ASP_RGB || opt.density_mode == DensityModes::ASP_RGBD) {
+		// constant density and constant cluster radius
+		float rho;
+		float cluster_radius_px;
+		if(opt.count == 0) {
+			// estimate cluster radius [px]
+			constexpr float M_TO_PX = 400.0f; // random constant to convert m to px
+			cluster_radius_px = opt.base_radius * M_TO_PX;
+			// compute density
+			rho = 1.0f / (cluster_radius_px*cluster_radius_px*boost::math::constants::pi<float>());
+		}
+		else {
+			rho = static_cast<float>(opt.count) / (640.0f * 480.0f);
+			cluster_radius_px = 1.0f / std::sqrt(boost::math::constants::pi<float>() * rho);
+		}
+		// constant density
 		density = Eigen::MatrixXf::Constant(points.width(), points.height(), rho);
-		// set cluster radius
-		for(unsigned int i=0; i<points.size(); i++) {
-			points[i].cluster_radius_px = cluster_radius_px;
-		}
-	}
-	else if(opt.density_mode == DensityModes::DASP) {
-		// compute density
-		density = ComputeDepthDensity(points, opt);
-		// smooth density
-		if(opt.is_smooth_density) {
-			density = density::DensityAdaptiveSmooth(density);
-		}
-		// compute cluster radius from depth
+		// set cluster_radius_px
+		const float* p_density = density.data();
 		for(unsigned int i=0; i<points.size(); i++) {
 			Point& p = points[i];
 			if(p.is_valid) {
-				p.cluster_radius_px = 1.0f / std::sqrt(3.1415f * density.data()[i]);
+				p.cluster_radius_px = cluster_radius_px;
+			}
+		}
+	}
+	else if(opt.density_mode == DensityModes::DASP) {
+		// compute depth-adaptive density
+		density = ComputeDepthDensity(points, opt);
+		// depth-adaptive smooth
+		if(opt.is_smooth_density) {
+			density = density::DensityAdaptiveSmooth(density);
+		}
+		// adapt density to fit number of superpixels
+		if(opt.count > 0) {
+			// sum density image
+			const float p = static_cast<float>(opt.count) / density.sum();
+			density *= p;
+			// correct base radius
+			float scl = 1.0f / std::sqrt(p);
+			opt.base_radius *= scl;
+			// adapt cluster radius to density
+			for(unsigned int i=0; i<points.size(); i++) {
+				points[i].cluster_radius_px *= scl;
 			}
 		}
 	}
 	else {
-		std::cerr << "Invalid densiyt mode type" << std::endl;
+		std::cerr << "Invalid density mode type" << std::endl;
+		throw 0;
 	}
 	DANVIL_BENCHMARK_STOP(density)
-
-	if(opt.count > 0) {
-		// sum density image
-		const float p = static_cast<float>(opt.count) / density.sum();
-		density *= p;
-		// correct base radius
-		opt.base_radius = opt.base_radius / std::sqrt(p);
-		// correct image_base_radius
-		for(unsigned int i=0; i<points.size(); i++) {
-			points[i].cluster_radius_px *= opt.base_radius / cTempBaseRadius;
-		}
-	}
 
 	if(opt.ignore_pixels_with_bad_visibility) {
 		// for ignore_pixels_with_bad_visibility
@@ -386,47 +388,7 @@ label_pixel_invalid_omg:
 			}
 		}
 	}
-
-//	// disable depth-adaptiveness
-//	if(opt.use_density_depth) {
-//		for(unsigned int i=0; i<points.size(); i++) {
-//			if(points[i].depth_i16 == 0) {
-//				points[i].spatial_normalizer = 1.0f;
-//			}
-//			else {
-//				float scala = opt.camera.scala(points[i].depth_i16);
-//				points[i].spatial_normalizer = (points[i].cluster_radius_px / scala) / opt.base_radius;
-//			}
-//		}
-//	}
-//	else {
-//		int cnt_non_zero = std::accumulate(density.begin(), density.end(), 0, [](int a, float v) { return a + ((v > 0.0f) ? 1 : 0); });
-//		float q = static_cast<float>(opt.count) / static_cast<float>(cnt_non_zero);
-//		std::for_each(density.begin(), density.end(), [q](const slimage::PixelAccess<slimage::Traits<float,1>>& v) { v = (v > 0.0f) ? q : 0.0f; });
-//		float density_sum = std::accumulate(density.begin(), density.end(), 0.0f, [](float a, float v) { return a + v; });
-//		// all radi should be equal and big enough to be able to cover the image
-//		float rpx = std::sqrt(static_cast<float>(width*height)/static_cast<float>(4*opt.count));
-//		for(unsigned int i=0; i<points.size(); i++) {
-//			if(points[i].depth_i16 == 0) {
-//				points[i].spatial_normalizer = 1.0f;
-//			}
-//			else {
-//				float scala = opt.camera.scala(points[i].depth_i16);
-//				points[i].spatial_normalizer = rpx / (opt.base_radius * scala) / points[i].circularity;
-//			}
-//		}
-//	}
-
 }
-
-//void Clustering::ComputeSuperpixels(const slimage::Image1f& edges)
-//{
-//	std::vector<Seed> seeds = FindSeeds();
-//	if(!edges.isNull()) {
-//		ImproveSeeds(seeds, edges);
-//	}
-//	ComputeSuperpixels(seeds);
-//}
 
 void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 {
@@ -798,11 +760,11 @@ void Superpixels::CreateClusters(const std::vector<Seed>& seeds)
 slimage::Image1f Superpixels::ComputeEdges()
 {
 	// FIXME metric needs central place!
-	if(opt.density_mode == DensityModes::ASP || opt.density_mode == DensityModes::ASP_const) {
+	if(opt.density_mode == DensityModes::ASP_RGB) {
 		DensityAdaptiveMetric_UxRGB metric(opt.weight_spatial, opt.weight_color);
 		return dasp::ComputeEdges(points, metric);
 	}
-	else if(opt.density_mode == DensityModes::ASP_depth) {
+	else if(opt.density_mode == DensityModes::ASP_RGBD) {
 		DensityAdaptiveMetric_UxRGBxD metric(opt.weight_spatial, opt.weight_color, opt.weight_normal);
 		return dasp::ComputeEdges(points, metric);
 	}
@@ -861,11 +823,11 @@ void Superpixels::MoveClusters()
 	// compute next iteration of cluster labeling
 	slimage::Image1i labels;
 	// FIXME metric needs central place!
-	if(opt.density_mode == DensityModes::ASP || opt.density_mode == DensityModes::ASP_const) {
+	if(opt.density_mode == DensityModes::ASP_RGB) {
 		DensityAdaptiveMetric_UxRGB metric(opt.weight_spatial, opt.weight_color);
 		labels = dasp::IterateClusters(cluster, points, opt, metric);
 	}
-	else if(opt.density_mode == DensityModes::ASP_depth) {
+	else if(opt.density_mode == DensityModes::ASP_RGBD) {
 		DensityAdaptiveMetric_UxRGBxD metric(opt.weight_spatial, opt.weight_color, opt.weight_normal);
 		labels = dasp::IterateClusters(cluster, points, opt, metric);
 	}

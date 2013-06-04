@@ -25,9 +25,8 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.comboBoxDaspColorSpace->addItem("HN", dasp::ColorSpaces::HN);
 	ui.comboBoxDaspColorSpace->setCurrentIndex(dasp_opt_->color_space);
 
-	ui.comboBoxDensityMode->addItem("ASP", dasp::DensityModes::ASP);
-	ui.comboBoxDensityMode->addItem("ASP_const", dasp::DensityModes::ASP_const);
-	ui.comboBoxDensityMode->addItem("ASP_depth", dasp::DensityModes::ASP_depth);
+	ui.comboBoxDensityMode->addItem("ASP_RGB", dasp::DensityModes::ASP_RGB);
+	ui.comboBoxDensityMode->addItem("ASP_RGBD", dasp::DensityModes::ASP_RGBD);
 	ui.comboBoxDensityMode->addItem("DASP", dasp::DensityModes::DASP);
 	ui.comboBoxDensityMode->setCurrentIndex(dasp_opt_->density_mode);
 
