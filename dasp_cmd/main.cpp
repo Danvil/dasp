@@ -2,6 +2,7 @@
 #include <dasp/Plots.hpp>
 #include <dasp/Segmentation.hpp>
 #include <rgbd/rgbd.hpp>
+#include <density/PointDensity.hpp>
 #include <Slimage/IO.hpp>
 #include <Slimage/Slimage.hpp>
 #include <boost/program_options.hpp>
@@ -18,6 +19,7 @@ int main(int argc, char** argv)
 	bool p_verbose = false;
 	int p_stream_max = 100;
 	std::string p_pds_mode = "spds";
+	bool p_save_density = false;
 
 	dasp::Parameters opt;
 	opt.camera = dasp::Camera{320.0f, 240.0f, 540.0f, 0.001f};
@@ -44,6 +46,7 @@ int main(int argc, char** argv)
 		("p_weight_spatial", po::value(&opt.weight_spatial), "weight spatial")
 		("p_weight_color", po::value(&opt.weight_color), "weight color")
 		("p_weight_normal", po::value(&opt.weight_normal), "weight normal")
+		("save_density", po::value(&p_save_density), "wether to write dasp density to file")
 	;
 
 	po::variables_map vm;
@@ -66,7 +69,7 @@ int main(int argc, char** argv)
 	if(p_pds_mode == "spds") {
 		opt.seed_mode = dasp::SeedModes::SimplifiedPDS;
 	}
-	if(p_pds_mode == "delta") {
+	if(p_pds_mode == "delta" || p_pds_mode == "dds") {
 		opt.seed_mode = dasp::SeedModes::Delta;
 	}
 
@@ -152,6 +155,23 @@ int main(int argc, char** argv)
 					}
 				}
 				if(p_verbose) std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
+			}
+
+			// save density
+			if(p_save_density) {
+				std::string fn_density = fn_result + "_density.tsv";
+				density::SaveDensity(fn_density, superpixels.density);
+				if(p_verbose) std::cout << "Wrote point density to file '" << fn_density << "'." << std::endl;
+
+				std::vector<Eigen::Vector2f> seeds(superpixels.cluster.size());
+				std::transform(superpixels.cluster.begin(), superpixels.cluster.end(), seeds.begin(),
+					[](const dasp::Cluster& c) {
+						return Eigen::Vector2f{ c.center.px, c.center.py };
+					});
+				Eigen::MatrixXf approx = density::PointDensity(seeds, superpixels.density);
+				std::string fn_point_density = fn_result + "_point_density.tsv";
+				density::SaveDensity(fn_point_density, approx);
+				if(p_verbose) std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
 			}
 		}
 	}
