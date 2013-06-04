@@ -210,12 +210,14 @@ private:
 				fns_depth.push_back(it->path().filename().string());
 			}
 			// ppm -> color
-			if(it->path().extension() == ".ppm") {
+			if(it->path().extension() == ".ppm" || it->path().extension() == ".png") {
 				fns_color.push_back(it->path().filename().string());
 			}
 		}
 		if(fns_depth.size() != fns_color.size()) {
-			std::cerr << "Number of color and depht images do not match" << std::endl;
+			std::cerr << "Number of color and depth images do not match" << std::endl;
+			std::cerr << "#color=" << fns_color.size() << std::endl;
+			std::cerr << "#depth=" << fns_depth.size() << std::endl;
 		}
 		num_frames_ = fns_depth.size();
 		std::sort(fns_depth.begin(), fns_depth.end());
