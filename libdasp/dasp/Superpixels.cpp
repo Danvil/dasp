@@ -395,16 +395,18 @@ void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 
 	SetRandomNumberSeed(opt.random_seed);
 
+	std::cout << "DASP START" << std::endl;
+	std::cout << "Density total = " << density.sum() << ", seed points = " << seeds.size() << std::endl;
 	CreateClusters(seeds);
 
-//	std::cout << std::endl << " 0: n=" << cluster.size() << std::endl;
+	std::cout << "0: n=" << cluster.size() << std::endl;
 //	for(unsigned int i=0; i<cluster.size(); i++) {
 //		std::cout << cluster[i].pixel_ids.size() << " ";
 //	}
 //	std::cout << std::endl;
 	for(unsigned int i=0; i<opt.iterations; i++) {
 		MoveClusters();
-//		std::cout << i+1 << ": n=" << cluster.size() << std::endl;
+		std::cout << i+1 << ": n=" << cluster.size() << std::endl;
 //		for(unsigned int j=0; j<cluster.size(); j++) {
 //			std::cout << cluster[j].pixel_ids.size() << " ";
 //		}
@@ -416,6 +418,7 @@ void Superpixels::ComputeSuperpixels(const std::vector<Seed>& seeds)
 	}
 	// delete empty superpixels
 	PurgeInvalidClusters();
+	std::cout << "final: n=" << cluster.size() << std::endl;
 
 	opt.count_actual = cluster.size();
 }
