@@ -5,7 +5,7 @@
 #include <density/PointDensity.hpp>
 #include <iostream>
 
-#define VERBOSE
+//#define VERBOSE
 
 namespace pds
 {
