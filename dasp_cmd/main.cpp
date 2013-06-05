@@ -1,25 +1,36 @@
 #include <dasp/Superpixels.hpp>
 #include <dasp/Plots.hpp>
 #include <dasp/Segmentation.hpp>
+#include <dasp/Neighbourhood.hpp>
+#include <dasp/IO.hpp>
 #include <rgbd/rgbd.hpp>
 #include <density/PointDensity.hpp>
 #include <Slimage/IO.hpp>
 #include <Slimage/Slimage.hpp>
+#include <Slimage/Gui.hpp>
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
 #include <boost/progress.hpp>
 #include <iostream>
 
+
+
 int main(int argc, char** argv)
 {
+	constexpr slimage::Pixel3ub DASP_EDGE_COLOR{{255,0,0}};
+
 	std::string p_img = "";
 	std::string p_rgbd_mode = "";
 	std::string p_rgbd_arg = "";
-	std::string p_out = "out";
-	bool p_verbose = false;
+	std::string p_out = "";
+	int p_verbose = 0;
 	int p_stream_max = 100;
 	std::string p_pds_mode = "spds";
+	bool p_save_vis_dasp = true;
+	bool p_save_cluster = true;
+	bool p_save_labels = true;
 	bool p_save_density = false;
+	bool p_save_graph = false;
 
 	dasp::Parameters opt;
 	opt.camera = dasp::Camera{320.0f, 240.0f, 540.0f, 0.001f};
@@ -33,20 +44,24 @@ int main(int argc, char** argv)
 	po::options_description desc;
 	desc.add_options()
 		("help", "produce help message")
-		("img", po::value(&p_img), "path to input image (must have X_color.png and X_depth.pgm)")
-		("rgbd_mode", po::value(&p_rgbd_mode), "rgbd image stream mode (static, oni, live, ...)")
-		("rgbd_arg", po::value(&p_rgbd_arg), "rgbd image stream argument (depends on mode)")
-		("out", po::value(&p_out), "path to result (will write X.png, X_clusters.tsv and X_labels.tsv)")
-		("verbose", po::value(&p_verbose), "verbose")
+		("img", po::value(&p_img), "path to input image (must have X_color.png and X_depth.pgm) (overwrites rgbd_mode/_arg)")
+		("rgbd_mode", po::value(&p_rgbd_mode), "rgbd stream mode (static, oni, live, ...)")
+		("rgbd_arg", po::value(&p_rgbd_arg), "rgbd stream argument (depends on mode)")
 		("stream_max", po::value(&p_stream_max), "maximum number of frames to process")
-		("p_radius", po::value(&opt.base_radius), "superpixel radius (meters)")
-		("p_count", po::value(&opt.count), "number of superpixels (set to 0 to use radius)")
-		("p_pds_mode", po::value(&p_pds_mode), "Poisson Disk sampling method (spds, delta)")
-		("p_num_iterations", po::value(&opt.iterations), "number of DALIC iterations")
-		("p_weight_spatial", po::value(&opt.weight_spatial), "weight spatial")
-		("p_weight_color", po::value(&opt.weight_color), "weight color")
-		("p_weight_normal", po::value(&opt.weight_normal), "weight normal")
-		("save_density", po::value(&p_save_density), "wether to write dasp density to file")
+		("out", po::value(&p_out), "path to result files (also depends on save_* arguments)")
+		("verbose", po::value(&p_verbose), "verbosity: 0 = silent, 1 = text only, 2 = basic images, 3 = all images")
+		("p_radius", po::value(&opt.base_radius)->default_value(opt.base_radius), "superpixel radius [meters] (overwritten by p_count)")
+		("p_count", po::value(&opt.count)->default_value(opt.count), "number of superpixels (set to 0 to use p_radius)")
+		("p_pds_mode", po::value(&p_pds_mode)->default_value(p_pds_mode), "Poisson Disk sampling method (rnd, spds, dds)")
+		("p_num_iterations", po::value(&opt.iterations)->default_value(opt.iterations), "number of DALIC iterations")
+		("p_weight_spatial", po::value(&opt.weight_spatial)->default_value(opt.weight_spatial), "metric weight spatial")
+		("p_weight_color", po::value(&opt.weight_color)->default_value(opt.weight_color), "metric weight color")
+		("p_weight_normal", po::value(&opt.weight_normal)->default_value(opt.weight_normal), "metric weight normal")
+		("save_vis_dasp", po::value(&p_save_vis_dasp)->default_value(p_save_vis_dasp), "enable to write dasp visualization image")
+		("save_cluster", po::value(&p_save_cluster)->default_value(p_save_cluster), "enable to write dasp clusters")
+		("save_labels", po::value(&p_save_labels)->default_value(p_save_labels), "enable to write dasp pixel cluster labels")
+		("save_density", po::value(&p_save_density)->default_value(p_save_density), "enable to write dasp target and point density")
+		("save_graph", po::value(&p_save_graph)->default_value(p_save_graph), "enable to write dasp graph to file")
 	;
 
 	po::variables_map vm;
@@ -80,50 +95,87 @@ int main(int argc, char** argv)
 	dasp::Superpixels superpixels;
 	superpixels.opt = opt;
 
-	boost::progress_display progress(p_stream_max);
+	boost::shared_ptr<boost::progress_display> progress;
+	bool show_cmd_progressbar = p_verbose == 0 && p_stream_max >= 1;
+	if(show_cmd_progressbar) {
+		progress.reset(new boost::progress_display(p_stream_max));
+	}
 
 	int frame_id = 0;
 	while(stream->grab()) {
+		// next frame
 		frame_id ++;
-		++progress;
+		if(show_cmd_progressbar) {
+			++(*progress);
+		}
 		if(frame_id > p_stream_max) {
 			break;
 		}
+
+		// read next frame
 		Rgbd rgbd = stream->get();
-
-		// const std::string p_img_color = p_img + "_color.png";
-		// const std::string p_img_depth = p_img + "_depth.pgm";
-		// if(p_verbose) std::cout << "Reading COLOR: '" << p_img_color << "'" << std::endl;
-		// if(p_verbose) std::cout << "Reading DEPTH: '" << p_img_depth << "'" << std::endl;
-		// slimage::Image3ub img_color = slimage::Load3ub(p_img_color);
-		// slimage::Image1ui16 img_depth =  slimage::Load1ui16(p_img_depth);
-
 		const slimage::Image3ub& img_color = rgbd.color;
 		const slimage::Image1ui16& img_depth = rgbd.depth;
 
+		// compute superpixels
 		if(p_verbose) std::cout << "n_given=" << opt.count << std::flush;
 		dasp::ComputeSuperpixelsIncremental(superpixels, img_color, img_depth);
 		if(p_verbose) std::cout << " R=" << superpixels.opt.base_radius << " n_seeds=" << superpixels.seeds.size() << " n_final=" << superpixels.cluster.size() << std::endl;
 
-		if(!p_out.empty()) {
-			const slimage::Image1i& labels = superpixels.ComputeLabels();
+		// verbose / saving
 
+		bool output_enabled = !p_out.empty();
+		if(!output_enabled && (p_save_vis_dasp || p_save_density || p_save_graph || p_save_labels || p_save_cluster)) {
+			std::cerr << "WARNING: Did not specify output filename! Disabled writing to files for all results." << std::endl;
+		}
+
+		slimage::Image1i labels;
+		slimage::Image3ub vis_dasp;
+		dasp::DaspGraph graph;
+
+		bool needs_vis_dasp = (p_verbose >= 1) || (output_enabled && p_save_vis_dasp);
+		bool needs_labels = needs_vis_dasp || (output_enabled && p_save_labels);
+		bool needs_graph = (output_enabled && p_save_graph);
+
+		// compute pixel labels
+		if(needs_labels) {
+			labels = superpixels.ComputeLabels();
+		}
+
+		// plot dasp superpixel image with edges
+		if(needs_vis_dasp) {
+			// slimage::Image3ub result = dasp::plots::PlotPoints(superpixels, dasp::plots::Color);
+			vis_dasp = slimage::Image3ub(superpixels.points.width(), superpixels.points.height(), {{0,0,0}});
+			dasp::plots::PlotClusters(vis_dasp, superpixels, dasp::plots::ClusterPoints, dasp::plots::Color);
+			dasp::plots::PlotEdges(vis_dasp, labels, DASP_EDGE_COLOR, 2);
+		}
+
+		// compute dasp neighbourhood graph
+		if(needs_graph) {
+			graph = dasp::CreateDaspNeighbourhoodGraph(superpixels);
+		}
+
+		// show basic images
+		if(p_verbose >= 1) {
+			slimage::gui::Show("dasp", vis_dasp, 3);
+		}
+
+		if(output_enabled) {
+			// filename for result files
 			std::string fn_result = (fn_result_fmt % frame_id).str();
 			if(!p_img.empty()) {
 				fn_result = p_out;
 			}
 
-			// image
-			{
+			// dasp visualization image
+			if(p_save_vis_dasp) {
 				std::string fn_img = fn_result + ".png";
-				slimage::Image3ub result = dasp::plots::PlotPoints(superpixels, dasp::plots::Color);
-				dasp::plots::PlotEdges(result, labels, slimage::Pixel3ub{{255,0,0}}, 1);
 				if(p_verbose) std::cout << "Writing superpixel image to '" << fn_img << "'" << std::endl;
-				slimage::Save(result, fn_img);
+				slimage::Save(vis_dasp, fn_img);
 			}
 
 			// clusters
-			{
+			if(p_save_cluster) {
 				std::string fn_clusters = fn_result + "_clusters.tsv";
 				std::ofstream ofs(fn_clusters);
 				for(const auto& cluster : superpixels.cluster) {
@@ -138,7 +190,7 @@ int main(int argc, char** argv)
 			}
 
 			// labels
-			{
+			if(p_save_labels) {
 				std::string fn_labels = fn_result + "_labels.tsv";
 				std::ofstream ofs(fn_labels);
 				int h = labels.height();
@@ -173,7 +225,20 @@ int main(int argc, char** argv)
 				density::SaveDensity(fn_point_density, approx);
 				if(p_verbose) std::cout << "Wrote point density to file '" << fn_point_density << "'." << std::endl;
 			}
+
+			// save graph
+			if(p_save_graph) {
+				std::string fn_vertices = fn_result + "_vertices.tsv";
+				std::string fn_edges = fn_result + "_edges.tsv";
+				dasp::SaveDaspGraph(graph, fn_vertices, fn_edges);
+				if(p_verbose) std::cout << "Wrote dasp graph to files '" << fn_vertices << "' and '" << fn_edges << "'" << std::endl;
+			}
+
 		}
+	}
+
+	if(p_verbose >= 2) {
+		slimage::gui::WaitForKeypress();
 	}
 
 	return 0;
