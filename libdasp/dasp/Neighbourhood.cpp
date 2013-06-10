@@ -9,6 +9,7 @@
 #include "Metric.hpp"
 #include <Slimage/Convert.hpp>
 #include <boost/graph/copy.hpp>
+#include <iostream>
 
 namespace dasp
 {
@@ -116,7 +117,7 @@ std::vector<BorderPixel> ComputeBorderLabels(unsigned int cid, const Superpixels
 	for(unsigned int pid : spc.cluster[cid].pixel_ids) {
 		int x = pid % w;
 		int y = pid / w;
-		if(1 <= x && x+1 <= w && 1 <= y && y+1 <= h) {
+		if(1 <= x && x+1 < w && 1 <= y && y+1 < h) {
 			for(int i=0; i<4; i++) {
 				int label = labels[pid + d[i]];
 				if(label != cid && label != -1) {
