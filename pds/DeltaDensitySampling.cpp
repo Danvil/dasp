@@ -10,7 +10,10 @@
 namespace pds
 {
 
-	std::vector<Eigen::Vector2f> DeltaDensitySampling(const Eigen::MatrixXf& dnew, const std::vector<Eigen::Vector2f>& seeds_old)
+	std::vector<Eigen::Vector2f> DeltaDensitySampling(
+		const Eigen::MatrixXf& dnew,
+		const std::vector<Eigen::Vector2f>& seeds_old,
+		std::vector<int>* seed_origin)
 	{
 	#ifdef CREATE_DEBUG_IMAGES
 		slimage::Image3ub debug(points.width(), points.height(), {{0,0,0}});
@@ -41,9 +44,20 @@ namespace pds
 #ifdef VERBOSE
 		std::cout << "DDS: padd.size()=" << padd.size() << std::endl;
 #endif
+		// if(seeds_old.size() > 0) {
+		// 	psub.clear();
+		// 	padd.clear();
+		// }
+
 		// remove points
-		// TODO: this is O(N*M) and slow
 		std::vector<Eigen::Vector2f> samples = seeds_old;
+		if(seed_origin) {
+			*seed_origin = std::vector<int>(samples.size());
+			for(size_t i=0; i<seed_origin->size(); ++i) {
+				(*seed_origin)[i] = i;
+			}
+		}
+		// TODO: this is O(N*M) and slow
 		for(const Eigen::Vector2f& p : psub) {
 			float d_min = (p - samples.front()).squaredNorm();
 			auto it_min = samples.begin();
@@ -55,9 +69,15 @@ namespace pds
 				}
 			}
 			samples.erase(it_min);
+			if(seed_origin) {
+				seed_origin->erase(seed_origin->begin() + std::distance(samples.begin(), it_min));
+			}
 		}
 		// add points
 		samples.insert(samples.end(), padd.begin(), padd.end());
+		if(seed_origin) {
+			seed_origin->insert(seed_origin->end(), padd.size(), -1);
+		}
 #ifdef VERBOSE
 		std::cout << "DDS: samples.size()=" << samples.size() << std::endl;
 #endif

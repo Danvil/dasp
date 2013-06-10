@@ -25,7 +25,11 @@ namespace pds
 
 	std::vector<Eigen::Vector2f> Fattal(const Eigen::MatrixXf& density);
 
-	std::vector<Eigen::Vector2f> DeltaDensitySampling(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector2f>& old_seeds);
+	std::vector<Eigen::Vector2f> DeltaDensitySampling(
+		const Eigen::MatrixXf& density,
+		const std::vector<Eigen::Vector2f>& old_seeds,
+		std::vector<int>* seed_origin = 0
+	);
 
 	std::vector<Eigen::Vector2f> DeltaDensitySamplingOld(const Eigen::MatrixXf& density, const std::vector<Eigen::Vector2f>& old_seeds);
 

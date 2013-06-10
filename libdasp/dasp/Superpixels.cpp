@@ -622,22 +622,37 @@ void Superpixels::ConquerMiniEnclaves()
 	}
 }
 
-std::vector<Seed> CreateSeedPoints(const ImagePoints& img, const std::vector<Eigen::Vector2f>& pnts)
+std::vector<Seed> CreateSeedPoints(
+	const ImagePoints& img,
+	const std::vector<Eigen::Vector2f>& pnts,
+	std::vector<int>* origin=0)
 {
-	std::vector<Seed> v;
-	v.reserve(pnts.size());
-	for(const Eigen::Vector2f& p : pnts) {
+	std::vector<Seed> pnts_final;
+	pnts_final.reserve(pnts.size());
+	std::vector<int> origin_final;
+	if(origin) {
+		origin_final.reserve(pnts.size());
+		assert(pnts.size() == origin->size());
+	}
+	for(size_t i=0; i<pnts.size(); i++) {
+		const Eigen::Vector2f& p = pnts[i];
 		int x = static_cast<int>(std::round(p[0]));
 		int y = static_cast<int>(std::round(p[1]));
 		if(0 <= x && x < static_cast<int>(img.width())
 			&& 0 <= y && y < static_cast<int>(img.height())
 			&& img(x,y).is_valid
 		) {
-			v.push_back(
+			pnts_final.push_back(
 				Seed::Dynamic(x, y, img(x,y).cluster_radius_px));
+			if(origin) {
+				origin_final.push_back((*origin)[i]);
+			}
 		}
 	}
-	return v;
+	if(origin) {
+		*origin = origin_final;
+	}
+	return pnts_final;
 }
 
 std::vector<Seed> Superpixels::FindSeeds()
@@ -673,8 +688,17 @@ std::vector<Seed> Superpixels::FindSeeds()
 			const Cluster& c = cluster[i];
 			pnts_prev[i] = Eigen::Vector2f(c.center.px, c.center.py);
 		}
-		return CreateSeedPoints(points,
-			pds::DeltaDensitySampling(density, pnts_prev));
+		std::vector<int> seed_origin;
+		std::vector<Eigen::Vector2f> pnts = pds::DeltaDensitySampling(density, pnts_prev, &seed_origin);
+		std::vector<Seed> seeds = CreateSeedPoints(points, pnts, &seed_origin);
+		assert(seeds.size() != seed_origin.size());
+		if(seeds.size() != seed_origin.size()) {
+			std::cerr << "ERROR with DDS: invalid point!" << std::endl;
+		}
+		for(size_t i=0; i<seeds.size(); ++i) {
+			seeds[i].label = seed_origin[i];
+		}
+		return seeds;
 	}
 	default:
 		assert(false && "FindSeeds: Unkown mode!");
