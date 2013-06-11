@@ -432,6 +432,7 @@ void PlotClusters(slimage::Image3ub& img, const Superpixels& c, ClusterMode mode
 {
 	switch(mode) {
 	case ClusterCenter: PlotClusterCenters(img, c, cm, 1, selection); break;
+	case ClusterCenterBig: PlotClusterCenters(img, c, cm, 3, selection); break;
 	default: case ClusterPoints: PlotClusterPoints(img, c, cm, selection); break;
 	case ClusterEllipses: PlotClusterEllipses(img, c, cm, selection); break;
 	case ClusterEllipsesFilled: PlotClusterEllipsesFilled(img, c, cm, selection); break;

@@ -177,6 +177,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorM
 
 enum ClusterMode {
 	ClusterCenter,
+	ClusterCenterBig,
 	ClusterPoints,
 	ClusterEllipses,
 	ClusterEllipsesFilled
