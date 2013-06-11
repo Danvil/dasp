@@ -224,6 +224,15 @@ std::vector<Seed> Superpixels::getClusterCentersAsSeeds() const
 	return seeds;
 }
 
+std::vector<Eigen::Vector2f> Superpixels::getClusterCentersAsPoints() const
+{
+	std::vector<Eigen::Vector2f> pnts(cluster.size());
+	for(unsigned int i=0; i<pnts.size(); i++) {
+		pnts[i] = Eigen::Vector2f(cluster[i].center.px, cluster[i].center.py);
+	}
+	return pnts;
+}
+
 void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
 	color_raw = image.clone();

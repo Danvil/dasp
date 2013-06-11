@@ -12,6 +12,7 @@
 #include <dasp/Metric.hpp>
 #include <dasp/impl/Sampling.hpp>
 #include <density/PointDensity.hpp>
+#include <density/Visualization.hpp>
 #include <Slimage/Paint.hpp>
 #include <Slimage/Convert.hpp>
 #define DANVIL_ENABLE_BENCHMARK
@@ -262,36 +263,11 @@ void DaspProcessing::performSegmentationStep()
 		slimage::Image3ub vis_density_delta;
 		if(plot_density_) {
 			const Eigen::MatrixXf& density = clustering_.density;
-			vis_density = slimage::Image3ub(density.rows(), density.cols());
-			for(unsigned int i=0; i<vis_density.size(); i++) {
-				float d = density.data()[i];
-				vis_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
-			}
-
-			// Eigen::MatrixXf saliency = clustering_.saliency;
-			// vis_saliency = slimage::Image3ub(saliency.rows(), saliency.cols());
-			// for(unsigned int i=0; i<vis_saliency.size(); i++) {
-			// 	float d = saliency.data()[i];
-			// 	vis_saliency[i] = plots::PlusMinusColor(d, +1.0f);
-			// }
-
-			std::vector<Eigen::Vector2f> pnts_prev(clustering_.cluster.size());
-			for(unsigned int i=0; i<pnts_prev.size(); i++) {
-				pnts_prev[i] = Eigen::Vector2f(clustering_.cluster[i].center.px, clustering_.cluster[i].center.py);
-			}
+			vis_density = density::PlotDensity(density, 0.0f, 0.015f);
+			std::vector<Eigen::Vector2f> pnts_prev = clustering_.getClusterCentersAsPoints();
 			Eigen::MatrixXf seed_density = density::PointDensity(pnts_prev, density);
-			vis_seed_density.resize(density.rows(), density.cols());
-			for(unsigned int i=0; i<seed_density.size(); i++) {
-				//vis_seed_density[i] = static_cast<unsigned char>(255.0f * 20.0f * seed_density[i]);
-				float d = seed_density.data()[i];
-				vis_seed_density[i] = plots::IntensityColor(d, 0.0f, 0.015f);
-			}
-
-			vis_density_delta.resize(density.rows(), density.cols());
-			for(unsigned int i=0; i<density.size(); i++) {
-				float q = density.data()[i] - seed_density.data()[i];
-				vis_density_delta[i] = plots::PlusMinusColor(q, 0.010f);
-			}
+			vis_seed_density = density::PlotDensity(seed_density, 0.0f, 0.015f);
+			vis_density_delta = density::PlotDeltaDensity(density - seed_density, 0.010f);
 		}
 
 		// set images for gui
