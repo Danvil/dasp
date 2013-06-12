@@ -21,9 +21,16 @@ namespace density
 			std::bind(&DeltaDensityColor, std::placeholders::_1, a));
 	}
 
-	slimage::Image3ub PlotDeltaDensity(const Eigen::MatrixXf& dd) {
+	slimage::Image3ub PlotDeltaDensity(const Eigen::MatrixXf& dd)
+	{
 		return PlotDeltaDensity(dd, 
 			std::max(std::abs(dd.minCoeff()), std::abs(dd.maxCoeff())));
+	}
+
+	slimage::Image3ub PlotDeltaDensity(const Eigen::MatrixXf& actual, const Eigen::MatrixXf& reference)
+	{
+		float a = std::abs(reference.maxCoeff());
+		return PlotDeltaDensity(actual - reference, 0.1f * a);
 	}
 
 }

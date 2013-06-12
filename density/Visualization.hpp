@@ -33,6 +33,8 @@ namespace density
 
 	slimage::Image3ub PlotDeltaDensity(const Eigen::MatrixXf& dd);
 
+	slimage::Image3ub PlotDeltaDensity(const Eigen::MatrixXf& actual, const Eigen::MatrixXf& reference);
+
 }
 
 #endif
