@@ -29,6 +29,26 @@ namespace pds
 			return Eigen::Vector2f(sf*(xf + delta()), sf*(yf + delta()));
 		}
 
+		inline Eigen::Vector2f OptimalCellPoint(const Eigen::MatrixXf& m0, int scale, int x, int y)
+		{
+			x *= scale;
+			y *= scale;
+			const auto& b = m0.block(x, y, scale, scale);
+			unsigned int best_j=scale/2, best_i=scale/2;
+			float best_val = -1000000.0f;
+			for(unsigned int i=0; i<b.cols(); ++i) {
+				for(unsigned int j=0; j<b.rows(); ++j) {
+					float val = b(j,i);
+					if(val > best_val) {
+						best_j = j;
+						best_i = i;
+						best_val = val;
+					}
+				}
+			}
+			return Eigen::Vector2f(x + best_j, y + best_i);
+		}
+
 		inline void ScalePoints(std::vector<Eigen::Vector2f>& pnts, float scale)
 		{
 			for(Eigen::Vector2f& u : pnts) {

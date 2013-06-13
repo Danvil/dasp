@@ -48,7 +48,9 @@ namespace pds
 				for(unsigned int i : impl::RandomSample(w, num)) {
 //					std::cout << i << std::endl;
 					seeds.push_back(
-						impl::RandomCellPoint(1 << (level-1), 2*x + (i/2), 2*y + (i%2), GAMMA));
+						//impl::OptimalCellPoint(mipmaps[0], 1 << (level-1), 2*x + (i/2), 2*y + (i%2))
+						impl::RandomCellPoint(1 << (level-1), 2*x + (i/2), 2*y + (i%2), GAMMA)
+					);
 				}
 			}
 //			std::cout << "<- up" << std::endl;
