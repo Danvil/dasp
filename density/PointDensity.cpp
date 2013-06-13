@@ -100,7 +100,8 @@ namespace density
 		// radius of box in which to average cluster density
 		constexpr int RHO_R = 3;
 		constexpr float cMagicSoftener = 0.5f; // 0.62f;
-		constexpr float cRange = KernelRange*1.10794f;
+		constexpr float cRangeLossMult = 1.001f;
+		constexpr float cRange = 1.3886f;
 		const int rows = target.rows();
 		const int cols = target.cols();
 		// range of kernel s.t. 99.9% of mass is covered
@@ -135,7 +136,7 @@ namespace density
 			const float syf = fy(s);
 			const float rho_soft = cMagicSoftener * rho;
 			// kernel influence range
-			const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho)));
+			const int R = static_cast<int>(std::ceil(cRange / std::sqrt(rho_soft)));
 			const int xmin = std::max<int>(sx - R, 0);
 			const int xmax = std::min<int>(sx + R, int(rows) - 1);
 			const int ymin = std::max<int>(sy - R, 0);
@@ -160,7 +161,7 @@ namespace density
 				}
 			}
 		}
-		return density;
+		return cRangeLossMult * density;
 	}
 
 	Eigen::MatrixXf PointDensity(const std::vector<Eigen::Vector2f>& seeds, const Eigen::MatrixXf& target)
