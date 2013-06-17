@@ -103,6 +103,10 @@ namespace dasp
 		float clip_y_min, clip_y_max;
 		float clip_z_min, clip_z_max;
 
+		bool enable_roi_2d;
+		float roi_2d_x_min, roi_2d_x_max;
+		float roi_2d_y_min, roi_2d_y_max;
+
 		/** Pixel scala at depth
 		 * Radius [px] of a surface element of size base radius [m] and
 		 * at given depth [kinect] on the image sensor

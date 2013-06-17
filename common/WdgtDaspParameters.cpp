@@ -45,6 +45,11 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	ui.doubleSpinBoxClipYMax->setValue(dasp_opt_->clip_y_max);
 	ui.doubleSpinBoxClipZMax->setValue(dasp_opt_->clip_z_max);
 	ui.doubleSpinBoxCoverage->setValue(dasp_opt_->coverage);
+	ui.checkBoxRoiEnable->setChecked(dasp_opt_->enable_roi_2d);
+	ui.spinBoxRoiXMin->setValue(dasp_opt_->roi_2d_x_min);
+	ui.spinBoxRoiYMin->setValue(dasp_opt_->roi_2d_y_min);
+	ui.spinBoxRoiXMax->setValue(dasp_opt_->roi_2d_x_max);
+	ui.spinBoxRoiYMax->setValue(dasp_opt_->roi_2d_y_max);
 
 	QObject::connect(ui.checkBoxDaspRepairDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspRepairDepth(int)));
 	QObject::connect(ui.checkBoxDaspSmoothDepth, SIGNAL(stateChanged(int)), this, SLOT(ChangeDaspSmoothDepth(int)));
@@ -66,12 +71,18 @@ WdgtDaspParameters::WdgtDaspParameters(const boost::shared_ptr<dasp::Parameters>
 	QObject::connect(ui.pushButtonRandomSeed, SIGNAL(clicked()), this, SLOT(CreateRandomSeed()));
 
 	QObject::connect(ui.checkBoxClipEnable, SIGNAL(stateChanged(int)), this, SLOT(ChangeClipEnable(int)));
-	QObject::connect(ui.doubleSpinBoxClipXMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipXMin(double)));
-	QObject::connect(ui.doubleSpinBoxClipYMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipYMin(double)));
-	QObject::connect(ui.doubleSpinBoxClipZMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipZMin(double)));
-	QObject::connect(ui.doubleSpinBoxClipXMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipXMax(double)));
-	QObject::connect(ui.doubleSpinBoxClipYMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipYMax(double)));
-	QObject::connect(ui.doubleSpinBoxClipZMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClipZMax(double)));
+	QObject::connect(ui.doubleSpinBoxClipXMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+	QObject::connect(ui.doubleSpinBoxClipYMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+	QObject::connect(ui.doubleSpinBoxClipZMin, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+	QObject::connect(ui.doubleSpinBoxClipXMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+	QObject::connect(ui.doubleSpinBoxClipYMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+	QObject::connect(ui.doubleSpinBoxClipZMax, SIGNAL(valueChanged(double)), this, SLOT(ChangeClip()));
+
+	QObject::connect(ui.checkBoxRoiEnable, SIGNAL(stateChanged(int)), this, SLOT(ChangeRoi2DEnable(int)));
+	QObject::connect(ui.spinBoxRoiXMin, SIGNAL(valueChanged(int)), this, SLOT(ChangeRoi2D()));
+	QObject::connect(ui.spinBoxRoiYMin, SIGNAL(valueChanged(int)), this, SLOT(ChangeRoi2D()));
+	QObject::connect(ui.spinBoxRoiXMax, SIGNAL(valueChanged(int)), this, SLOT(ChangeRoi2D()));
+	QObject::connect(ui.spinBoxRoiYMax, SIGNAL(valueChanged(int)), this, SLOT(ChangeRoi2D()));
 
 	// dasp_opt_->is_repair_depth = ui.checkBoxDaspRepairDepth->isChecked();
 	dasp_opt_->is_smooth_depth = ui.checkBoxDaspSmoothDepth->isChecked();
@@ -247,39 +258,29 @@ void WdgtDaspParameters::ChangeClipEnable(int state)
 	*reload = true;
 }
 
-void WdgtDaspParameters::ChangeClipXMin(double val)
+void WdgtDaspParameters::ChangeClip()
 {
-	dasp_opt_->clip_x_min = val;
+	dasp_opt_->clip_x_min = ui.doubleSpinBoxClipXMin->value();
+	dasp_opt_->clip_y_min = ui.doubleSpinBoxClipYMin->value();
+	dasp_opt_->clip_z_min = ui.doubleSpinBoxClipZMin->value();
+	dasp_opt_->clip_x_max = ui.doubleSpinBoxClipXMax->value();
+	dasp_opt_->clip_y_max = ui.doubleSpinBoxClipYMax->value();
+	dasp_opt_->clip_z_max = ui.doubleSpinBoxClipZMax->value();
 	*reload = true;
 }
 
-void WdgtDaspParameters::ChangeClipYMin(double val)
+void WdgtDaspParameters::ChangeRoi2DEnable(int state)
 {
-	dasp_opt_->clip_y_min = val;
+	dasp_opt_->enable_roi_2d = state;
 	*reload = true;
 }
 
-void WdgtDaspParameters::ChangeClipZMin(double val)
+void WdgtDaspParameters::ChangeRoi2D()
 {
-	dasp_opt_->clip_z_min = val;
-	*reload = true;
-}
-
-void WdgtDaspParameters::ChangeClipXMax(double val)
-{
-	dasp_opt_->clip_x_max = val;
-	*reload = true;
-}
-
-void WdgtDaspParameters::ChangeClipYMax(double val)
-{
-	dasp_opt_->clip_y_max = val;
-	*reload = true;
-}
-
-void WdgtDaspParameters::ChangeClipZMax(double val)
-{
-	dasp_opt_->clip_z_max = val;
+	dasp_opt_->roi_2d_x_min = ui.spinBoxRoiXMin->value();
+	dasp_opt_->roi_2d_x_max = ui.spinBoxRoiXMax->value();
+	dasp_opt_->roi_2d_y_min = ui.spinBoxRoiYMin->value();
+	dasp_opt_->roi_2d_y_max = ui.spinBoxRoiYMax->value();
 	*reload = true;
 }
 

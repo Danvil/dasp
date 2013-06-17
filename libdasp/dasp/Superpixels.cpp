@@ -61,6 +61,9 @@ Parameters::Parameters()
 	clip_x_min = -3.0f; clip_x_max = +3.0f;
 	clip_y_min = -3.0f; clip_y_max = -3.0f;
 	clip_z_min = 0.0f; clip_z_max = 3.0f;
+	enable_roi_2d = false;
+	roi_2d_x_min = 0; roi_2d_x_max = 640;
+	roi_2d_y_min = 0; roi_2d_y_max = 480;
 }
 
 void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
@@ -260,7 +263,11 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 
 	points = ImagePoints(width, height);
 
-	const bool is_clipping = opt.enable_clipping
+	const bool is_clipping_2d = opt.enable_roi_2d
+		&& (opt.roi_2d_x_min < opt.roi_2d_x_max)
+		&& (opt.roi_2d_y_min < opt.roi_2d_y_max);
+
+	const bool is_clipping_3d = opt.enable_clipping
 		&& (opt.clip_x_min < opt.clip_x_max)
 		&& (opt.clip_y_min < opt.clip_y_max)
 		&& (opt.clip_z_min < opt.clip_z_max);
@@ -298,8 +305,18 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 			p.position = opt.camera.unprojectImpl(
 				static_cast<float>(p.px), static_cast<float>(p.py),
 				z_over_f); // will give 0 if depth==0
-			// clip points which are outside of bounding box
-			if(is_clipping) {
+			// clip points which are outside of 2D ROI
+			if(is_clipping_2d) {
+				if(    x < opt.roi_2d_x_min || opt.roi_2d_x_max < x
+					|| y < opt.roi_2d_y_min || opt.roi_2d_y_max < y
+				) {
+					// point is clipped
+					p.is_valid = false;
+					goto label_pixel_invalid_omg;
+				}
+			}
+			// clip points which are outside of 3D ROI
+			if(is_clipping_3d) {
 				if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
 					|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
 					|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()

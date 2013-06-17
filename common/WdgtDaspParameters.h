@@ -40,12 +40,9 @@ public Q_SLOTS:
 	void CreateRandomSeed();
 	void ChangeSuperpixelCoverage(double val);
 	void ChangeClipEnable(int state);
-	void ChangeClipXMin(double val);
-	void ChangeClipYMin(double val);
-	void ChangeClipZMin(double val);
-	void ChangeClipXMax(double val);
-	void ChangeClipYMax(double val);
-	void ChangeClipZMax(double val);
+	void ChangeClip();
+	void ChangeRoi2DEnable(int state);
+	void ChangeRoi2D();
 
 private:
 	boost::shared_ptr<dasp::Parameters> dasp_opt_;
