@@ -19,6 +19,7 @@ namespace pds
 			Rnd().seed(x);
 		}
 		
+		/** Selects a random point in the tree node using uniform distribution */ 
 		inline Eigen::Vector2f RandomCellPoint(int scale, int x, int y, float gamma)
 		{
 			float sf = static_cast<float>(scale);
@@ -29,6 +30,7 @@ namespace pds
 			return Eigen::Vector2f(sf*(xf + delta()), sf*(yf + delta()));
 		}
 
+		/** Selects the point in the tree node with highest probability */ 
 		inline Eigen::Vector2f OptimalCellPoint(const Eigen::MatrixXf& m0, int scale, int x, int y)
 		{
 			x *= scale;
@@ -47,6 +49,65 @@ namespace pds
 				}
 			}
 			return Eigen::Vector2f(x + best_j, y + best_i);
+		}
+
+		/** Randomly selects a point in the given tree node by considering probabilities 
+		 * Runtime: O(S*S + log(S*S))
+		 */
+		inline Eigen::Vector2f ProbabilityCellPoint(const Eigen::MatrixXf& m0, int scale, int x, int y)
+		{
+			x *= scale;
+			y *= scale;
+			const auto& b = m0.block(x, y, scale, scale);
+			// build cdf
+			std::vector<float> cdf(scale*scale);
+			for(int i=0; i<scale; ++i) {
+				for(int j=0; j<scale; ++j) {
+					float v = b(j,i);
+					int q = scale*i + j;
+					if(q > 0) {
+						cdf[q] = cdf[q-1] + v;
+					}
+					else {
+						cdf[q] = v;
+					}
+				}
+			}
+			// sample in cdf
+			boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > rnd(
+					Rnd(), boost::uniform_real<float>(0.0f, cdf.back()));
+			float v = rnd();
+			// find sample
+			auto it = std::lower_bound(cdf.begin(), cdf.end(), v);
+			int pos = std::distance(cdf.begin(), it);
+			return Eigen::Vector2f(x + pos%scale, y + pos/scale);
+		}
+
+		/** Randomly selects a point in the given tree node by considering probabilities
+		 * Assumes that cdf_sum is the probability sum in the given tree node
+		 * Runtime: O(S*S/2)
+		 */
+		inline Eigen::Vector2f ProbabilityCellPoint(const Eigen::MatrixXf& m0, int scale, int x, int y, float cdf_sum)
+		{
+			// sample in cdf
+			boost::variate_generator<boost::mt19937&, boost::uniform_real<float> > rnd(
+					Rnd(), boost::uniform_real<float>(0.0f, cdf_sum));
+			float v = rnd();
+			// find sample
+			x *= scale;
+			y *= scale;
+			const auto& b = m0.block(x, y, scale, scale);
+			for(int i=0; i<scale; ++i) {
+				for(int j=0; j<scale; ++j) {
+					v -= b(j,i);
+					if(v <= 0.0f) {
+						return Eigen::Vector2f(x + j, y + i);
+					}
+				}
+			}
+			// should never be here
+			assert(false);
+			return Eigen::Vector2f(x + scale/2, y + scale/2);
 		}
 
 		inline void ScalePoints(std::vector<Eigen::Vector2f>& pnts, float scale)
