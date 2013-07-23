@@ -12,11 +12,12 @@
 
 float TestDensityFunction(float x, float y)
 {
-	constexpr float PI = 3.1415f;
-	float u = 2.0f*x - 1.0f;
-	float v = 2.0f*y - 1.0f;
-	float h = ((1.0f-y)*std::cos(1.5f*PI*u) + y*std::cos(2.5f*PI*u))*std::cos(1.5f*PI*v);
-	return 0.1f + 4.0f*(1.0f+h)*(1.0f+h);
+	// constexpr float PI = 3.1415f;
+	// float u = 2.0f*x - 1.0f;
+	// float v = 2.0f*y - 1.0f;
+	// float h = ((1.0f-y)*std::cos(1.5f*PI*u) + y*std::cos(2.5f*PI*u))*std::cos(1.5f*PI*v);
+	// return 0.1f + 4.0f*(1.0f+h)*(1.0f+h);
+	return 1.0f;
 }
 
 template<typename F>
@@ -74,6 +75,7 @@ int main(int argc, char** argv)
 	bool p_verbose = false;
 	unsigned p_repetitions = 1;
 	bool p_error = false;
+	bool p_save_density = true;
 
 	// parameters
 	asp::Parameters params = asp::parameters_default();
@@ -95,6 +97,7 @@ int main(int argc, char** argv)
 		("verbose", po::value(&p_verbose), "verbose")
 		("repetitions", po::value(&p_repetitions), "repetitions")
 		("error", po::value(&p_error), "error")
+		("save_density", po::value(&p_save_density), "save_density")
 	;
 
 	po::variables_map vm;
@@ -227,14 +230,14 @@ int main(int argc, char** argv)
 		}
 
 		// commanded density
-		{
+		if(p_save_density) {
 			std::string fn_actual_density = p_out + "_actual_density.tsv";
 			density::SaveDensity(fn_actual_density, rho);
 			if(p_verbose) std::cout << "Wrote actual density to file '" << fn_actual_density << "'." << std::endl;
 		}
 
 		// resulting density
-		{
+		if(p_save_density) {
 			Eigen::MatrixXf approx = ComputePointDensity(superpixels, rho);
 			std::string fn_point_density = p_out + "_point_density.tsv";
 			density::SaveDensity(fn_point_density, approx);
