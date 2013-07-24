@@ -10,10 +10,10 @@ namespace density
 
 	Eigen::MatrixXf LoadDensity(const std::string& filename)
 	{
-		bool is_image =
-			filename.substr(filename.size()-3, 3) == ".png" ||
-			filename.substr(filename.size()-3, 3) == ".jpg";
+		std::string stem = filename.substr(filename.size()-4, 4);
+		bool is_image = (stem == ".png" || stem == ".jpg");
 		if(is_image) {
+			std::cout << "LOADING IMAGE" << std::endl;
 			slimage::ImagePtr ptr = slimage::Load(filename);
 			if(!ptr) {
 				std::cerr << "Could not load image!" << std::endl;
