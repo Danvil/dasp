@@ -82,10 +82,24 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 		}
 		center.color = mean_color / float(pixel_ids.size());
 		center.position = mean_world / float(pixel_ids.size());
-		// compute screen position and depth by projection
-		Eigen::Vector2f pixel = opt.camera.project(center.position);
-		center.px = static_cast<float>(pixel.x() + 0.5f);
-		center.py = static_cast<float>(pixel.y() + 0.5f);
+		// compute screen position
+		if(opt.density_mode == DensityModes::ASP_RGB) {
+			// compute by averaging
+			Eigen::Vector2f mean_p = Eigen::Vector2f::Zero();
+			for(unsigned int i : pixel_ids) {
+				const Point& p = points[i];
+				mean_p += Eigen::Vector2f{ p.px, p.py };
+			}
+			mean_p /= static_cast<float>(pixel_ids.size());
+			center.px = mean_p[0];
+			center.py = mean_p[1];
+		}
+		else {
+			// compute by projection
+			Eigen::Vector2f pixel = opt.camera.project(center.position);
+			center.px = static_cast<float>(pixel.x() + 0.5f);
+			center.py = static_cast<float>(pixel.y() + 0.5f);
+		}
 		// // compute color covariance
 		// color_covariance = Eigen::Matrix3f::Zero();
 		// for(unsigned int i : pixel_ids) {
@@ -105,6 +119,10 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 //		float rpx = std::sqrt(static_cast<float>(points.width()*points.height())/static_cast<float>(4*opt.count));
 //		center.spatial_normalizer = rpx / (opt.base_radius * opt.camera.scala(center.depth_i16)) / center.circularity;
 //	}
+
+	if(opt.density_mode == DensityModes::ASP_RGB) {
+		return;
+	}
 
 	if(pixel_ids.size() >= 3) {
 		cov = PointCovariance(pixel_ids,
@@ -292,19 +310,6 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 				if(opt.color_space != ColorSpaces::RGB)
 					p.color = ColorFromRGB(p.color);
 			}
-			// p.pixel[0] = static_cast<float>(x);
-			// p.pixel[1] = py;
-			p.is_valid = false;
-			// get depth and compute z/f
-			const uint16_t depth_i16 = depth[i];
-			const float z_over_f = opt.camera.convertKinectToMeter(depth_i16) / opt.camera.focal;
-			// if depth is 0 the point is invalid
-			p.is_valid = (depth_i16 != 0);
-			if(!p.is_valid) goto label_pixel_invalid_omg;
-			// compute position
-			p.position = opt.camera.unprojectImpl(
-				static_cast<float>(p.px), static_cast<float>(p.py),
-				z_over_f); // will give 0 if depth==0
 			// clip points which are outside of 2D ROI
 			if(is_clipping_2d) {
 				if(    x < opt.roi_2d_x_min || opt.roi_2d_x_max < x
@@ -315,29 +320,49 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 					goto label_pixel_invalid_omg;
 				}
 			}
-			// clip points which are outside of 3D ROI
-			if(is_clipping_3d) {
-				if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
-					|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
-					|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()
-				) {
-					// point is clipped
-					p.is_valid = false;
-					goto label_pixel_invalid_omg;
+			if(opt.density_mode == DensityModes::ASP_RGB) {
+				p.is_valid = true;
+				p.position = Eigen::Vector3f::Zero();
+				p.cluster_radius_px = 0.0f;
+			}
+			else {
+				// p.pixel[0] = static_cast<float>(x);
+				// p.pixel[1] = py;
+				p.is_valid = false;
+				// get depth and compute z/f
+				const uint16_t depth_i16 = depth[i];
+				const float z_over_f = opt.camera.convertKinectToMeter(depth_i16) / opt.camera.focal;
+				// if depth is 0 the point is invalid
+				p.is_valid = (depth_i16 != 0);
+				if(!p.is_valid) goto label_pixel_invalid_omg;
+				// compute position
+				p.position = opt.camera.unprojectImpl(
+					static_cast<float>(p.px), static_cast<float>(p.py),
+					z_over_f); // will give 0 if depth==0
+				// clip points which are outside of 3D ROI
+				if(is_clipping_3d) {
+					if(    p.position.x() < opt.clip_x_min || opt.clip_x_max < p.position.x()
+						|| p.position.y() < opt.clip_y_min || opt.clip_y_max < p.position.y()
+						|| p.position.z() < opt.clip_z_min || opt.clip_z_max < p.position.z()
+					) {
+						// point is clipped
+						p.is_valid = false;
+						goto label_pixel_invalid_omg;
+					}
 				}
+				// compute cluster radius [px]
+				p.cluster_radius_px = opt.base_radius / z_over_f;
+				// compute normal
+				{
+					// FIXME in count mode the gradient is computed using a default radius of 0.02
+					// FIXME regardless of the radius chosen later
+					Eigen::Vector2f gradient = LocalDepthGradient(depth, x, y, z_over_f, 0.5f*p.cluster_radius_px, opt.camera);
+					p.setNormalFromGradient(gradient);
+					// limit minimal circularity such that the maximum angle is 80 deg
+					// FIXME limit normal angle
+				}
+				continue;
 			}
-			// compute cluster radius [px]
-			p.cluster_radius_px = opt.base_radius / z_over_f;
-			// compute normal
-			{
-				// FIXME in count mode the gradient is computed using a default radius of 0.02
-				// FIXME regardless of the radius chosen later
-				Eigen::Vector2f gradient = LocalDepthGradient(depth, x, y, z_over_f, 0.5f*p.cluster_radius_px, opt.camera);
-				p.setNormalFromGradient(gradient);
-				// limit minimal circularity such that the maximum angle is 80 deg
-				// FIXME limit normal angle
-			}
-			continue;
 label_pixel_invalid_omg:
 			p.cluster_radius_px = 0.0f; // FIXME why do we have to set this?
 			p.normal = Eigen::Vector3f(0,0,-1);
@@ -365,10 +390,7 @@ label_pixel_invalid_omg:
 		// set cluster_radius_px
 		const float* p_density = density.data();
 		for(unsigned int i=0; i<points.size(); i++) {
-			Point& p = points[i];
-			if(p.is_valid) {
-				p.cluster_radius_px = cluster_radius_px;
-			}
+			points[i].cluster_radius_px = cluster_radius_px;
 		}
 	}
 	else if(opt.density_mode == DensityModes::DASP) {

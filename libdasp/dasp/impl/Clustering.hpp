@@ -59,10 +59,10 @@ namespace dasp
 			int cy = c.center.py;
 			int R = static_cast<int>(c.center.cluster_radius_px * opt.coverage + 0.5f);
 			R = std::max<int>(2,R);
-			const unsigned int xmin = std::max(0, cx - R);
-			const unsigned int xmax = std::min(int(points.width()-1), cx + R);
-			const unsigned int ymin = std::max(0, cy - R);
-			const unsigned int ymax = std::min(int(points.height()-1), cy + R);
+			const unsigned int xmin = std::max<int>(0, cx - R);
+			const unsigned int xmax = std::min<int>(static_cast<int>(points.width())-1, cx + R);
+			const unsigned int ymin = std::max<int>(0, cy - R);
+			const unsigned int ymax = std::min<int>(static_cast<int>(points.height())-1, cy + R);
 			for(unsigned int y=ymin; y<=ymax; y++) {
 				for(unsigned int x=xmin; x<=xmax; x++/*, pnt_index++*/) {
 					unsigned int pnt_index = points.index(x, y);

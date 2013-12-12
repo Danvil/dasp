@@ -175,8 +175,8 @@ void DaspProcessing::performSegmentationStep()
 
 		if(plot_segments_) {
 			// plot segments
-			//std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, labeling);
-			std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(dasp_segment_labeling.num_labels);
+			std::vector<slimage::Pixel3ub> colors = ComputeSegmentColors(clustering_, dasp_segment_labeling);
+			// std::vector<slimage::Pixel3ub> colors = plots::CreateRandomColors(dasp_segment_labeling.num_labels);
 			vis_img = CreateLabelImage(clustering_, dasp_segment_labeling, colors);
 		}
 
