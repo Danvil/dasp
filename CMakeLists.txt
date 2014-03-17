@@ -15,7 +15,7 @@ set(CANDY_DIR "/home/david/git/candy" CACHE STRING "Danvil candy 3D engine main 
 add_definitions(-std=c++0x -DBOOST_DISABLE_ASSERTS)
 
 if (DASP_HAS_CANDY)
-	link_directories(/home/david/Projects/candy/release/libcandy) # FIXME
+	link_directories(/home/david/build/candy/libcandy) # FIXME
 endif (DASP_HAS_CANDY)
 
 if (USE_SOLVER_MAGMA)
