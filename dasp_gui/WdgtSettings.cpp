@@ -32,6 +32,12 @@ WdgtSettings::WdgtSettings(const boost::shared_ptr<DaspProcessing>& dasp_process
 	ui.comboBoxPlotClusterColor->addItem("Gradient", dasp::plots::Gradient);
 	ui.comboBoxPlotClusterColor->addItem("Thickness", dasp::plots::Thickness);
 	ui.comboBoxPlotClusterColor->addItem("Eccentricity", dasp::plots::Eccentricity);
+	ui.comboBoxPlotClusterColor->addItem("Shape0", dasp::plots::Shape0);
+	ui.comboBoxPlotClusterColor->addItem("ShapeX", dasp::plots::ShapeX);
+	ui.comboBoxPlotClusterColor->addItem("ShapeY", dasp::plots::ShapeY);
+	ui.comboBoxPlotClusterColor->addItem("ShapeXY", dasp::plots::ShapeXY);
+	ui.comboBoxPlotClusterColor->addItem("ShapeXX", dasp::plots::ShapeXX);
+	ui.comboBoxPlotClusterColor->addItem("ShapeYY", dasp::plots::ShapeYY);
 	ui.comboBoxPlotClusterColor->addItem("AreaQuotient", dasp::plots::AreaQuotient);
 	ui.comboBoxPlotClusterColor->addItem("CoverageError", dasp::plots::CoverageError);
 	ui.comboBoxPlotClusterColor->setCurrentIndex(2);

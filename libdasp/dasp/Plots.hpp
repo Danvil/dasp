@@ -127,6 +127,12 @@ enum ColorMode {
 	Density,
 	Thickness,
 	Eccentricity,
+	Shape0,
+	ShapeX,
+	ShapeY,
+	ShapeXY,
+	ShapeXX,
+	ShapeYY,
 	AreaQuotient,
 	CoverageError
 };

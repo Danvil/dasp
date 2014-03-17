@@ -252,10 +252,62 @@ Eigen::Matrix3f PointCovariance(const std::vector<T>& points, F f)
 		yy += y*y;
 		yz += y*z;
 		zz += z*z;
-	};
+	}
 	Eigen::Matrix3f A; A << xx, xy, xz, xy, yy, yz, xz, yz, zz;
 	A /= static_cast<float>(points.size());
 	return A;
+}
+
+template<typename T, typename F>
+Eigen::Matrix<float,6,1> Shape(const std::vector<T>& points, F f)
+{
+	typedef Eigen::Matrix<float,6,6> Mat6f;
+	typedef Eigen::Matrix<float,6,1> Vec6f;
+	float Sx=0.0f, Sy=0.0f;
+	float Sxx=0.0f, Sxy=0.0f, Syy=0.0f;
+	float Sxxx=0.0f, Sxxy=0.0f, Sxyy=0.0f, Syyy=0.0f;
+	float Sxxxx=0.0f, Sxxxy=0.0f, Sxxyy=0.0f, Sxyyy=0.0f, Syyyy=0.0f;
+	float Sz=0.0f, Szx=0.0f, Szy=0.0f, Szxx=0.0f, Szxy=0.0f, Szyy=0.0f;
+	for(auto it=points.begin(); it!=points.end(); ++it) {
+		const Eigen::Vector3f& p = f(*it);
+		float x = p[0];
+		float y = p[1];
+		float z = p[2];
+		float xx = x*x;
+		float xy = x*y;
+		float yy = y*y;
+		Sx += x;
+		Sy += y;
+		Sxx += xx;
+		Sxy += xy;
+		Syy += yy;
+		Sxxx += x*xx;
+		Sxxy += x*xy;
+		Sxyy += x*yy;
+		Syyy += y*yy;
+		Sxxxx += xx*xx;
+		Sxxxy += xx*xy;
+		Sxxyy += xx*yy;
+		Sxyyy += xy*yy;
+		Syyyy += yy*yy;
+		Sz += z;
+		Szx += z*x;
+		Szy += z*y;
+		Szxx += z*xx;
+		Szxy += z*xy;
+		Szyy += z*yy;
+	}
+	float S0 = points.size();
+	Mat6f A;
+	A << S0, Sx, Sy, Sxy, Sxx, Syy,
+		 Sx, Sxx, Sxy, Sxxy, Sxxx, Sxyy,
+		 Sy, Sxy, Syy, Sxyy, Sxxy, Syyy,
+		 Sxy, Sxxy, Sxyy, Sxxyy, Sxxxy, Sxyyy,
+		 Sxx, Sxxx, Sxxy, Sxxxy, Sxxxx, Sxxyy,
+		 Syy, Sxyy, Syyy, Sxyyy, Sxxyy, Syyyy;
+	Vec6f b;
+	b << Sz, Szx, Szy, Szxy, Szxx, Szyy;
+	return A.colPivHouseholderQr().solve(b);
 }
 
 /** Fits a plane into points and returns the plane normal */

@@ -150,6 +150,9 @@ namespace dasp
 		/** actual area / expected area defined by base radius*/
 		float area_quotient;
 
+		/** Shape fitting */
+		float shape_0, shape_x, shape_y, shape_xy, shape_xx, shape_yy;
+
 		/** Thickness of cluster computed using orthogonal distance from plane
 		 * WARNING: only computed if ComputeExt is called!
 		 */

@@ -169,6 +169,21 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	// area_actual / area_expected = (a*b)/(R*R)
 	area_quotient = area_base / (opt.base_radius * opt.base_radius);
 
+	// shape
+
+	if(pixel_ids.size() >= 6) {
+		Eigen::Matrix<float,6,1> s = Shape(pixel_ids,
+			[this,&points](unsigned int i) {
+				return points[i].position;
+			});
+		shape_0 = s[0];
+		shape_x = s[1];
+		shape_y = s[2];
+		shape_xy = s[3];
+		shape_xx = s[4];
+		shape_yy = s[5];
+	}
+
 }
 
 void Cluster::ComputeExt(const ImagePoints& points, const Parameters& opt)

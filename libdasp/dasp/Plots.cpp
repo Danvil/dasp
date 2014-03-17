@@ -258,6 +258,36 @@ namespace detail
 	}
 
 	template<>
+	slimage::Pixel3ub ComputeClusterColor<Shape0>(const Cluster& c) {
+		return IntensityColor(c.shape_0, 0.5f, 3.5f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<ShapeX>(const Cluster& c) {
+		return PlusMinusColor(c.shape_x, 1.01f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<ShapeY>(const Cluster& c) {
+		return PlusMinusColor(c.shape_y, 1.01f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<ShapeXY>(const Cluster& c) {
+		return PlusMinusColor(c.shape_xy, 1.01f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<ShapeXX>(const Cluster& c) {
+		return PlusMinusColor(c.shape_xx, 1.001f);
+	}
+
+	template<>
+	slimage::Pixel3ub ComputeClusterColor<ShapeYY>(const Cluster& c) {
+		return PlusMinusColor(c.shape_yy, 1.001f);
+	}
+
+	template<>
 	slimage::Pixel3ub ComputeClusterColor<AreaQuotient>(const Cluster& c) {
 		float q = std::abs(c.area_quotient - 1.0f);
 		return IntensityColor(q, 0.0f, 1.0f);
@@ -356,6 +386,12 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorM
 	ComputeClusterColors_HELPER(Gradient)
 	ComputeClusterColors_HELPER(Thickness)
 	ComputeClusterColors_HELPER(Eccentricity)
+	ComputeClusterColors_HELPER(Shape0)
+	ComputeClusterColors_HELPER(ShapeX)
+	ComputeClusterColors_HELPER(ShapeY)
+	ComputeClusterColors_HELPER(ShapeXY)
+	ComputeClusterColors_HELPER(ShapeXX)
+	ComputeClusterColors_HELPER(ShapeYY)
 	ComputeClusterColors_HELPER(AreaQuotient)
 	ComputeClusterColors_HELPER(CoverageError)
 	default: return detail::ComputeClusterColorsImpl<-1>(c, selection);
