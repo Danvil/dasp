@@ -264,27 +264,27 @@ namespace detail
 
 	template<>
 	slimage::Pixel3ub ComputeClusterColor<ShapeX>(const Cluster& c) {
-		return PlusMinusColor(c.shape_x, 1.01f);
+		return PlusMinusColor(c.shape_x, 1.0f);
 	}
 
 	template<>
 	slimage::Pixel3ub ComputeClusterColor<ShapeY>(const Cluster& c) {
-		return PlusMinusColor(c.shape_y, 1.01f);
+		return PlusMinusColor(c.shape_y, 1.0f);
 	}
 
 	template<>
 	slimage::Pixel3ub ComputeClusterColor<ShapeXY>(const Cluster& c) {
-		return PlusMinusColor(c.shape_xy, 1.01f);
+		return PlusMinusColor(c.shape_xy, 10.0f);
 	}
 
 	template<>
 	slimage::Pixel3ub ComputeClusterColor<ShapeXX>(const Cluster& c) {
-		return PlusMinusColor(c.shape_xx, 1.001f);
+		return PlusMinusColor(c.shape_xx, 10.0f);
 	}
 
 	template<>
 	slimage::Pixel3ub ComputeClusterColor<ShapeYY>(const Cluster& c) {
-		return PlusMinusColor(c.shape_yy, 1.001f);
+		return PlusMinusColor(c.shape_yy, 10.0f);
 	}
 
 	template<>
