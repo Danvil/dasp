@@ -48,6 +48,7 @@ public Q_SLOTS:
 #endif
 	void OnSaveDebugImages();
 	void OnSaveActiveImage();
+	void OnSaveSuperpixels();
 	void OnSaveDasp();
 	void onViewDaspParameters();
 	void onViewSettings();

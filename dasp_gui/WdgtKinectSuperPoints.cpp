@@ -36,6 +36,7 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(bool no3d, QWidget *parent)
 #endif
 	QObject::connect(ui.actionSave_Debug_Images, SIGNAL(triggered()), this, SLOT(OnSaveDebugImages()));
 	QObject::connect(ui.actionSave_Active_Image, SIGNAL(triggered()), this, SLOT(OnSaveActiveImage()));
+	QObject::connect(ui.actionSave_Superpixels, SIGNAL(triggered()), this, SLOT(OnSaveSuperpixels()));
 	QObject::connect(ui.actionBatch_Save, SIGNAL(triggered()), this, SLOT(OnSaveDasp()));
 
 	QObject::connect(ui.action_Settings, SIGNAL(triggered()), this, SLOT(onViewSettings()));
@@ -271,6 +272,24 @@ void WdgtKinectSuperPoints::OnSaveActiveImage()
 		"Save Active Image", "/home/david");
 	// save active generated dasp images
 	((QLabel*)ui.tabs->widget(ui.tabs->currentIndex()))->pixmap()->save(fn);
+}
+
+void WdgtKinectSuperPoints::OnSaveSuperpixels()
+{
+	// ask for filename
+	QString fn = QFileDialog::getSaveFileName(this,
+		"Save Superpixels", "/home/david");
+	// save active generated dasp images
+	std::ofstream ofs(fn.toStdString());
+	for(unsigned i=0; i<dasp_processing_->clustering_.clusterCount(); i++) {
+		const dasp::Cluster& c = dasp_processing_->clustering_.cluster[i];
+		ofs << "# " << i << std::endl;
+		ofs << "F " << c.shape_0 << "\t" << c.shape_x << "\t" << c.shape_y << "\t" << c.shape_xy << "\t" << c.shape_xx << "\t" << c.shape_yy << std::endl;
+		for(unsigned j : c.pixel_ids) {
+			const dasp::Point& p = dasp_processing_->clustering_.points[j];
+			ofs << p.px << "\t" << p.py << "\t" << p.position[0] << "\t" << p.position[1] << "\t" << p.position[2] << std::endl;
+		}
+	}
 }
 
 void WdgtKinectSuperPoints::OnSaveDasp()

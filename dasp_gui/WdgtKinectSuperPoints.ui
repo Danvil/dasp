@@ -104,6 +104,8 @@
     <addaction name="actionSave_Active_Image"/>
     <addaction name="separator"/>
     <addaction name="actionBatch_Save"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave_Superpixels"/>
    </widget>
    <widget class="QMenu" name="menuWindows">
     <property name="title">
@@ -194,6 +196,11 @@
   <action name="actionSave_Active_Image">
    <property name="text">
     <string>Save Active Image</string>
+   </property>
+  </action>
+  <action name="actionSave_Superpixels">
+   <property name="text">
+    <string>Save Superpixels (Text)</string>
    </property>
   </action>
  </widget>
