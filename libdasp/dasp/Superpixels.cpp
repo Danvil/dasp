@@ -174,7 +174,7 @@ void Cluster::UpdateCenter(const ImagePoints& points, const Parameters& opt)
 	if(pixel_ids.size() >= 6) {
 		Eigen::Matrix<float,6,1> s = Shape(pixel_ids,
 			[this,&points](unsigned int i) {
-				return points[i].position;
+				return points[i].position - center.position;
 			});
 		shape_0 = s[0];
 		shape_x = s[1];
