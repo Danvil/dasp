@@ -13,6 +13,7 @@
 #	include <Candy.h>
 #endif
 #include <QtGui/QMainWindow>
+#include <QtGui/QCloseEvent>
 #include <QtCore/QTimer>
 #include <QtCore/QMutex>
 #include <boost/thread.hpp>

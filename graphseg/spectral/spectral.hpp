@@ -29,8 +29,10 @@ namespace graphseg { namespace detail {
 			case SpectralMethod::Magma:
 				return detail::solve_dense(graph, edge_weights, std::bind(&solver_magma, _1, num_ev + 1));
 #endif
+#ifdef USE_SOLVER_ARPACK
 			case SpectralMethod::ArpackPP:
 				return detail::solve_sparse(graph, edge_weights, std::bind(&solver_arpackpp, _1, num_ev + 1));
+#endif
 #ifdef USE_SOLVER_IETL
 			case SpectralMethod::Ietl:
 				return detail::solve_sparse(graph, edge_weights, std::bind(&solver_ietl, _1, num_ev + 1));

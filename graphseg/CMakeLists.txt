@@ -4,6 +4,12 @@ SET(graphseg_DEFINES
 #	-DSEGS_DBG_PRINT
 )
 
+if (USE_SOLVER_ARPACK)
+	LIST(APPEND graphseg_DEFINES
+		-DUSE_SOLVER_ARPACK
+	)
+endif (USE_SOLVER_ARPACK)
+
 if (USE_SOLVER_MAGMA)
 	LIST(APPEND graphseg_DEFINES
 		-DUSE_SOLVER_MAGMA
@@ -23,10 +29,13 @@ ADD_DEFINITIONS(${graphseg_DEFINES})
 SET(graphseg_SOURCES
 	graphseg.cpp
 	Labeling.cpp
-	spectral/arpackpp.cpp
 	spectral/eigen.cpp
 	spectral/lapack.cpp
 )
+
+if (USE_SOLVER_ARPACK)
+	LIST(APPEND graphseg_SOURCES spectral/arpackpp.cpp)
+endif (USE_SOLVER_ARPACK)
 
 if (USE_SOLVER_MAGMA)
 	LIST(APPEND graphseg_SOURCES spectral/magma.cpp)
@@ -59,12 +68,17 @@ INCLUDE_DIRECTORIES(graphseg ${graphseg_INCLUDES})
 
 
 SET(graphseg_LIBRARIES
-	parpack
-	arpack
-	superlu
 	lapack
 	blas
 )
+
+if (USE_SOLVER_ARPACK)
+	LIST(APPEND graphseg_LIBRARIES
+		parpack
+		arpack
+		superlu
+	)
+endif (USE_SOLVER_ARPACK)
 
 if (USE_SOLVER_MAGMA)
 	LIST(APPEND graphseg_LIBRARIES

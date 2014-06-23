@@ -21,7 +21,9 @@ namespace graphseg
 	enum class SpectralMethod
 	{
 		Eigen
+#ifdef USE_SOLVER_ARPACK
 		,ArpackPP
+#endif
 		,Lapack
 #ifdef USE_SOLVER_MAGMA
 		,Magma

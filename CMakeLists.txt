@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 2.6)
 option(DASP_HAS_CANDY "Use DanvilSimpleEngine to enable 3D rendering" OFF) 
 option(DASP_HAS_OPENNI "Use OpenNI for Kinect live mode" OFF)
 
-option(USE_SOLVER_MAGMA "Use CUDA magma for spectral solving" ON) 
-option(USE_SOLVER_IETL "Use IETL sparse eigensolver" ON) 
+option(USE_SOLVER_ARPACK "Use ARPACK for spectral solving" OFF) 
+option(USE_SOLVER_MAGMA "Use CUDA magma for spectral solving" OFF) 
+option(USE_SOLVER_IETL "Use IETL sparse eigensolver" OFF) 
 
 set(OPENNI_INCLUDE_DIR "/home/david/Programs/RGBD/OpenNI/Include" CACHE STRING "OpenNI include directory")
 set(EIGEN3_INCLUDE_DIR "/usr/local/include/eigen3" CACHE STRING "Eigen3 include directory")

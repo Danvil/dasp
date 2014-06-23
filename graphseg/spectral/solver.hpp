@@ -22,7 +22,9 @@ namespace detail {
 	std::vector<EigenComponent> solver_magma(const Eigen::MatrixXf& A, unsigned int num_ev);
 #endif
 
+#ifdef USE_SOLVER_ARPACK
 	std::vector<EigenComponent> solver_arpackpp(const SparseMatrix& A, unsigned int num_ev);
+#endif
 
 #ifdef USE_SOLVER_IETL
 	std::vector<EigenComponent> solver_ietl(const SparseMatrix& A, unsigned int num_ev);
