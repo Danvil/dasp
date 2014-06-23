@@ -11,4 +11,5 @@ target_link_libraries(dasp_density
 	opencv_core
 	opencv_highgui
 	boost_program_options
+	boost_system
 )
