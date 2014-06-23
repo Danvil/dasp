@@ -24,21 +24,21 @@ David Weikersdorfer, David Gossow, Michael Beetz. **Depth-Adaptive Superpixels**
 Installation
 ----
 
-Dasp was tested under Ubuntu 11.10 and Ubuntu 12.04.
+Dasp was tested under Ubuntu 11.10, Ubuntu 12.04 and Ubuntu 14.04.
 
 Dasp uses C++11 and requires at least GCC 4.6. Due to the poor support of the new C++ standard by Microsoft, it is probably not possible to use dasp with MSVC.
 
 ### Requirements
 
-[Download slimage](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and unzip for example into the dasp root directory.
-
+* Build essentials: `sudo apt-get install g++ build-essential cmake cmake-qt-gui`
 * [Boost](http://www.boost.org/) 1.46.1 or higher: `sudo apt-get install libboost-all-dev`
 * [Eigen](http://eigen.tuxfamily.org) 3.x: `sudo apt-get install libeigen3-dev`
 * [Qt](http://qt.nokia.com/) 4.x: `sudo apt-get install libqt4-dev`
-* arpack and superlu: `sudo apt-get install libarpack++2-dev libsuperlu3-dev`
-* Build essentials: `sudo apt-get install g++ build-essential cmake cmake-qt-gui`
+* snappy: `sudo apt-get install libsnappy-dev`
 
-All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libarpack++2-dev libsuperlu3-dev g++ build-essential cmake cmake-qt-gui libglew1.6-dev libxmu-dev*
+All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libsnappy-dev g++ build-essential cmake cmake-qt-gui*
+
+[Download slimage](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and unzip for example into the dasp root directory.
 
 ### Installation Instructions
 
@@ -50,9 +50,12 @@ All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev lib
 
 ### cmake flags
 
-* EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
 * CMAKE_BUILD_TYPE - Set to Release to compile with optimizations and get a huge speed increase
-* DASP_HAS_OPENNI and OPENNI_INCLUDE_DIR - See *Kinect Live Mode* below
+* EIGEN3_INCLUDE_DIR - Set this to the base include directory of eigen3 (e.g. '/usr/include/eigen3')
+
+
+Misc
+----
 
 ### Kinect Live Mode
 
@@ -62,10 +65,19 @@ Download and install [OpenNI](https://github.com/OpenNI/OpenNI) and the Microsof
 
 To enable OpenNI you have to enable the CMake flag `DASP_HAS_OPENNI` and set the CMake variable `OPENNI_INCLUDE_DIR` to the OpenNI include directory (normally `/path/to/OpenNI/Include`).
 
+### Faster eigenvalues
 
-Getting started
-----
-Coming soon...
+There is some basic support for arpack++, Magma and ietl for computing the smallest eigenvalues of a sparse matrix. Use at your own peril. It can be enabled by setting the cmake flags USE_SOLVER_ARPACK, USE_SOLVER_MAGMA and USE_SOLVER_IETL.
+
+For arpack the dependencies are `sudo apt-get install libarpack++2-dev libsuperlu3-dev`.
+
+### 3D rendering
+
+*under construction*
+
+Enable with DASP_HAS_CANDY. This uses a small 3D engine to render superpixel in 3D.
+
+Additional dependcies: `sudo apt-get install libglew1.6-dev libxmu-dev*`
 
 
 Dataset
@@ -87,7 +99,11 @@ The full dataset can be downloaded [here](https://content.wuala.com/contents/Dan
 Issues
 ----
 
-#### Compiler errors with arpack++
+### Performance
+
+Do not forget to set CMAKE_BUILD_TYPE to Release! This will give a *huge* increase in performance.
+
+### Compiler errors with arpack++
 
 `/usr/include/arpack++/arrssym.h:278:7: error: ‘class ARrcSymStdEig<double>’ has no member named ‘EigVecp’`
 
@@ -118,7 +134,7 @@ There seems to be a bug in arpack++. Apply this patch to the file `/usr/include/
 	     this->EigVec  = NULL;
 	     this->EigValR = NULL;
 
-#### Compiler errors with OpenNI
+### Compiler errors with OpenNI
 
 There seems to be a bug that the operating system platform is not correctly identified. Apply this patch to the file `/usr/include/ni/XnPlatform.h` to fix the issue.
 
