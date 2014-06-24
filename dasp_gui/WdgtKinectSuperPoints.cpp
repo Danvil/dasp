@@ -277,17 +277,56 @@ void WdgtKinectSuperPoints::OnSaveActiveImage()
 void WdgtKinectSuperPoints::OnSaveSuperpixels()
 {
 	// ask for filename
-	QString fn = QFileDialog::getSaveFileName(this,
-		"Save Superpixels", "/home/david");
+	std::string fn = QFileDialog::getSaveFileName(this,
+		"Save Superpixels", "/home/david").toStdString();
+	const dasp::Superpixels& superpixels = dasp_processing_->clustering_;
 	// save active generated dasp images
-	std::ofstream ofs(fn.toStdString());
-	for(unsigned i=0; i<dasp_processing_->clustering_.clusterCount(); i++) {
-		const dasp::Cluster& c = dasp_processing_->clustering_.cluster[i];
-		ofs << "# " << i << std::endl;
-		ofs << "F " << c.shape_0 << "\t" << c.shape_x << "\t" << c.shape_y << "\t" << c.shape_xy << "\t" << c.shape_xx << "\t" << c.shape_yy << std::endl;
-		for(unsigned j : c.pixel_ids) {
-			const dasp::Point& p = dasp_processing_->clustering_.points[j];
-			ofs << p.px << "\t" << p.py << "\t" << p.position[0] << "\t" << p.position[1] << "\t" << p.position[2] << std::endl;
+	{
+		std::ofstream ofs(fn + "_info.tsv");
+		for(unsigned i=0; i<superpixels.clusterCount(); i++) {
+			const dasp::Cluster& c = superpixels.cluster[i];
+			ofs << "# " << i << std::endl;
+			ofs << "F " << c.shape_0 << "\t" << c.shape_x << "\t" << c.shape_y << "\t" << c.shape_xy << "\t" << c.shape_xx << "\t" << c.shape_yy << std::endl;
+			for(unsigned j : c.pixel_ids) {
+				const dasp::Point& p = superpixels.points[j];
+				ofs << p.px << "\t" << p.py << "\t" << p.position[0] << "\t" << p.position[1] << "\t" << p.position[2] << std::endl;
+			}
+		}
+	}
+	// clusters
+	{
+		std::string fn_clusters = fn + "_clusters.tsv";
+		std::ofstream ofs(fn_clusters);
+		for(const auto& c : superpixels.cluster) {
+			auto cc = c.center;
+			ofs << cc.px << "\t" << cc.py << "\t" << cc.color[0] << "\t" << cc.color[1] << "\t" << cc.color[2] << std::endl;
+		}
+		std::cout << "Wrote clusters to file '" << fn_clusters << "'." << std::endl;
+	}
+	// labels
+	{
+		std::string fn_labels = fn + "_labels.tsv";
+		std::ofstream ofs(fn_labels);
+		auto labels = superpixels.ComputeLabels();
+		for(int y=0; y<labels.height(); y++) {
+			for(int x=0; x<labels.width(); x++) {
+				ofs << labels(x,y);
+				if(x+1 != labels.width()) {
+					ofs << "\t";
+				}
+				else {
+					ofs << std::endl;
+				}
+			}
+		}
+		std::cout << "Wrote labels to file '" << fn_labels << "'." << std::endl;
+	}
+	// graph
+	{
+		if(boost::num_vertices(dasp_processing_->Gnb) > 0) {
+			graphseg::WriteEdges(fn + "_graph.txt",
+				dasp_processing_->Gnb_weighted,
+				boost::get(boost::edge_bundle, dasp_processing_->Gnb_weighted));
 		}
 	}
 }
