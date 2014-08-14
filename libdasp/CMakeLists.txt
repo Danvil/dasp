@@ -19,6 +19,7 @@ set_target_properties(libdasp PROPERTIES OUTPUT_NAME dasp)
 include_directories(
 	${dasp_SOURCE_DIR}
 	${dasp_SOURCE_DIR}/libdasp
+	${CANDY_DIR}/libcandy
 )
 
 target_link_libraries(libdasp
@@ -30,8 +31,7 @@ target_link_libraries(libdasp
 if (DASP_HAS_CANDY)
 	add_definitions(-DDASP_HAS_CANDY)
 	include_directories(
-		${DT_DIR}/CT/src
-		${CANDY_DIR}/libcandy/src
+		${CANDY_DIR}/libcandy
 	)
 	target_link_libraries(libdasp candy)
 endif (DASP_HAS_CANDY)

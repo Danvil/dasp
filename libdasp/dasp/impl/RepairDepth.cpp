@@ -6,12 +6,12 @@
  */
 
 #include "RepairDepth.hpp"
-#include <Slimage/Parallel.h>
 #include <iostream>
+#include <cassert>
 
 namespace dasp {
 
-void RepairDepthFill(const slimage::Image1ui16& depth, const slimage::Image3ub& color)
+void RepairDepthFill(slimage::Image1ui16& depth, const slimage::Image3ub& color)
 {
 	std::cout << "Repairing depth..." << std::endl;
 	for(unsigned int i=0; i<depth.size(); i++) {
@@ -22,9 +22,9 @@ void RepairDepthFill(const slimage::Image1ui16& depth, const slimage::Image3ub& 
 
 }
 
-void RepairDepthGrow(const slimage::Image1ui16& depth, const slimage::Image3ub& color)
+void RepairDepthGrow(slimage::Image1ui16& depth, const slimage::Image3ub& color)
 {
-	slimage::Image1ui16 depth_raw = depth.clone();
+	slimage::Image1ui16 depth_raw = depth;
 	int w = depth.width();
 	const unsigned int cSamples = 8;
 	int neighbor_offsets[cSamples] = {
@@ -61,7 +61,7 @@ struct ExtrapolateDepth
 {
 	ExtrapolateDepth(const std::vector<uint16_t>& data)
 	: data_(data) {
-		BOOST_ASSERT(data_.size() > 0);
+		assert(data_.size() > 0);
 		solveConst();
 //		solveSimple();
 //		solveFit();
@@ -116,7 +116,7 @@ private:
 	float lin_m_, lin_t_;
 };
 
-void RepairDepthSmart(const slimage::Image1ui16& depth)
+void RepairDepthSmart(slimage::Image1ui16& depth)
 {
 	// we exploit the specific setup of the kinect camera to close gaps in the depth image
 	unsigned int w = depth.width();
@@ -144,9 +144,9 @@ void RepairDepthSmart(const slimage::Image1ui16& depth)
 			// fill whole from the further away pixel
 			if(depth(x_left-1,y) > depth(x_right,y)) {
 				// fill left to right
-				std::vector<uint16_t> data(depth(x_left_valid,y).pointer(), depth(x_left,y).pointer());
+				std::vector<uint16_t> data(depth.pixel_pointer(x_left_valid,y), depth.pixel_pointer(x_left,y));
 				ExtrapolateDepth xd(data);
-				BOOST_ASSERT(x_right > x_left);
+				assert(x_right > x_left);
 				for(unsigned int i=0; i<x_right - x_left; i++) {
 					depth(x_left + i, y) = xd(i);
 				}
@@ -158,7 +158,7 @@ void RepairDepthSmart(const slimage::Image1ui16& depth)
 					data[i] = depth(x_right_valid-i-1, y);
 				}
 				ExtrapolateDepth xd(data);
-				BOOST_ASSERT(x_right > x_left);
+				assert(x_right > x_left);
 				for(unsigned int i=0; i<x_right - x_left; i++) {
 					depth(x_right - i - 1, y) = xd(i);
 				}
@@ -169,14 +169,14 @@ void RepairDepthSmart(const slimage::Image1ui16& depth)
 	}
 }
 
-void RepairDepth(const slimage::Image1ui16& depth, const slimage::Image3ub& color)
+void RepairDepth(slimage::Image1ui16& depth, const slimage::Image3ub& color)
 {
 	RepairDepthSmart(depth);
 }
 
-void SmoothDepth9x9(const slimage::Image1ui16& depth)
+void SmoothDepth9x9(slimage::Image1ui16& depth)
 {
-	slimage::Image1ui16 depth_raw = depth.clone();
+	slimage::Image1ui16 depth_raw = depth;
 	int w = depth.width();
 	const unsigned int cSamples = 9;
 	int neighbor_offsets[cSamples] = {
@@ -229,9 +229,9 @@ inline uint16_t KinectBorderSensitiveSmooth(unsigned int vmm, unsigned int vm, u
 	}
 }
 
-void SmoothDepthY(const slimage::Image1ui16& depth)
+void SmoothDepthY(slimage::Image1ui16& depth)
 {
-	slimage::Image1ui16 depth_raw = depth.clone();
+	slimage::Image1ui16 depth_raw = depth;
 	int w = depth.width();
 	int neighbor_offsets[5] = {
 			-2*w,
@@ -252,9 +252,9 @@ void SmoothDepthY(const slimage::Image1ui16& depth)
 	}
 }
 
-void SmoothDepthX(const slimage::Image1ui16& depth)
+void SmoothDepthX(slimage::Image1ui16& depth)
 {
-	slimage::Image1ui16 depth_raw = depth.clone();
+	slimage::Image1ui16 depth_raw = depth;
 	int w = depth.width();
 	int neighbor_offsets[5] = {
 			-2, -1, 0, +1, +2
@@ -271,7 +271,7 @@ void SmoothDepthX(const slimage::Image1ui16& depth)
 	}
 }
 
-void SmoothDepth(const slimage::Image1ui16& depth, const slimage::Image3ub& color)
+void SmoothDepth(slimage::Image1ui16& depth, const slimage::Image3ub& color)
 {
 //	SmoothDepth9x9(depth);
 	SmoothDepthY(depth);

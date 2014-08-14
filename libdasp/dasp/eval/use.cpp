@@ -5,7 +5,7 @@
  *      Author: david
  */
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <boost/assert.hpp>
 #include <iostream>
 #include <map>
@@ -16,7 +16,7 @@
 //#define DASP_DEBUG_GUI
 
 #ifdef DASP_DEBUG_GUI
- #include <Slimage/Gui.hpp>
+ #include <slimage/gui.hpp>
 #endif
 
 namespace dasp {

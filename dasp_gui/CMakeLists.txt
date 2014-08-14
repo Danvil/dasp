@@ -33,7 +33,7 @@ if (DASP_HAS_CANDY)
 		../common/WdgtDaspParameters.h
 		WdgtBenchmark.h
 		WdgtAbout.h
-		${CANDY_DIR}/libcandy/src/Candy/System/GLSystemQtWindow.h
+		${CANDY_DIR}/libcandy/Candy/System/GLSystemQtWindow.h
 	)
 else (DASP_HAS_CANDY)
 	SET(dasp_gui_HEADERS
@@ -79,8 +79,7 @@ TARGET_LINK_LIBRARIES(dasp_gui
 if (DASP_HAS_CANDY)
 	add_definitions(-DDASP_HAS_CANDY)
 	include_directories(
-		${DT_DIR}/CT/src
-		${CANDY_DIR}/libcandy/src
+		${CANDY_DIR}/libcandy
 	)
 	target_link_libraries(dasp_gui candy)
 endif (DASP_HAS_CANDY)

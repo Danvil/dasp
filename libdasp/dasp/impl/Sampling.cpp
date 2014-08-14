@@ -11,7 +11,7 @@
 #include "../Superpixels.hpp"
 #include <pds/Tools.hpp>
 #include <density/ScalePyramid.hpp>
-#include <Slimage/Paint.hpp>
+#include <slimage/algorithm.hpp>
 #include <functional>
 #include <boost/random.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -46,7 +46,7 @@ Eigen::MatrixXf CombineMipmaps(const std::vector<Eigen::MatrixXf>& mm)
 void DebugShowMatrix(const Eigen::MatrixXf& mat, const std::string& tag)
 {
 	const float range = 5000.0f / static_cast<float>((640*480)/25);
-	sDebugImages[tag] = slimage::Ptr(
+	sDebugImages[tag] = slimage::make_anonymous(
 			common::MatrixToImage(mat,
 	 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
 }
@@ -74,7 +74,7 @@ void DebugMipmap(const std::vector<Eigen::MatrixXf>& mipmaps, const std::string&
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
 	// 	Eigen::MatrixXf scl = density::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
-	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
+	// 	sDebugImages[(fmt % i).str()] = slimage::make_anonymous(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::IntensityColor, std::placeholders::_1, 0.0f, range)));
 	// }
@@ -88,12 +88,12 @@ void DebugMipmapDelta(const std::vector<Eigen::MatrixXf>& mipmaps, const std::st
 	// for(std::size_t i=0; i<mipmaps.size(); ++i) {
 	// 	const float range = 3000.0f / static_cast<float>(mipmaps[i].rows() * mipmaps[i].cols());
 	// 	Eigen::MatrixXf scl = density::ScaleUp(mipmaps[i], ((Q==2) ? 1 : Q)*(1<<i));
-	// 	sDebugImages[(fmt % i).str()] = slimage::Ptr(
+	// 	sDebugImages[(fmt % i).str()] = slimage::make_anonymous(
 	// 		common::MatrixToImage(scl,
 	// 			std::bind(&common::PlusMinusColor, std::placeholders::_1, range)));
 	// }
 	const float range = 2500.0f / static_cast<float>((640*480)/25);
-	sDebugImages[tag] = slimage::Ptr(
+	sDebugImages[tag] = slimage::make_anonymous(
 	 		common::MatrixToImage(CombineMipmaps<Q>(mipmaps),
 	 			std::bind(&common::PlusMinusColor, std::placeholders::_1, range)));
 }

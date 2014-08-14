@@ -15,7 +15,7 @@
 //#define DASP_DEBUG_GUI
 
 #ifdef DASP_DEBUG_GUI
- #include <Slimage/Gui.hpp>
+ #include <slimage/gui.hpp>
 #endif
 
 namespace dasp
@@ -24,7 +24,7 @@ namespace dasp
 const unsigned int cBorder = 50;
 
 template<typename K, typename L>
-float ComputeRecallBoxImpl(const slimage::Image<slimage::Traits<K,1>>& img_exp, const slimage::Image<slimage::Traits<L,1>>& img_act, K threshold_exp, L threshold_act, int d)
+float ComputeRecallBoxImpl(const slimage::Image<K,1>& img_exp, const slimage::Image<L,1>& img_act, K threshold_exp, L threshold_act, int d)
 {
 	BOOST_ASSERT(img_exp.hasSameShape(img_act));
 	// check how much pixels from the expected boundary are near a boundary pixel in the actual image

@@ -1,7 +1,7 @@
 #ifndef COMMON_CLIENT_HPP
 #define COMMON_CLIENT_HPP
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <boost/function.hpp>
 #include <string>
 

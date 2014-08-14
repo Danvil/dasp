@@ -11,8 +11,7 @@
 #include "Point.hpp"
 #include "Tools.hpp"
 #include "Seed.hpp"
-#include <Slimage/Slimage.hpp>
-#include <Slimage/Parallel.h>
+#include <slimage/image.hpp>
 #include <eigen3/Eigen/Dense>
 #include <boost/graph/adjacency_list.hpp>
 #include <vector>
@@ -20,7 +19,7 @@
 
 namespace dasp
 {
-	extern std::map<std::string,slimage::ImagePtr> sDebugImages;
+	extern std::map<std::string,slimage::AnonymousImage> sDebugImages;
 
 	struct ClusterGroupInfo
 	{
@@ -51,8 +50,6 @@ namespace dasp
 	class Superpixels
 	{
 	public:
-		slimage::ThreadingOptions threadopt;
-
 		Parameters opt;
 
 		slimage::Image3ub color_raw;

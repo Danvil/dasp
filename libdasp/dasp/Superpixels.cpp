@@ -30,7 +30,7 @@
 namespace dasp {
 //------------------------------------------------------------------------------
 
-std::map<std::string,slimage::ImagePtr> sDebugImages;
+std::map<std::string,slimage::AnonymousImage> sDebugImages;
 
 Parameters::Parameters()
 {
@@ -271,7 +271,7 @@ std::vector<Eigen::Vector2f> Superpixels::getClusterCentersAsPoints() const
 
 void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Image1ui16& depth, const slimage::Image3f& normals)
 {
-	color_raw = image.clone();
+	color_raw = image;
 
 	assert(normals.isNull());
 
@@ -289,7 +289,7 @@ void Superpixels::CreatePoints(const slimage::Image3ub& image, const slimage::Im
 	unsigned int width = image.width();
 	unsigned int height = image.height();
 	assert(width == depth.width() && height == depth.height());
-	if(!normals.isNull()) {
+	if(!normals.empty()) {
 		assert(width == normals.width() && height == normals.height());
 		// FIXME this case is disabled!
 	}
@@ -499,7 +499,7 @@ namespace SegmentExtraction
 		bool has_nan_neighbor;
 	};
 
-	Segment ExtractSegment(const slimage::Image1i& labels, const slimage::Image1i& visited, const Point& start) {
+	Segment ExtractSegment(const slimage::Image1i& labels, slimage::Image1i& visited, const Point& start) {
 		// we need to temporarily store if border pixels have been visited
 		slimage::Image1i border_visited(visited.width(), visited.height(), slimage::Pixel1i{0});
 		// init segment
@@ -577,7 +577,8 @@ void Superpixels::ConquerEnclaves()
 {
 	// compute labels for every pixel
 	std::vector<int> labels_v = ComputePixelLabels();
-	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
+	slimage::Image1i labels(width(), height());
+	std::copy(labels_v.begin(), labels_v.end(), labels.begin());
 	// find all segments (i.e. connected regions with the same label)
 	std::vector<SegmentExtraction::Segment> segments = SegmentExtraction::FindAllSegments(labels);
 	// count number of segments per label
@@ -638,7 +639,8 @@ void Superpixels::ConquerMiniEnclaves()
 	};
 	// compute pixel labels
 	std::vector<int> labels_v = ComputePixelLabels();
-	slimage::Image1i labels(width(), height(), slimage::Buffer<int>(width()*height(), labels_v.begin().base()));
+	slimage::Image1i labels(width(), height());
+	std::copy(labels_v.begin(), labels_v.end(), labels.begin());
 	// iterate over all pixels
 	for(unsigned int y=1; y+1<labels.height(); y++) {
 		for(unsigned int x=1; x+1<labels.width(); x++) {
@@ -1039,8 +1041,10 @@ Superpixels ComputeSuperpixels(const slimage::Image3ub& color, const slimage::Im
 	return clustering;
 }
 
-void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depth)
+void ComputeSuperpixelsIncremental(Superpixels& clustering, const slimage::Image3ub& color, const slimage::Image1ui16& depthin)
 {
+	slimage::Image1ui16 depth = depthin;
+	
 	if(clustering.opt.is_repair_depth) {
 		DANVIL_BENCHMARK_START(dasp_repair)
 		RepairDepth(depth, color);

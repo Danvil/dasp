@@ -10,7 +10,7 @@
 
 #include "Superpixels.hpp"
 #include "Graph.hpp"
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/copy.hpp>
 #include <Eigen/Dense>

@@ -1,6 +1,7 @@
 #include "rgbd.hpp"
-#include <Slimage/IO.hpp>
-#include <Slimage/Gui.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
+#include <slimage/gui.hpp>
 #include <common/color.hpp>
 #include <boost/filesystem.hpp>
 #ifdef DASP_HAS_OPENNI
@@ -189,8 +190,8 @@ public:
 	}
 	Rgbd get() {
 		return {
-			img_color_.clone(),
-			img_depth_.clone()
+			img_color_,
+			img_depth_
 		};
 	}
 private:
@@ -284,8 +285,8 @@ public:
 	}
 	Rgbd get() {
 		return {
-			img_color_.clone(),
-			img_depth_.clone()
+			img_color_,
+			img_depth_
 		};
 	}
 private:
@@ -344,14 +345,14 @@ private:
 	void unsnap_depth(const std::string& fn) {
 		std::cout << "unsnap depth" << std::endl;
 		std::vector<char> v = unsnap(fn);
-		std::copy(v.begin(), v.end(), (char*)(img_depth_.begin().pointer()));
+		std::copy(v.begin(), v.end(), (char*)(img_depth_.begin().base()));
 		// slimage::gui::Show("depth", common::GreyDepth(img_depth_,500,3000), 10);
 		std::cout << "depth ready" << std::endl;
 	}
 	void unsnap_color(const std::string& fn) {
 		std::cout << "unsnap color" << std::endl;
 		std::vector<char> v = unsnap(fn);
-		std::copy(v.begin(), v.end(), img_color_.begin().pointer());
+		std::copy(v.begin(), v.end(), img_color_.begin().base());
 		// slimage::gui::Show("color", img_color_, 10);
 		std::cout << "color ready" << std::endl;
 	}
@@ -390,8 +391,8 @@ public:
 	}
 	Rgbd get() {
 		return {
-			grabber_->GetLastColor().clone(),
-			grabber_->GetLastDepth().clone()
+			grabber_->GetLastColor(),
+			grabber_->GetLastDepth()
 		};
 	}
 private:
@@ -413,8 +414,8 @@ public:
 	}
 	Rgbd get() {
 		return {
-			grabber_->GetLastColor().clone(),
-			grabber_->GetLastDepth().clone()
+			grabber_->GetLastColor(),
+			grabber_->GetLastDepth()
 		};
 	}
 private:

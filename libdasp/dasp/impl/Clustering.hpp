@@ -11,7 +11,7 @@
 #include "../Point.hpp"
 #include "../Parameters.hpp"
 #include "../Metric.hpp"
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <Eigen/Dense>
 #include <iostream>
 

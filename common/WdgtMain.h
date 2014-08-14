@@ -5,7 +5,7 @@
 #include "Client.hpp"
 #include <Candy/System/GLSystemQtWindow.h>
 #include <Candy.h>
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <QtGui/QMainWindow>
 #include <QtCore/QTimer>
 #include <mutex>

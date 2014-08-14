@@ -8,14 +8,14 @@
 #ifndef DASP_REPAIRDEPTH_HPP_
 #define DASP_REPAIRDEPTH_HPP_
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 
 namespace dasp
 {
 
-	void RepairDepth(const slimage::Image1ui16& depth, const slimage::Image3ub& color);
+	void RepairDepth(slimage::Image1ui16& depth, const slimage::Image3ub& color);
 
-	void SmoothDepth(const slimage::Image1ui16& depth, const slimage::Image3ub& color);
+	void SmoothDepth(slimage::Image1ui16& depth, const slimage::Image3ub& color);
 
 }
 

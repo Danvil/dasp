@@ -1,5 +1,5 @@
 #include "WdgtMain.h"
-#include <Slimage/IO.hpp>
+#include <slimage/io.hpp>
 #include <QtGui/QMdiSubWindow>
 #include <QtGui/QLabel>
 #include <boost/bind.hpp>

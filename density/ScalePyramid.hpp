@@ -8,7 +8,7 @@
 #ifndef INCLUDED_DENSITY_SCALEPYRAMID_HPP_
 #define INCLUDED_DENSITY_SCALEPYRAMID_HPP_
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <Eigen/Dense>
 #include <stdexcept>
 #include <vector>

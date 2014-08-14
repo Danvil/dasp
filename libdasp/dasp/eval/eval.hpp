@@ -2,7 +2,7 @@
 #define DASP_EVAL
 
 #include <dasp/Superpixels.hpp>
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <map>
 #include <vector>
 

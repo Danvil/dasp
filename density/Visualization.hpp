@@ -2,7 +2,7 @@
 #define INCLUDED_DENSITY_VISUALIZATION_HPP
 
 #include <Danvil/Color.h>
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <Eigen/Dense>
 #include <vector>
 

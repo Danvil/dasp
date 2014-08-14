@@ -8,7 +8,7 @@
 #ifndef DASP_RECALL_HPP_
 #define DASP_RECALL_HPP_
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 
 namespace dasp
 {

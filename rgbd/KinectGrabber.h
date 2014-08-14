@@ -9,7 +9,7 @@
 #define DASP_KINECT_KINECTGRABBER_H_
 //----------------------------------------------------------------------------//
 #include "GrabOptions.h"
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <boost/signals.hpp>
 #include <string>
 #include <memory>

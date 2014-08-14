@@ -1,7 +1,7 @@
 #ifndef RGBD_HPP
 #define RGBD_HPP
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <memory>
 #include <string>
 

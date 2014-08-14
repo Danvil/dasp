@@ -5,9 +5,10 @@
 #include <dasp/IO.hpp>
 #include <rgbd/rgbd.hpp>
 #include <density/PointDensity.hpp>
-#include <Slimage/IO.hpp>
-#include <Slimage/Slimage.hpp>
-#include <Slimage/Gui.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
+#include <slimage/image.hpp>
+#include <slimage/gui.hpp>
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
 #include <boost/progress.hpp>
@@ -175,7 +176,7 @@ int main(int argc, char** argv)
 
 		// show basic images
 		if(p_verbose >= 2) {
-			slimage::gui::Show("dasp", vis_dasp, 3);
+			slimage::GuiShow("dasp", vis_dasp);
 		}
 
 		if(output_enabled) {
@@ -188,20 +189,20 @@ int main(int argc, char** argv)
 			if(p_save_color) {
 				std::string fn = fn_result + "_color.png";
 				if(p_verbose) std::cout << "Writing input color image to '" << fn << "'" << std::endl;
-				slimage::Save(img_color, fn);
+				slimage::Save(fn, img_color);
 			}
 
 			if(p_save_depth) {
 				std::string fn = fn_result + "_depth.pgm";
 				if(p_verbose) std::cout << "Writing input depth image to '" << fn << "'" << std::endl;
-				slimage::Save(img_depth, fn);
+				slimage::Save(fn, img_depth);
 			}
 
 			// dasp visualization image
 			if(p_save_vis_dasp) {
 				std::string fn_img = fn_result + "_sp.png";
 				if(p_verbose) std::cout << "Writing superpixel image to '" << fn_img << "'" << std::endl;
-				slimage::Save(vis_dasp, fn_img);
+				slimage::Save(fn_img, vis_dasp);
 			}
 
 			// clusters
@@ -275,7 +276,7 @@ int main(int argc, char** argv)
 	}
 
 	if(p_verbose >= 2) {
-		slimage::gui::WaitForKeypress();
+		slimage::GuiWait();
 	}
 
 	return 0;

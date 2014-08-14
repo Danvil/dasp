@@ -1,8 +1,8 @@
 #include "WdgtKinectSuperPoints.h"
 #include <dasp/IO.hpp>
 #include <graphseg/IO.hpp>
-#include <Slimage/IO.hpp>
-#include <Slimage/Parallel.h>
+#include <slimage/qt.hpp>
+#include <slimage/io.hpp>
 #include <boost/bind.hpp>
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
@@ -70,15 +70,15 @@ WdgtKinectSuperPoints::WdgtKinectSuperPoints(bool no3d, QWidget *parent)
 		view_ = Candy::View::FactorDefaultPerspectiveView();
 		scene_ = view_->getScene();
 
-		boost::shared_ptr<Candy::DirectionalLight> light1(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(+1.0f, +1.0f, -1.0f)));
-		light1->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+		boost::shared_ptr<Candy::DirectionalLight> light1(new Candy::DirectionalLight(Candy::Vec3f(+1.0f, +1.0f, -1.0f)));
+		light1->setDiffuse(Candy::Colorf(1.0f, 1.0f, 1.0f));
 		scene_->addLight(light1);
-		boost::shared_ptr<Candy::DirectionalLight> light2(new Candy::DirectionalLight(Danvil::ctLinAlg::Vec3f(-1.0f, -1.0f, -1.0f)));
-		light2->setDiffuse(Danvil::Colorf(1.0f, 1.0f, 1.0f));
+		boost::shared_ptr<Candy::DirectionalLight> light2(new Candy::DirectionalLight(Candy::Vec3f(-1.0f, -1.0f, -1.0f)));
+		light2->setDiffuse(Candy::Colorf(1.0f, 1.0f, 1.0f));
 		scene_->addLight(light2);
 
 		engine_.reset(new Candy::Engine(view_));
-		engine_->setClearColor(Danvil::Color::Grey);
+		engine_->setClearColor(Candy::Colorf::Grey);
 
 		scene_->setShowCoordinateCross(false);
 
@@ -261,7 +261,7 @@ void WdgtKinectSuperPoints::OnSaveDebugImages()
 {
 	// save all generated dasp images
 	for(auto p : dasp_processing_->getImages()) {
-		slimage::Save(p.second, "/tmp/dasp_" + p.first + ".png");
+		slimage::Save("/tmp/dasp_" + p.first + ".png", p.second);
 	}
 }
 
@@ -357,8 +357,8 @@ void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 {
 	// save RGBD image if requested
 	if(capture_next_) {
-		slimage::Save(rgbd.color, capture_filename_ + "_color.png");
-		slimage::Save(rgbd.depth, capture_filename_ + "_depth.pgm");
+		slimage::Save(capture_filename_ + "_color.png", rgbd.color);
+		slimage::Save(capture_filename_ + "_depth.pgm", rgbd.depth);
 		capture_next_ = false;
 	}
 	// process image
@@ -384,7 +384,7 @@ void WdgtKinectSuperPoints::OnImages(const Rgbd& rgbd)
 		}
 		{	// save rgb in png
 			std::string fn_rgb = (boost::format(save_dasp_fn_+"%1$05d.png") % frame_counter_).str();
-			slimage::Save(rgbd.color, fn_rgb);
+			slimage::Save(fn_rgb, rgbd.color);
 		}
 	}
 }
@@ -424,12 +424,12 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 	// add tabs if necessary and display generated dasp images
 	for(auto p : dasp_processing_->getImages()) {
 		// image to display
-		slimage::ImagePtr ref_img = p.second;
+		slimage::AnonymousImage ref_img = p.second;
 		if(!ref_img) {
 			continue;
 		}
 		// convert to Qt image
-		QImage* qimg = slimage::qt::ConvertToQt(ref_img);
+		QImage* qimg = slimage::ConvertToQt(ref_img);
 		if(qimg == 0) {
 			continue;
 		}

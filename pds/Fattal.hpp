@@ -8,7 +8,7 @@
 #ifndef BLUENOISE_HPP_
 #define BLUENOISE_HPP_
 //----------------------------------------------------------------------------//
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <Danvil/Tools/FunctionCache.h>
 #include <Eigen/Dense>
 #include <vector>

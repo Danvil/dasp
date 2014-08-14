@@ -10,13 +10,8 @@
 #if defined DASP_HAS_CANDY
 #	include <Candy/Primitives.h>
 #	include <Candy/GlHelpers.h>
-#	include <Danvil/LinAlg/Eigen.hpp>
 #endif
-#include <Slimage/Paint.hpp>
-#include <Slimage/Convert.hpp>
-#include <Danvil/Color.h>
-#include <Danvil/Color/LAB.h>
-#include <Danvil/Color/HSV.h>
+#include <slimage/algorithm.hpp>
 #include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
@@ -33,23 +28,52 @@ namespace dasp {
 namespace plots {
 //----------------------------------------------------------------------------//
 
+inline
+void convert_hsv_2_rgb(unsigned char h, unsigned char s, unsigned char v, unsigned char& r, unsigned char& g, unsigned char& b) {
+	// look up hue range
+	int hi = (int)h;
+	int hi_int;
+	int f;
+	if(h < 43) { hi_int = 0; f = (hi*255) / 42; }
+	else if(h < 85) { hi_int = 1; f = ((hi - 43)*255) / 43; }
+	else if(h < 128) { hi_int = 2; f = ((hi - 85)*255) / 42; }
+	else if(h < 171) { hi_int = 3; f = ((hi - 128)*255) / 43; }
+	else if(h < 213) { hi_int = 4; f = ((hi - 171)*255) / 42; }
+	else { hi_int = 5; f = ((h - 213)*255) / 43; }
+	// helpers
+	int si = (int)s;
+	int vi = (int)v;
+	int p = (vi * (255 - si)) >> 8;
+	int q = (vi * (255*255 - si*f)) >> 16;
+	int t = (vi * (255*255 - (255 - f)*si)) >> 16;
+	// rgb
+	switch(hi_int) {
+	case 0: r = v; g = t; b = p; return; // -q
+	case 1: r = q; g = v; b = p; return; // -t
+	case 2: r = p; g = v; b = t; return; // -q
+	case 3: r = p; g = q; b = v; return; // -t
+	case 4: r = t; g = p; b = v; return; // -q
+	case 5: r = v; g = p; b = q; return; // -t
+	}
+}
+
 std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt)
 {
 	cnt = (cnt / 3 + 1) * 3;
 	std::vector<slimage::Pixel3ub> colors(cnt);
 	for(unsigned int i=0; i<cnt; i+=3) {
 		slimage::Pixel3ub& c1 = colors[i];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 255, c1[0], c1[1], c1[2]);
+		convert_hsv_2_rgb((i * 255) / cnt, 255, 255, c1[0], c1[1], c1[2]);
 		slimage::Pixel3ub& c2 = colors[i+1];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 171, c2[0], c2[1], c2[2]);
+		convert_hsv_2_rgb((i * 255) / cnt, 255, 171, c2[0], c2[1], c2[2]);
 		slimage::Pixel3ub& c3 = colors[i+2];
-		Danvil::convert_hsv_2_rgb((i * 255) / cnt, 255, 85, c3[0], c3[1], c3[2]);
+		convert_hsv_2_rgb((i * 255) / cnt, 255, 85, c3[0], c3[1], c3[2]);
 	}
 	std::random_shuffle(colors.begin(), colors.end());
 	return colors;
 }
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color)
+void PlotClusterPoints(slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color)
 {
 	assert(cluster.isValid());
 	// plot all pixels belonging to the cluster in the color of the cluster center
@@ -68,7 +92,7 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, con
 //	}
 }
 
-void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors)
+void PlotClusters(slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors)
 {
 	assert(clustering.cluster.size() == colors.size());
 	for(unsigned int i=0; i<clustering.cluster.size(); i++) {
@@ -76,7 +100,7 @@ void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, c
 	}
 }
 
-void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled)
+void PlotClusterEllipse(slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled)
 {
 	int cx = cluster.center.px;
 	int cy = cluster.center.py;
@@ -105,8 +129,8 @@ void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, co
 	//	slimage::PaintLine(img, cx, cy, p3x, p3y, color);
 }
 
-template<typename T>
-void PlotEdgesImpl(const slimage::Image<T>& img, const slimage::Image1i& labels, const slimage::Pixel<T>& color, unsigned int size, bool internal)
+template<typename K, unsigned CC>
+void PlotEdgesImpl(slimage::Image<K,CC>& img, const slimage::Image1i& labels, const slimage::Pixel<K,CC>& color, unsigned int size, bool internal)
 {
 	assert(img.dimensions() == labels.dimensions());
 
@@ -144,23 +168,23 @@ void PlotEdgesImpl(const slimage::Image<T>& img, const slimage::Image1i& labels,
 	}
 }
 
-void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
+void PlotEdges(slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size, bool internal)
 {
 	PlotEdgesImpl(img, labels, color, size, internal);
 }
 
-void PlotEdges(const slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size, bool internal)
+void PlotEdges(slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size, bool internal)
 {
 	PlotEdgesImpl(img, labels, color, size, internal);
 }
 
-void PlotEdges(const slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size, bool internal)
+void PlotEdges(slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size, bool internal)
 {
 	PlotEdgesImpl(img, labels, color, size, internal);
 }
 
-template<typename T>
-void PlotSeedsImpl(const slimage::Image<T>& img, const std::vector<Seed>& seeds, const slimage::Pixel<T>& color, int size)
+template<typename K, unsigned CC>
+void PlotSeedsImpl(slimage::Image<K,CC>& img, const std::vector<Seed>& seeds, const slimage::Pixel<K,CC>& color, int size)
 {
 	for(Seed s : seeds) {
 		// round position
@@ -168,12 +192,12 @@ void PlotSeedsImpl(const slimage::Image<T>& img, const std::vector<Seed>& seeds,
 	}
 }
 
-void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey, int size)
+void PlotSeeds(slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey, int size)
 {
 	PlotSeedsImpl(img, seeds, slimage::Pixel1ub{grey}, size);
 }
 
-void PlotSeeds(const slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color, int size)
+void PlotSeeds(slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color, int size)
 {
 	PlotSeedsImpl(img, seeds, color, size);
 }
@@ -332,7 +356,11 @@ namespace detail
 		for(unsigned int i=0; i<clusters.cluster.size(); i++) {
 			if(selection[i]) {
 				Eigen::Vector3f color = clusters.ColorToRGB(clusters.cluster[i].center.color);
-				slimage::conversion::Convert(slimage::Pixel3f{{color[0], color[1], color[2]}}, colors[i]);
+				colors[i] = slimage::Pixel3ub{
+					static_cast<unsigned char>(color[0]*255.0f),
+					static_cast<unsigned char>(color[1]*255.0f),
+					static_cast<unsigned char>(color[2]*255.0f)
+				};
 			}
 			else {
 				colors[i] = slimage::Pixel3ub{{0,0,0}};
@@ -342,7 +370,7 @@ namespace detail
 	}
 
 	template<int M>
-	void PlotPointsImpl(const slimage::Image3ub& img, const Superpixels& c)
+	void PlotPointsImpl(slimage::Image3ub& img, const Superpixels& c)
 	{
 		for(size_t i=0; i<img.size(); i++) {
 			img[i] = ComputePointColor<M>(c.points[i]);
@@ -350,7 +378,7 @@ namespace detail
 	}
 
 	template<>
-	void PlotPointsImpl<Color>(const slimage::Image3ub& img, const Superpixels& c)
+	void PlotPointsImpl<Color>(slimage::Image3ub& img, const Superpixels& c)
 	{
 		for(size_t i=0; i<img.size(); i++) {
 //			img[i] = c.color_raw[i];
@@ -403,7 +431,7 @@ std::vector<slimage::Pixel3ub> ComputeClusterColors(const Superpixels& c, ColorM
 slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode cm)
 {
 	slimage::Image3ub img(c.width(), c.height());
-	img.fill({{0,0,0}});
+	slimage::Fill(img, {0,0,0});
 	switch(cm) {
 	PlotPoints_HELPER(UniBlack)
 	PlotPoints_HELPER(UniWhite)
@@ -419,7 +447,7 @@ slimage::Image3ub PlotPoints(const Superpixels& c, ColorMode cm)
 	return img;
 }
 
-void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection)
+void PlotClusterCenters(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -434,7 +462,7 @@ void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, Colo
 	}
 }
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterPoints(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -444,7 +472,7 @@ void PlotClusterPoints(const slimage::Image3ub& img, const Superpixels& c, Color
 	}
 }
 
-void PlotClusterEllipses(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterEllipses(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -454,7 +482,7 @@ void PlotClusterEllipses(const slimage::Image3ub& img, const Superpixels& c, Col
 	}
 }
 
-void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
+void PlotClusterEllipsesFilled(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection)
 {
 	std::vector<slimage::Pixel3ub> colors = ComputeClusterColors(c, ccm, selection);
 	for(size_t i=0; i<c.cluster.size(); i++) {
@@ -478,7 +506,7 @@ void PlotClusters(slimage::Image3ub& img, const Superpixels& c, ClusterMode mode
 slimage::Image3ub PlotClusters(const Superpixels& c, ClusterMode mode, ColorMode cm, const ClusterSelection& selection)
 {
 	slimage::Image3ub img(c.width(), c.height());
-	img.fill({{0,0,0}});
+	slimage::Fill(img, {0,0,0});
 	PlotClusters(img, c, mode, cm, selection);
 	return img;
 }
@@ -491,16 +519,16 @@ void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub&
 	glPolygonMode(GL_FRONT, GL_FILL);
 	glPolygonMode(GL_BACK, GL_LINE);
 	// render circle at position
-	Danvil::ctLinAlg::Vec3f pos = Danvil::ctLinAlg::Convert(cluster.center.position);
+	Eigen::Vector3f pos = cluster.center.position;
 	const Eigen::Vector3f& n = cluster.center.normal;
 	Eigen::Vector3f v = cluster.center.position.cross(n).normalized();
 	Eigen::Vector3f u = v.cross(n);
-	Danvil::ctLinAlg::Vec3f major = r * Danvil::ctLinAlg::Convert(v);
-	Danvil::ctLinAlg::Vec3f minor = r * Danvil::ctLinAlg::Convert(u);
+	Eigen::Vector3f major = r * v;
+	Eigen::Vector3f minor = r * u;
 	glColor3ub(color[0], color[1], color[2]);
 	Candy::Primitives::RenderEllipseCap(pos, major, minor);
 	glColor3f(0.9f, 0.9f, 0.9f);
-	Candy::Primitives::RenderSegment(pos, pos + 0.5f * r * Danvil::ctLinAlg::Convert(n));
+	Candy::Primitives::RenderSegment(pos, pos + 0.5f * r * n);
 }
 
 void RenderClusterNorm(const Cluster& cluster, const ImagePoints& points, float r, const slimage::Pixel3ub& color)

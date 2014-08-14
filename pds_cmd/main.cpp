@@ -1,8 +1,8 @@
 #include <pds/PDS.hpp>
 #include <density/PointDensity.hpp>
-#include <Slimage/Slimage.hpp>
-#define SLIMAGE_IO_OPENCV
-#include <Slimage/IO.hpp>
+#include <slimage/image.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
 #include <boost/program_options.hpp>
 #include <boost/timer/timer.hpp>
 #include <algorithm>

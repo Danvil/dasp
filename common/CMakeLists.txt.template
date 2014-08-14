@@ -7,10 +7,8 @@ link_directories(
 )
 
 include_directories(
-	${DANVILTOOLS_DIR}/CT/src
 	${dasp_SOURCE_DIR}/libdasp
-	${CANDY_DIR}/libcandy/src
-	${SLIMAGE_DIR}
+	${CANDY_DIR}/libcandy
 )
 
 SET(QT_USE_QTOPENGL TRUE)
@@ -22,7 +20,7 @@ SET(project_SOURCES
 )
 SET(project_HEADERS
 	${dasp_SOURCE_DIR}/common/WdgtMain.h
-	${CANDY_DIR}/libcandy/src/Candy/System/GLSystemQtWindow.h
+	${CANDY_DIR}/libcandy/Candy/System/GLSystemQtWindow.h
 )
 
 SET(project_FORMS

@@ -3,9 +3,10 @@
 #include <dasp/Plots.hpp>
 #include <dasp/Segmentation.hpp>
 #include <dasp/eval/eval.hpp>
-#include <Slimage/IO.hpp>
-#include <Slimage/Slimage.hpp>
-#include <Slimage/Convert.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
+#include <slimage/image.hpp>
+#include <slimage/algorithm.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 #include <iostream>
@@ -137,8 +138,7 @@ int main(int argc, char** argv)
 	if(p_mode == "use") {
 		// ground truth labels
 		if(p_verbose) std::cout << "Reading TRUTH: '" << p_truth_path << "'" << std::endl;
-		slimage::Image1i img_truth;
-		slimage::conversion::Convert(slimage::Load1ui16(p_truth_path), img_truth);
+		slimage::Image1i img_truth = slimage::Convert(slimage::Load1ui16(p_truth_path), [](uint16_t v) { return static_cast<int>(v); });
 		// eval
 		process("use", "Undersegmentation error (USE)", p_result_path,
 			img_color, img_depth, opt, p_num,
@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 	if(p_mode == "br") {
 		// ground truth boundaries
 		if(p_verbose) std::cout << "Reading TRUTH: '" << p_truth_path << "'" << std::endl;
-		slimage::Image1ub truth_boundary = slimage::Pick<unsigned char>(slimage::Load(p_truth_path), 0);
+		slimage::Image1ub truth_boundary = slimage::PickChannel(slimage::Load3ub(p_truth_path), 0);
 		// eval
 		process("br", "Boundary recall (BR)", p_result_path,
 			img_color, img_depth, opt, p_num,

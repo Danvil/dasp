@@ -1,5 +1,3 @@
-ADD_DEFINITIONS(-DSLIMAGE_IO_OPENCV)
-
 include_directories(
 )
 

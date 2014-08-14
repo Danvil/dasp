@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #include <Danvil/Color.h>
 #include <Eigen/Dense>
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 //----------------------------------------------------------------------------//
 namespace common {
 //----------------------------------------------------------------------------//
@@ -123,10 +123,10 @@ namespace detail
 	}
 }
 
-template<typename T>
-slimage::Image<T> Smooth(const slimage::Image<T>& src)
+inline
+slimage::Image<unsigned char, 3> Smooth(const slimage::Image<unsigned char, 3>& src)
 {
-	slimage::Image3ub tmp = src.clone();
+	slimage::Image3ub tmp = src;
 	for(unsigned int x=1; x<tmp.width()-1; x++) {
 		for(unsigned int y=1; y<tmp.height()-1; y++) {
 			tmp(x,y) = detail::mean(src(x,y), src(x-1,y), src(x+1,y), src(x,y-1), src(x,y+1));

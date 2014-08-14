@@ -11,7 +11,7 @@
 #include <dasp/Superpixels.hpp>
 #include <dasp/Plots.hpp>
 #include <dasp/Graph.hpp>
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <boost/thread.hpp>
 #include <vector>
 //----------------------------------------------------------------------------//
@@ -29,7 +29,7 @@ public:
 	 */
 	void step(const slimage::Image1ui16& raw_kinect_depth, const slimage::Image3ub& raw_kinect_color);
 
-	std::map<std::string, slimage::ImagePtr> getImages() const;
+	std::map<std::string, slimage::AnonymousImage> getImages() const;
 
 	slimage::Image1ub getResultImage() const;
 
@@ -76,7 +76,7 @@ public:
 private:
 	dasp:: plots::ClusterSelection selection_;
 
-	std::map<std::string, slimage::ImagePtr> images_;
+	std::map<std::string, slimage::AnonymousImage> images_;
 
 	mutable boost::mutex images_mutex_;
 

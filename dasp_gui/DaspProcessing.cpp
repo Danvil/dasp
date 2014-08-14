@@ -13,8 +13,7 @@
 #include <dasp/impl/Sampling.hpp>
 #include <density/PointDensity.hpp>
 #include <density/Visualization.hpp>
-#include <Slimage/Paint.hpp>
-#include <Slimage/Convert.hpp>
+#include <slimage/algorithm.hpp>
 #define DANVIL_ENABLE_BENCHMARK
 #include <Danvil/Tools/Benchmark.h>
 #include <Danvil/Color.h>
@@ -70,20 +69,20 @@ void DaspProcessing::step(const slimage::Image1ui16& raw_kinect_depth, const sli
 //	DANVIL_BENCHMARK_PRINTALL_COUT
 }
 
-slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)
-{
-	slimage::Image3ub col(I.width(), I.height());
-	if(I) {
-		Danvil::ContinuousIntervalColorMapping<unsigned char, float> cm
-				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor(pal);
-		cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
-		cm.setRange(min, max);
-		slimage::ParallelProcess(I, col, [&cm](const slimage::It1f& src, const slimage::It3ub& dst) {
-			cm(*src).writeRgb(dst.pointer());
-		}, slimage::ThreadingOptions::UsePool(pool_id));
-	}
-	return col;
-}
+// slimage::Image3ub ColorizeIntensity(const slimage::Image1f& I, float min, float max, unsigned int pool_id, Danvil::Palette pal=Danvil::Palettes::Blue_Red_Yellow_White)
+// {
+// 	slimage::Image3ub col(I.width(), I.height());
+// 	if(I) {
+// 		Danvil::ContinuousIntervalColorMapping<unsigned char, float> cm
+// 				= Danvil::ContinuousIntervalColorMapping<unsigned char, float>::Factor(pal);
+// 		cm.useCustomBorderColors(Danvil::Colorub::Black, Danvil::Colorub::White);
+// 		cm.setRange(min, max);
+// 		slimage::ParallelProcess(I, col, [&cm](const slimage::It1f& src, const slimage::It3ub& dst) {
+// 			cm(*src).writeRgb(dst.pointer());
+// 		}, slimage::ThreadingOptions::UsePool(pool_id));
+// 	}
+// 	return col;
+// }
 
 typedef boost::accumulators::accumulator_set<
 	unsigned int,
@@ -110,7 +109,7 @@ void DaspProcessing::performSegmentationStep()
 	// slimage::Image3ub plot_labels;
 
 	result_.resize(kinect_color_rgb.width(), kinect_color_rgb.height());
-	result_.fill({0});
+	slimage::Fill(result_, 0);
 
 	DANVIL_BENCHMARK_STOP(mog)
 
@@ -154,7 +153,7 @@ void DaspProcessing::performSegmentationStep()
 		}
 		else {
 			vis_img.resize(clustering_.width(), clustering_.height());
-			vis_img.fill({{0,0,0}});
+			slimage::Fill(vis_img, {0,0,0});
 		}
 		if(show_clusters_) {
 			plots::PlotClusters(vis_img, clustering_, cluster_mode_, cluster_color_mode_);
@@ -209,7 +208,7 @@ void DaspProcessing::performSegmentationStep()
 					break;
 				}
 				case 5: { // spectral result
-					vis_img.fill({{255,255,255}});
+					slimage::Fill(vis_img, {255,255,255});
 					const float T = clustering_.opt.segment_threshold;
 					plots::PlotWeightedGraphLines(vis_img, clustering_, dasp_segment_graph,
 						[T](float sim) {
@@ -223,7 +222,7 @@ void DaspProcessing::performSegmentationStep()
 					break;
 				}
 				case 6: { // ucm
-					vis_img.fill({{255,255,255}});
+					slimage::Fill(vis_img, {255,255,255});
 					const float T = clustering_.opt.segment_threshold;
 					for(auto eid : as_range(boost::edges(dasp_segment_graph))) {
 						int i = boost::source(eid, dasp_segment_graph);
@@ -274,11 +273,11 @@ void DaspProcessing::performSegmentationStep()
 		{
 			boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 
-			if(vis_img) images_["2D"] = slimage::Ptr(vis_img);
-			if(vis_density) images_["density"] = slimage::Ptr(vis_density);
-			if(vis_saliency) images_["saliency"] = slimage::Ptr(vis_saliency);
-			if(vis_seed_density) images_["density (seeds)"] = slimage::Ptr(vis_seed_density);
-			if(vis_density_delta) images_["density (delta)"] = slimage::Ptr(vis_density_delta);
+			if(!vis_img.empty()) images_["2D"] = slimage::make_anonymous(vis_img);
+			if(!vis_density.empty()) images_["density"] = slimage::make_anonymous(vis_density);
+			if(!vis_saliency.empty()) images_["saliency"] = slimage::make_anonymous(vis_saliency);
+			if(!vis_seed_density.empty()) images_["density (seeds)"] = slimage::make_anonymous(vis_seed_density);
+			if(!vis_density_delta.empty()) images_["density (delta)"] = slimage::make_anonymous(vis_density_delta);
 //			images_["seeds"] = slimage::Ptr(seeds_img);
 			// images_["prob"] = slimage::Ptr(probability_color);
 			// images_["prob2"] = slimage::Ptr(probability_2_color);
@@ -293,7 +292,7 @@ void DaspProcessing::performSegmentationStep()
 	DANVIL_BENCHMARK_STOP(plotting)
 }
 
-std::map<std::string, slimage::ImagePtr> DaspProcessing::getImages() const
+std::map<std::string, slimage::AnonymousImage> DaspProcessing::getImages() const
 {
 	boost::interprocess::scoped_lock<boost::mutex> lock(images_mutex_);
 	return images_;

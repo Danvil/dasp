@@ -8,7 +8,7 @@
 #ifndef POINTSANDNORMALS_HPP_
 #define POINTSANDNORMALS_HPP_
 
-#include <Slimage/Slimage.hpp>
+#include <slimage/image.hpp>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
 #include <boost/math/constants/constants.hpp>

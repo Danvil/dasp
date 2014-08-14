@@ -11,7 +11,7 @@
 #include "Superpixels.hpp"
 #include "Graph.hpp"
 #include <GL/glew.h>
-#include <Slimage/Paint.hpp>
+#include <slimage/algorithm.hpp>
 #include <Danvil/Color.h>
 #include <vector>
 //----------------------------------------------------------------------------//
@@ -97,19 +97,19 @@ inline slimage::Pixel3ub PlusMinusColor(float x, float range=1.0f)
 
 std::vector<slimage::Pixel3ub> CreateRandomColors(unsigned int cnt);
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color);
+void PlotClusterPoints(slimage::Image3ub& img, const Cluster& cluster, const ImagePoints& points, const slimage::Pixel3ub& color);
 
-void PlotClusters(const slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors);
+void PlotClusters(slimage::Image3ub& img, const Superpixels& clustering, const std::vector<slimage::Pixel3ub>& colors);
 
-void PlotClusterEllipse(const slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled);
+void PlotClusterEllipse(slimage::Image3ub& img, const Cluster& cluster, const slimage::Pixel3ub& color, bool filled);
 
-void PlotEdges(const slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size=1, bool internal=false);
-void PlotEdges(const slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size=1, bool internal=false);
-void PlotEdges(const slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size=1, bool internal=false);
+void PlotEdges(slimage::Image3ub& img, const slimage::Image1i& labels, const slimage::Pixel3ub& color, unsigned int size=1, bool internal=false);
+void PlotEdges(slimage::Image1ub& img, const slimage::Image1i& labels, const slimage::Pixel1ub& color, unsigned int size=1, bool internal=false);
+void PlotEdges(slimage::Image1f& img, const slimage::Image1i& labels, const slimage::Pixel1f& color, unsigned int size=1, bool internal=false);
 
-void PlotSeeds(const slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey=0, int size=1);
+void PlotSeeds(slimage::Image1ub& img, const std::vector<Seed>& seeds, unsigned char grey=0, int size=1);
 
-void PlotSeeds(const slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, int size=1);
+void PlotSeeds(slimage::Image3ub& img, const std::vector<Seed>& seeds, const slimage::Pixel3ub& color=slimage::Pixel3ub{{0,0,0}}, int size=1);
 
 void RenderClusterDisc(const Cluster& cluster, float r, const slimage::Pixel3ub& color);
 
@@ -171,11 +171,11 @@ struct ClusterSelection
 
 };
 
-void PlotClusterCenters(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection);
+void PlotClusterCenters(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, int size, const ClusterSelection& selection);
 
-void PlotClusterPoints(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
+void PlotClusterPoints(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
-void PlotClusterEllipses(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
+void PlotClusterEllipses(slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 
 void PlotClusterEllipsesFilled(const slimage::Image3ub& img, const Superpixels& c, ColorMode ccm, const ClusterSelection& selection);
 

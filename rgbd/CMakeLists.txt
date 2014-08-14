@@ -8,10 +8,6 @@
 
 # general settings
 
-SET(rgbd_DEFINES
-	-DSLIMAGE_IO_OPENCV
-)
-
 SET(rgbd_SOURCES
 	rgbd.cpp
 )

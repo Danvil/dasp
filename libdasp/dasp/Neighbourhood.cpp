@@ -7,7 +7,6 @@
 
 #include "Neighbourhood.hpp"
 #include "Metric.hpp"
-#include <Slimage/Convert.hpp>
 #include <boost/graph/copy.hpp>
 #include <iostream>
 

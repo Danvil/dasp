@@ -1,7 +1,6 @@
 #include "Segmentation.hpp"
 #include "Neighbourhood.hpp"
 #include "Plots.hpp"
-#include <Slimage/Convert.hpp>
 #include <boost/graph/property_iter_range.hpp>
 
 namespace dasp
@@ -34,7 +33,11 @@ std::vector<slimage::Pixel3ub> ComputeSegmentColors(const Superpixels& clusters,
 	for(unsigned int i=0; i<colors.size(); i++) {
 		Eigen::Vector3f c = segment_center_sum[i].val / static_cast<float>(segment_center_sum[i].cnt);
 		c = clusters.ColorToRGB(c);
-		slimage::conversion::Convert(slimage::Pixel3f{{c[0],c[1],c[2]}}, colors[i]);
+		colors[i] = {
+			static_cast<unsigned char>(c[0]*255.0f),
+			static_cast<unsigned char>(c[1]*255.0f),
+			static_cast<unsigned char>(c[2]*255.0f)
+		};
 	}
 	return colors;
 }

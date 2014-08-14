@@ -368,8 +368,8 @@ std::vector<Point> Compute(const Eigen::MatrixXf& density)
 	return pnts;
 }
 
-template<typename T>
-void PlotPoints(const std::vector<Point>& points, const slimage::Image<T>& img, const slimage::Pixel<T>& color, bool plot_1px)
+template<typename K, unsigned CC>
+void PlotPoints(const std::vector<Point>& points, const slimage::Image<K,CC>& img, const slimage::Pixel<K,CC>& color, bool plot_1px)
 {
 	for(Point p : points) {
 		// round position

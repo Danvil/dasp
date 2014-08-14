@@ -2,8 +2,9 @@
 #include <dasp/Superpixels.hpp>
 #include <dasp/Segmentation.hpp>
 #include <dasp/impl/Sampling.hpp>
-#include <Slimage/IO.hpp>
-#include <Slimage/Slimage.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
+#include <slimage/image.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 

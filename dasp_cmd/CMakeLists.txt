@@ -1,5 +1,3 @@
-add_definitions(-DSLIMAGE_IO_OPENCV)
-
 include_directories(
 	${dasp_SOURCE_DIR}/libdasp
 )

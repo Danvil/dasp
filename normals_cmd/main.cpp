@@ -1,6 +1,7 @@
 #include <dasp/Tools.hpp>
-#include <Slimage/IO.hpp>
-#include <Slimage/Slimage.hpp>
+#include <slimage/opencv.hpp>
+#include <slimage/io.hpp>
+#include <slimage/image.hpp>
 #include <Danvil/Tools/MoreMath.h>
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -103,7 +104,7 @@ int main(int argc, char** argv)
 
 	// colorize
 	slimage::Image3ub img_normals = ColorizeNormals(normals, img_depth.width(), img_depth.height());
-	slimage::Save(img_normals, p_out);
+	slimage::Save(p_out, img_normals);
 
 	return 0;
 }
