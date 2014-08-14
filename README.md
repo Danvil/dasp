@@ -35,10 +35,9 @@ Dasp uses C++11 and requires at least GCC 4.6. Due to the poor support of the ne
 * [Eigen](http://eigen.tuxfamily.org) 3.x: `sudo apt-get install libeigen3-dev`
 * [Qt](http://qt.nokia.com/) 4.x: `sudo apt-get install libqt4-dev`
 * snappy: `sudo apt-get install libsnappy-dev`
+* slimage: Clone from on github under https://github.com/Danvil/slimage (header only - no build required)
 
 All apt-get dependencies in one line: *sudo apt-get install libboost-all-dev libeigen3-dev libqt4-dev libsnappy-dev g++ build-essential cmake cmake-qt-gui*
-
-[Download slimage](https://content.wuala.com/contents/Danvil/Public/dasp/slimage.tar.gz) and unzip for example into the dasp root directory.
 
 ### Installation Instructions
 
