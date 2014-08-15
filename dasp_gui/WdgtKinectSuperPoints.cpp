@@ -429,10 +429,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 			continue;
 		}
 		// convert to Qt image
-		QImage* qimg = slimage::ConvertToQt(ref_img);
-		if(qimg == 0) {
-			continue;
-		}
+		QImage qimg = slimage::ConvertToQt(ref_img);
 		// find label and create new if none exists
 		QLabel* qlabel;
 		std::string text = p.first;
@@ -445,9 +442,7 @@ void WdgtKinectSuperPoints::OnUpdateImages()
 		}
 		tabs_usage[text] = true;
 		// display image in label
-		qlabel->setPixmap(QPixmap::fromImage(*qimg));
-		// cleanup
-		delete qimg;
+		qlabel->setPixmap(QPixmap::fromImage(qimg));
 	}
 	// delete unused tabs
 	for(auto p : tabs_usage) {
