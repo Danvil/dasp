@@ -20,7 +20,7 @@ namespace density
 				throw 0;
 			}
 			if(slimage::anonymous_is<unsigned char, 3>(ptr)) {
-				slimage::Image3ub img = *slimage::anonymous_cast<unsigned char, 3>(ptr);
+				slimage::Image3ub img = slimage::anonymous_cast<unsigned char, 3>(ptr);
 				Eigen::MatrixXf mat(img.width(), img.height());
 				for(int y=0; y<mat.cols(); y++) {
 					for(int x=0; x<mat.rows(); x++) {
@@ -31,7 +31,7 @@ namespace density
 				return mat;
 			}
 			if(slimage::anonymous_is<unsigned char, 1>(ptr)) {
-				slimage::Image1ub img = *slimage::anonymous_cast<unsigned char, 1>(ptr);
+				slimage::Image1ub img = slimage::anonymous_cast<unsigned char, 1>(ptr);
 				Eigen::MatrixXf mat(img.width(), img.height());
 				for(int y=0; y<mat.cols(); y++) {
 					for(int x=0; x<mat.rows(); x++) {
