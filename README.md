@@ -1,6 +1,8 @@
 Depth-Adaptive Superpixels (DASP)
 ====
 
+**Consider using my new project (asp)[https://github.com/Danvil/asp]! It is much smaller and easier to use.**
+
 DASP is a novel oversegmentation algorithm for RGB-D images. In contrast to previous approaches it uses 3D information in addition to color. DASP can be used as a preprocessing step for various computer vision applications, for example image segmentation or point cloud segmentation.
 
 ![Superpixels and segments](https://content.wuala.com/contents/Danvil/Public/dasp/dasp.jpg)
